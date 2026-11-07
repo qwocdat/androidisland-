@@ -354,7 +354,7 @@ fun DroidbarOverlay(
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = if (isFlashlightActive) Icons.Default.FlashlightOn else Icons.Default.FlashlightOff,
-                                        contentDescription = "Flashlight",
+                                        contentDescription = "Đèn pin",
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
@@ -396,7 +396,7 @@ fun DroidbarOverlay(
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = if (isVibrate) Icons.Default.Vibration else Icons.Default.NotificationsActive,
-                                        contentDescription = if (isVibrate) "Vibrate" else "Ring",
+                                        contentDescription = if (isVibrate) "Rung" else "Chuông",
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
@@ -431,7 +431,7 @@ fun DroidbarOverlay(
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = Icons.Default.Screenshot,
-                                        contentDescription = "Screenshot",
+                                        contentDescription = "Chụp màn hình",
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
@@ -511,7 +511,7 @@ fun DroidbarOverlay(
                                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                     Icon(
                                         imageVector = Icons.Default.SignalCellularAlt,
-                                        contentDescription = "Mobile Data",
+                                        contentDescription = "Dữ liệu di động",
                                         modifier = Modifier.size(22.dp)
                                     )
                                 }
