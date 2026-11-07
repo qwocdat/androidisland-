@@ -98,7 +98,7 @@ class MainScreenViewModel(private val repository: SettingsRepository) : ViewMode
                 _showUpdateSheet.value = false
                 _updateState.value = UpdateState.UpToDate
             } else {
-                _updateState.value = UpdateState.Error("Failed to download update APK")
+                _updateState.value = UpdateState.Error("Không thể tải tệp APK cập nhật")
             }
         }
     }

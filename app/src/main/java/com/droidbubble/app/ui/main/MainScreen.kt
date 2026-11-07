@@ -282,18 +282,18 @@ fun UpdateCardItem(
             headlineContent = {
                 Text(
                     text = when (updateState) {
-                        is MainScreenViewModel.UpdateState.Checking -> "Checking for updates..."
-                        is MainScreenViewModel.UpdateState.UpToDate -> "Up to date"
+                        is MainScreenViewModel.UpdateState.Checking -> "Đang kiểm tra cập nhật..."
+                        is MainScreenViewModel.UpdateState.UpToDate -> "Đã là phiên bản mới nhất"
                         is MainScreenViewModel.UpdateState.Available -> {
                             val rel = updateState.release
-                            "Update available (${rel.version})"
+                            "Có bản cập nhật mới (${rel.version})"
                         }
                         is MainScreenViewModel.UpdateState.Downloading -> {
                             val p = (updateState.progress * 100).roundToInt()
-                            "Downloading update ($p%)..."
+                            "Đang tải bản cập nhật ($p%)..."
                         }
-                        is MainScreenViewModel.UpdateState.Error -> "Check for Updates"
-                        else -> "Check for Updates"
+                        is MainScreenViewModel.UpdateState.Error -> "Kiểm tra cập nhật"
+                        else -> "Kiểm tra cập nhật"
                     },
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
@@ -311,21 +311,21 @@ fun UpdateCardItem(
                     is MainScreenViewModel.UpdateState.UpToDate -> {
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
-                            contentDescription = "Up to date",
+                            contentDescription = "Đã cập nhật",
                             modifier = Modifier.size(24.dp)
                         )
                     }
                     is MainScreenViewModel.UpdateState.Available -> {
                         Icon(
                             imageVector = Icons.Default.SystemUpdate,
-                            contentDescription = "Update Available",
+                            contentDescription = "Có bản cập nhật",
                             modifier = Modifier.size(24.dp)
                         )
                     }
                     else -> {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Check for Updates",
+                            contentDescription = "Kiểm tra cập nhật",
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -586,20 +586,17 @@ fun MainScreen(
                                 verticalArrangement = Arrangement.Center
                             ) {
                                 Text(
-                                    text = "Droidtools",
+                                    text = "Androidisland",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = titleSize,
                                     color = MaterialTheme.colorScheme.onBackground,
                                     letterSpacing = if (expandProgress > 0.05f) (0.5.sp * expandProgress) else 0.sp
                                 )
-                                if (expandProgress > 0.02f) {
-                                    Text(
-                                        text = "v$appVersion",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = expandProgress),
-                                        modifier = Modifier.graphicsLayer { alpha = expandProgress }
-                                    )
-                                }
+                                Text(
+                                    text = "by digitalxiao • v$appVersion",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
 
                             IconButton(
@@ -610,7 +607,7 @@ fun MainScreen(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Feedback,
-                                    contentDescription = "Send Feedback",
+                                    contentDescription = "Gửi phản hồi",
                                     tint = MaterialTheme.colorScheme.primary
                                 )
                             }
@@ -635,7 +632,7 @@ fun MainScreen(
 
                         item {
                             SectionHeader(
-                                title = "Utilities",
+                                title = "Tiện ích",
                                 icon = Icons.Default.Widgets
                             )
                         }
@@ -648,7 +645,7 @@ fun MainScreen(
                                 SettingsCardItem(position = GroupPosition.TOP) {
                                     ListItem(
                                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                        headlineContent = { Text("Droidbubble", fontWeight = FontWeight.SemiBold) },
+                                        headlineContent = { Text("Androidisland", fontWeight = FontWeight.SemiBold) },
                                         leadingContent = {
                                             Surface(
                                                 modifier = Modifier.size(38.dp),
@@ -669,7 +666,7 @@ fun MainScreen(
                                         trailingContent = {
                                             Icon(
                                                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                                contentDescription = "Open Droidbubble",
+                                                contentDescription = "Mở Androidisland",
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                                 modifier = Modifier.size(16.dp)
                                             )
@@ -681,7 +678,7 @@ fun MainScreen(
                                 SettingsCardItem(position = GroupPosition.MIDDLE) {
                                     ListItem(
                                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                        headlineContent = { Text("Droidbar", fontWeight = FontWeight.SemiBold) },
+                                        headlineContent = { Text("Thanh cạnh Droidbar", fontWeight = FontWeight.SemiBold) },
                                         leadingContent = {
                                             Surface(
                                                 modifier = Modifier.size(38.dp),
@@ -702,7 +699,7 @@ fun MainScreen(
                                         trailingContent = {
                                             Icon(
                                                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                                contentDescription = "Open Droidbar",
+                                                contentDescription = "Mở Thanh cạnh Droidbar",
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                                 modifier = Modifier.size(16.dp)
                                             )
@@ -714,7 +711,7 @@ fun MainScreen(
                                 SettingsCardItem(position = GroupPosition.BOTTOM) {
                                     ListItem(
                                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                        headlineContent = { Text("Tasks", fontWeight = FontWeight.SemiBold) },
+                                        headlineContent = { Text("Tác vụ nhanh", fontWeight = FontWeight.SemiBold) },
                                         leadingContent = {
                                             Surface(
                                                 modifier = Modifier.size(38.dp),
@@ -735,7 +732,7 @@ fun MainScreen(
                                         trailingContent = {
                                             Icon(
                                                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                                contentDescription = "Open Tasks",
+                                                contentDescription = "Mở Tác vụ nhanh",
                                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                                 modifier = Modifier.size(16.dp)
                                             )
@@ -759,7 +756,7 @@ fun MainScreen(
                         TopAppBar(
                             title = {
                                 Text(
-                                    text = "Droidbubble",
+                                    text = "Androidisland",
                                     fontWeight = FontWeight.Bold
                                 )
                             },
@@ -767,7 +764,7 @@ fun MainScreen(
                                 IconButton(onClick = { showDroidbubblePage = false }) {
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "Back to Droidtools"
+                                        contentDescription = "Quay lại Androidisland"
                                     )
                                 }
                             },
@@ -775,7 +772,7 @@ fun MainScreen(
                                 IconButton(onClick = { showFeedbackSheet = true }) {
                                     Icon(
                                         imageVector = Icons.Default.Feedback,
-                                        contentDescription = "Send Feedback",
+                                        contentDescription = "Gửi phản hồi",
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -798,9 +795,9 @@ fun MainScreen(
             if (pendingPermissions.isNotEmpty()) {
                 item {
                     SectionHeader(
-                        title = "Required Setup",
+                        title = "Thiết lập cần thiết",
                         icon = Icons.Default.Security,
-                        badge = "${pendingPermissions.size} Pending",
+                        badge = "${pendingPermissions.size} chờ cấp",
                         badgeColor = MaterialTheme.colorScheme.error
                     )
                 }
@@ -850,7 +847,7 @@ fun MainScreen(
                                             },
                                             shape = RoundedCornerShape(12.dp)
                                         ) {
-                                            Text("Grant", fontWeight = FontWeight.SemiBold)
+                                            Text("Cấp quyền", fontWeight = FontWeight.SemiBold)
                                         }
                                     }
                                 )
@@ -865,7 +862,7 @@ fun MainScreen(
                 SettingsCardItem(position = GroupPosition.SINGLE, isActive = settings.isEnabled) {
                     ListItem(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        headlineContent = { Text("Enable Island", fontWeight = FontWeight.SemiBold) },
+                        headlineContent = { Text("Bật Đảo động (Island)", fontWeight = FontWeight.SemiBold) },
                         leadingContent = {
                             Icon(Icons.Default.PowerSettingsNew, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         },
@@ -893,7 +890,7 @@ fun MainScreen(
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             modifier = Modifier.clickable { showDimensionsPage = true },
-                            headlineContent = { Text("Island Dimensions", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Kích thước & Vị trí Đảo", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Surface(
                                     modifier = Modifier.size(38.dp),
@@ -909,7 +906,7 @@ fun MainScreen(
                             trailingContent = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                    contentDescription = "Open Island Dimensions",
+                                    contentDescription = "Mở Kích thước & Vị trí Đảo",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -921,7 +918,7 @@ fun MainScreen(
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             modifier = Modifier.clickable { showAppearancePage = true },
-                            headlineContent = { Text("Appearance & Feedback", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Giao diện & Phản hồi", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Surface(
                                     modifier = Modifier.size(38.dp),
@@ -937,7 +934,7 @@ fun MainScreen(
                             trailingContent = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                    contentDescription = "Open Appearance & Feedback",
+                                    contentDescription = "Mở Giao diện & Phản hồi",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -949,7 +946,7 @@ fun MainScreen(
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             modifier = Modifier.clickable { showMediaPlayerPage = true },
-                            headlineContent = { Text("Media Player Customisation", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Tùy chỉnh Trình phát nhạc", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Surface(
                                     modifier = Modifier.size(38.dp),
@@ -965,7 +962,7 @@ fun MainScreen(
                             trailingContent = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                    contentDescription = "Open Media Player Customisation",
+                                    contentDescription = "Mở Tùy chỉnh Trình phát nhạc",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -977,7 +974,7 @@ fun MainScreen(
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                             modifier = Modifier.clickable { showGeneralPage = true },
-                            headlineContent = { Text("General", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Cài đặt chung", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Surface(
                                     modifier = Modifier.size(38.dp),
@@ -993,7 +990,7 @@ fun MainScreen(
                             trailingContent = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                    contentDescription = "Open General",
+                                    contentDescription = "Mở Cài đặt chung",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -1006,7 +1003,7 @@ fun MainScreen(
             // SECTION 5A: ISLAND ACTIVITIES (DRAG TO REORDER PRIORITY)
             item {
                 SectionHeader(
-                    title = "Island Activities",
+                    title = "Hoạt động trên Đảo (Kéo để đổi thứ tự)",
                     icon = Icons.Default.Apps
                 )
             }
@@ -1074,17 +1071,17 @@ fun MainScreen(
                             }
 
                             val featureTitle = when (currentKey) {
-                                "CALL" -> "Phone Calls"
-                                "MEDIA" -> "Media Player"
-                                "NOTIFICATION" -> "Incoming Notifications"
-                                "PROGRESS" -> "Live Progress & Activities"
-                                "RECORDING" -> "Screen Recording Indicator"
-                                "FLASHLIGHT" -> "Flashlight Indicator"
-                                "PERSISTENT_CHARGING" -> "Persistent Charging"
-                                "ALARM" -> "Upcoming Alarms"
-                                "FPS" -> "FPS Counter"
-                                "WEATHER" -> "Weather & Temperature"
-                                "NETWORK_SPEED" -> "Wi-Fi & Network Speed"
+                                "CALL" -> "Cuộc gọi điện thoại"
+                                "MEDIA" -> "Trình phát nhạc"
+                                "NOTIFICATION" -> "Thông báo đến"
+                                "PROGRESS" -> "Tiến trình trực tiếp & Hoạt động"
+                                "RECORDING" -> "Chỉ báo quay màn hình"
+                                "FLASHLIGHT" -> "Chỉ báo đèn pin"
+                                "PERSISTENT_CHARGING" -> "Hiển thị sạc liên tục"
+                                "ALARM" -> "Báo thức sắp tới"
+                                "FPS" -> "Bộ đếm FPS"
+                                "WEATHER" -> "Thời tiết & Nhiệt độ"
+                                "NETWORK_SPEED" -> "Wi-Fi & Tốc độ mạng"
                                 else -> currentKey
                             }
 
@@ -1185,7 +1182,7 @@ fun MainScreen(
                                             ) {
                                                 Icon(
                                                     imageVector = Icons.Default.Menu,
-                                                    contentDescription = "Drag to reorder",
+                                                    contentDescription = "Kéo để sắp xếp",
                                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
                                                     modifier = Modifier.size(20.dp)
                                                 )
@@ -1230,7 +1227,7 @@ fun MainScreen(
             // SECTION 5B: SYSTEM ALERTS & INDICATORS (ALWAYS TOP PRIORITY)
             item {
                 SectionHeader(
-                    title = "System Alerts",
+                    title = "Cảnh báo hệ thống",
                     icon = Icons.Default.NotificationsActive
                 )
             }
@@ -1243,7 +1240,7 @@ fun MainScreen(
                     SettingsCardItem(position = GroupPosition.TOP, isActive = settings.showBluetooth) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Bluetooth Connecting", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Kết nối Bluetooth", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.Bluetooth, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -1261,7 +1258,7 @@ fun MainScreen(
                     SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.showCharging) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Charging Indicator", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Chỉ báo sạc pin", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -1279,7 +1276,7 @@ fun MainScreen(
                     SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.showRingerMode) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Ring Modes", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Chế độ chuông", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -1297,7 +1294,7 @@ fun MainScreen(
                     SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.showAirplaneMode) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Airplane Mode", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Chế độ máy bay", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.AirplanemodeActive, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -1338,7 +1335,7 @@ fun MainScreen(
                     .padding(horizontal = 20.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = "Per-App Notification Filter",
+                    text = "Bộ lọc thông báo theo ứng dụng",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -1348,7 +1345,7 @@ fun MainScreen(
                 OutlinedTextField(
                     value = appFilterQuery,
                     onValueChange = { appFilterQuery = it },
-                    placeholder = { Text("Search installed apps...") },
+                    placeholder = { Text("Tìm kiếm ứng dụng đã cài...") },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
                     singleLine = true
@@ -1433,7 +1430,7 @@ fun MainScreen(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Text(
-                                    text = "Version ${currentUpdate.version}",
+                                    text = "Phiên bản ${currentUpdate.version}",
                                     style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -1453,7 +1450,7 @@ fun MainScreen(
                                 }
                             }
                             Text(
-                                text = currentUpdate.name.takeIf { it != currentUpdate.version && it != currentUpdate.tagName } ?: "New GitHub Release",
+                                text = currentUpdate.name.takeIf { it != currentUpdate.version && it != currentUpdate.tagName } ?: "Bản phát hành mới trên GitHub",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -1473,7 +1470,7 @@ fun MainScreen(
                                 verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 Text(
-                                    text = "What's New",
+                                    text = "Có gì mới",
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.primary
@@ -1496,7 +1493,7 @@ fun MainScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("Downloading APK...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Đang tải APK...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text("${(downloadingProgress * 100).roundToInt()}%", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                             LinearProgressIndicator(
@@ -1518,7 +1515,7 @@ fun MainScreen(
                             modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(14.dp)
                         ) {
-                            Text("Later")
+                            Text("Để sau")
                         }
 
                         Button(
@@ -1536,11 +1533,11 @@ fun MainScreen(
                                     color = MaterialTheme.colorScheme.onPrimary
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
-                                Text("Downloading...")
+                                Text("Đang tải...")
                             } else {
                                 Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Install Update")
+                                Text("Cài đặt cập nhật")
                             }
                         }
                     }
@@ -1565,12 +1562,12 @@ fun MainScreen(
                 // Header
                 Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
-                        text = "Send Feedback",
+                        text = "Gửi phản hồi",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Report a bug or share your feature ideas for Droidtools.",
+                        text = "Báo lỗi hoặc đóng góp ý tưởng tính năng cho Androidisland (Tác giả: digitalxiao).",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1584,7 +1581,7 @@ fun MainScreen(
                     FilterChip(
                         selected = feedbackType == FeedbackType.BUG,
                         onClick = { feedbackType = FeedbackType.BUG },
-                        label = { Text("Bug Report", fontWeight = FontWeight.SemiBold) },
+                        label = { Text("Báo lỗi", fontWeight = FontWeight.SemiBold) },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.BugReport,
@@ -1597,7 +1594,7 @@ fun MainScreen(
                     FilterChip(
                         selected = feedbackType == FeedbackType.FEATURE,
                         onClick = { feedbackType = FeedbackType.FEATURE },
-                        label = { Text("Feature Idea", fontWeight = FontWeight.SemiBold) },
+                        label = { Text("Đề xuất tính năng", fontWeight = FontWeight.SemiBold) },
                         leadingIcon = {
                             Icon(
                                 Icons.Default.Lightbulb,
@@ -1613,11 +1610,11 @@ fun MainScreen(
                 OutlinedTextField(
                     value = feedbackTitle,
                     onValueChange = { feedbackTitle = it },
-                    label = { Text("Subject") },
+                    label = { Text("Tiêu đề") },
                     placeholder = {
                         Text(
-                            if (feedbackType == FeedbackType.BUG) "e.g. Media progress slider glitch"
-                            else "e.g. Add lock screen island support"
+                            if (feedbackType == FeedbackType.BUG) "VD: Lỗi thanh trượt trình phát nhạc"
+                            else "VD: Thêm hỗ trợ đảo trên màn hình khóa"
                         )
                     },
                     singleLine = true,
@@ -1629,11 +1626,11 @@ fun MainScreen(
                 OutlinedTextField(
                     value = feedbackDescription,
                     onValueChange = { feedbackDescription = it },
-                    label = { Text("Description *") },
+                    label = { Text("Mô tả chi tiết *") },
                     placeholder = {
                         Text(
-                            if (feedbackType == FeedbackType.BUG) "Describe what happened and how to reproduce it..."
-                            else "Describe your idea and how it should work..."
+                            if (feedbackType == FeedbackType.BUG) "Mô tả lỗi đã xảy ra và cách tái hiện lỗi..."
+                            else "Mô tả ý tưởng của bạn và cách thức hoạt động..."
                         )
                     },
                     minLines = 4,
@@ -1651,7 +1648,7 @@ fun MainScreen(
                     ) {
                         Icon(Icons.Default.AttachFile, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add Attachment (Screenshot / Log)", fontSize = 13.sp)
+                        Text("Đính kèm tệp (Ảnh chụp màn hình / Log)", fontSize = 13.sp)
                     }
                 } else {
                     Surface(
@@ -1671,7 +1668,7 @@ fun MainScreen(
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = attachmentName ?: "Attached file",
+                                text = attachmentName ?: "Tệp đính kèm",
                                 style = MaterialTheme.typography.bodyMedium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
@@ -1686,7 +1683,7 @@ fun MainScreen(
                             ) {
                                 Icon(
                                     Icons.Default.Close,
-                                    contentDescription = "Remove attachment",
+                                    contentDescription = "Xóa tệp đính kèm",
                                     modifier = Modifier.size(16.dp)
                                 )
                             }
@@ -1704,27 +1701,27 @@ fun MainScreen(
                         modifier = Modifier.weight(1f),
                         shape = RoundedCornerShape(14.dp)
                     ) {
-                        Text("Cancel")
+                        Text("Hủy")
                     }
 
                     Button(
                         onClick = {
-                            val subject = "[Droidtools ${if (feedbackType == FeedbackType.BUG) "Bug" else "Feature"}] ${feedbackTitle.ifBlank { if (feedbackType == FeedbackType.BUG) "Bug Report" else "Feature Suggestion" }}"
+                            val subject = "[Androidisland ${if (feedbackType == FeedbackType.BUG) "Lỗi" else "Tính năng"}] ${feedbackTitle.ifBlank { if (feedbackType == FeedbackType.BUG) "Báo cáo lỗi" else "Đề xuất tính năng" }}"
                             val body = buildString {
-                                appendLine("Type: ${if (feedbackType == FeedbackType.BUG) "Bug Report" else "Feature Suggestion"}")
+                                appendLine("Loại: ${if (feedbackType == FeedbackType.BUG) "Báo cáo lỗi" else "Đề xuất tính năng"}")
                                 if (feedbackTitle.isNotBlank()) {
-                                    appendLine("Subject: $feedbackTitle")
+                                    appendLine("Tiêu đề: $feedbackTitle")
                                 }
                                 appendLine()
-                                appendLine("Description:")
+                                appendLine("Mô tả:")
                                 appendLine(feedbackDescription.trim())
                                 appendLine()
                                 appendLine("----------------------------------------")
-                                appendLine("Device & App Info:")
-                                appendLine("Droidtools Version: ${com.droidbubble.app.util.UpdateManager.getCurrentVersion(context)} (${context.packageName})")
-                                appendLine("Device: ${Build.MANUFACTURER} ${Build.MODEL} (${Build.DEVICE})")
-                                appendLine("Android Version: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})")
-                                appendLine("Island Enabled: ${settings.isEnabled}")
+                                appendLine("Thông tin Thiết bị & Ứng dụng:")
+                                appendLine("Phiên bản Androidisland: ${com.droidbubble.app.util.UpdateManager.getCurrentVersion(context)} (${context.packageName}) - Tác giả: digitalxiao")
+                                appendLine("Thiết bị: ${Build.MANUFACTURER} ${Build.MODEL} (${Build.DEVICE})")
+                                appendLine("Phiên bản Android: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})")
+                                appendLine("Trạng thái Đảo động: ${settings.isEnabled}")
                                 appendLine("----------------------------------------")
                             }
 
@@ -1732,15 +1729,15 @@ fun MainScreen(
                             val emailIntent = if (hasAttachment) {
                                 Intent(Intent.ACTION_SEND).apply {
                                     type = context.contentResolver.getType(attachmentUri!!) ?: "*/*"
-                                    putExtra(Intent.EXTRA_EMAIL, arrayOf("velocityniele@gmail.com"))
+                                    putExtra(Intent.EXTRA_EMAIL, arrayOf("digitalxiao@gmail.com"))
                                     putExtra(Intent.EXTRA_SUBJECT, subject)
                                     putExtra(Intent.EXTRA_TEXT, body)
                                     putExtra(Intent.EXTRA_STREAM, attachmentUri)
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                 }
                             } else {
-                                Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:velocityniele@gmail.com")).apply {
-                                    putExtra(Intent.EXTRA_EMAIL, arrayOf("velocityniele@gmail.com"))
+                                Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:digitalxiao@gmail.com")).apply {
+                                    putExtra(Intent.EXTRA_EMAIL, arrayOf("digitalxiao@gmail.com"))
                                     putExtra(Intent.EXTRA_SUBJECT, subject)
                                     putExtra(Intent.EXTRA_TEXT, body)
                                 }
@@ -1749,7 +1746,7 @@ fun MainScreen(
                             // Copy details to clipboard as backup in case user wants to paste elsewhere
                             try {
                                 val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                                clipboard?.setPrimaryClip(ClipData.newPlainText("Droidtools Feedback", body))
+                                clipboard?.setPrimaryClip(ClipData.newPlainText("Phản hồi Androidisland", body))
                             } catch (_: Exception) {}
 
                             val gmailIntent = Intent(emailIntent).setPackage("com.google.android.gm").apply {
@@ -1762,24 +1759,24 @@ fun MainScreen(
                             try {
                                 if (context.packageManager.resolveActivity(gmailIntent, 0) != null) {
                                     context.startActivity(gmailIntent)
-                                    Toast.makeText(context, "Opening Gmail to send to velocityniele@gmail.com", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Đang mở Gmail để gửi tới digitalxiao@gmail.com", Toast.LENGTH_SHORT).show()
                                 } else {
-                                    val chooser = Intent.createChooser(emailIntent, "Send Feedback via Email").apply {
+                                    val chooser = Intent.createChooser(emailIntent, "Gửi phản hồi qua Email").apply {
                                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                         if (hasAttachment) {
                                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         }
                                     }
                                     context.startActivity(chooser)
-                                    Toast.makeText(context, "Choose email client to send to velocityniele@gmail.com", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Chọn ứng dụng email để gửi tới digitalxiao@gmail.com", Toast.LENGTH_SHORT).show()
                                 }
                             } catch (_: Exception) {
-                                val fallback = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:velocityniele@gmail.com?subject=" + Uri.encode(subject) + "&body=" + Uri.encode(body))).apply {
+                                val fallback = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:digitalxiao@gmail.com?subject=" + Uri.encode(subject) + "&body=" + Uri.encode(body))).apply {
                                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                 }
                                 runCatching {
                                     context.startActivity(fallback)
-                                    Toast.makeText(context, "Opening mail client...", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Đang mở ứng dụng email...", Toast.LENGTH_SHORT).show()
                                 }
                             }
 
@@ -1795,7 +1792,7 @@ fun MainScreen(
                     ) {
                         Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Send Email")
+                        Text("Gửi Email")
                     }
                 }
             }
@@ -2013,12 +2010,12 @@ fun DimensionsPage(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Island Dimensions", fontWeight = FontWeight.Bold) },
+                title = { Text("Kích thước & Vị trí Đảo", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Quay lại"
                         )
                     }
                 },
@@ -2062,7 +2059,7 @@ fun DimensionsPage(
                 ) {
                     SettingsCardItem(position = GroupPosition.TOP) {
                         SliderSettingItem(
-                            label = "Width",
+                            label = "Chiều rộng",
                             value = settings.widthDp.toFloat(),
                             unit = "dp",
                             valueRange = 50f..260f,
@@ -2072,7 +2069,7 @@ fun DimensionsPage(
 
                     SettingsCardItem(position = GroupPosition.MIDDLE) {
                         SliderSettingItem(
-                            label = "Height",
+                            label = "Chiều cao",
                             value = settings.heightDp.toFloat(),
                             unit = "dp",
                             valueRange = 12f..56f,
@@ -2082,7 +2079,7 @@ fun DimensionsPage(
 
                     SettingsCardItem(position = GroupPosition.MIDDLE) {
                         SliderSettingItem(
-                            label = "Corner Radius",
+                            label = "Độ bo góc",
                             value = settings.cornerRadiusDp.toFloat(),
                             unit = "dp",
                             valueRange = 10f..28f,
@@ -2092,7 +2089,7 @@ fun DimensionsPage(
 
                     SettingsCardItem(position = GroupPosition.MIDDLE) {
                         SliderSettingItem(
-                            label = "Top Offset (Notch Line-up)",
+                            label = "Khoảng cách lề trên (Căn chỉnh Notch)",
                             value = settings.topOffsetDp.toFloat(),
                             unit = "dp",
                             valueRange = 0f..60f,
@@ -2102,7 +2099,7 @@ fun DimensionsPage(
 
                     SettingsCardItem(position = GroupPosition.MIDDLE) {
                         SliderSettingItem(
-                            label = "Horizontal Offset",
+                            label = "Độ lệch ngang",
                             value = settings.horizontalOffsetDp.toFloat(),
                             unit = "dp",
                             valueRange = -50f..50f,
@@ -2112,7 +2109,7 @@ fun DimensionsPage(
 
                     SettingsCardItem(position = GroupPosition.MIDDLE) {
                         SliderSettingItem(
-                            label = "Expanded Card Scale",
+                            label = "Tỷ lệ phóng to thẻ mở rộng",
                             value = settings.expandedScale,
                             unit = "x",
                             valueRange = 0.8f..1.3f,
@@ -2123,7 +2120,7 @@ fun DimensionsPage(
 
                     SettingsCardItem(position = GroupPosition.BOTTOM) {
                         SliderSettingItem(
-                            label = "Animation Speed",
+                            label = "Tốc độ chuyển động",
                             value = settings.animationSpeed,
                             unit = "x",
                             valueRange = 0.5f..2.0f,
@@ -2156,7 +2153,7 @@ fun CutoutPositionSelectorCard(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "Camera Cut-out Position",
+                text = "Vị trí khuyết Camera",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -2167,21 +2164,21 @@ fun CutoutPositionSelectorCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 CutoutPositionOptionButton(
-                    label = "Center",
+                    label = "Ở giữa",
                     mode = CutoutModeOption.CENTER,
                     isSelected = selectedMode == CutoutModeOption.CENTER,
                     onClick = { onSelectMode(CutoutModeOption.CENTER) },
                     modifier = Modifier.weight(1f)
                 )
                 CutoutPositionOptionButton(
-                    label = "Left",
+                    label = "Bên trái",
                     mode = CutoutModeOption.LEFT,
                     isSelected = selectedMode == CutoutModeOption.LEFT,
                     onClick = { onSelectMode(CutoutModeOption.LEFT) },
                     modifier = Modifier.weight(1f)
                 )
                 CutoutPositionOptionButton(
-                    label = "Tear-drop",
+                    label = "Giọt nước",
                     mode = CutoutModeOption.TEARDROP,
                     isSelected = selectedMode == CutoutModeOption.TEARDROP,
                     onClick = { onSelectMode(CutoutModeOption.TEARDROP) },
@@ -2374,7 +2371,7 @@ fun AppearancePage(
     if (showFontDialog) {
         AlertDialog(
             onDismissRequest = { showFontDialog = false },
-            title = { Text("Select Font", fontWeight = FontWeight.Bold) },
+            title = { Text("Chọn phông chữ", fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -2414,7 +2411,7 @@ fun AppearancePage(
             },
             confirmButton = {
                 TextButton(onClick = { showFontDialog = false }) {
-                    Text("Done")
+                    Text("Xong")
                 }
             }
         )
@@ -2424,12 +2421,12 @@ fun AppearancePage(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Appearance & Feedback", fontWeight = FontWeight.Bold) },
+                title = { Text("Giao diện & Phản hồi", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Quay lại"
                         )
                     }
                 },
@@ -2468,7 +2465,7 @@ fun AppearancePage(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Text("Design Language", fontWeight = FontWeight.SemiBold)
+                                        Text("Phong cách thiết kế", fontWeight = FontWeight.SemiBold)
                                         if (settings.designLanguage == DesignLanguage.GLASS) {
                                             Surface(
                                                 shape = RoundedCornerShape(6.dp),
@@ -2476,7 +2473,7 @@ fun AppearancePage(
                                                 contentColor = MaterialTheme.colorScheme.primary
                                             ) {
                                                 Text(
-                                                    text = "Experimental",
+                                                    text = "Thử nghiệm",
                                                     style = MaterialTheme.typography.labelSmall,
                                                     fontWeight = FontWeight.Bold,
                                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -2546,8 +2543,8 @@ fun AppearancePage(
                                         ) {
                                             Text(
                                                 text = when (lang) {
-                                                    DesignLanguage.DROIDBUBBLE -> "Droidbubble"
-                                                    DesignLanguage.GLASS -> "Glass"
+                                                    DesignLanguage.DROIDBUBBLE -> "Androidisland"
+                                                    DesignLanguage.GLASS -> "Kính (Glass)"
                                                     DesignLanguage.MATERIAL3 -> "Material 3"
                                                 },
                                                 style = MaterialTheme.typography.labelMedium,
@@ -2565,7 +2562,7 @@ fun AppearancePage(
                     if (isGlass) {
                         SettingsCardItem(position = GroupPosition.BOTTOM, isActive = false) {
                             SliderSettingItem(
-                                label = "Opacity",
+                                label = "Độ mờ đục",
                                 value = settings.glassOpacity.toFloat(),
                                 unit = "%",
                                 valueRange = 0f..100f,
@@ -2582,10 +2579,10 @@ fun AppearancePage(
                     ListItem(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         modifier = Modifier.clickable { showFontDialog = true },
-                        headlineContent = { Text("Change Font", fontWeight = FontWeight.SemiBold) },
+                        headlineContent = { Text("Đổi phông chữ", fontWeight = FontWeight.SemiBold) },
                         supportingContent = {
                             val currentFontName = remember(settings.fontKey) {
-                                ISLAND_FONTS.firstOrNull { it.key == settings.fontKey }?.name ?: "System Default"
+                                ISLAND_FONTS.firstOrNull { it.key == settings.fontKey }?.name ?: "Mặc định hệ thống"
                             }
                             Text(currentFontName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         },
@@ -2604,7 +2601,7 @@ fun AppearancePage(
                         trailingContent = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                contentDescription = "Change Font",
+                                contentDescription = "Đổi phông chữ",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.size(16.dp)
                             )
@@ -2628,7 +2625,7 @@ fun AppearancePage(
                                 colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                 headlineContent = {
                                     Text(
-                                        "Island Outline",
+                                        "Viền Đảo động",
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 },
@@ -2653,7 +2650,7 @@ fun AppearancePage(
                         if (outlineActive) {
                             SettingsCardItem(position = GroupPosition.BOTTOM) {
                                 SliderSettingItem(
-                                    label = "Outline Thickness",
+                                    label = "Độ dày viền",
                                     value = settings.outlineThicknessDp,
                                     unit = "dp",
                                     valueRange = 0.5f..4.0f,
@@ -2673,7 +2670,7 @@ fun AppearancePage(
                     SettingsCardItem(position = GroupPosition.TOP, isActive = settings.bubbleEffectEnabled) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Bubble Effect", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Hiệu ứng bong bóng", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.RoundedCorner, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -2691,8 +2688,8 @@ fun AppearancePage(
                     SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.showDualActivityInCompact) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Dual Activity on Minimised Island", fontWeight = FontWeight.SemiBold) },
-                            supportingContent = { Text("Shows secondary bubble; when off, shows only priority activity until expanded", style = MaterialTheme.typography.bodySmall) },
+                            headlineContent = { Text("Hoạt động kép khi thu gọn", fontWeight = FontWeight.SemiBold) },
+                            supportingContent = { Text("Hiển thị bong bóng phụ; khi tắt sẽ chỉ hiện hoạt động ưu tiên cho đến khi mở rộng", style = MaterialTheme.typography.bodySmall) },
                             leadingContent = {
                                 Icon(Icons.Default.Widgets, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -2710,7 +2707,7 @@ fun AppearancePage(
                     SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.alwaysShowPill) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Always Show Pill", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Luôn hiển thị viên thuốc", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.FitScreen, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -2732,8 +2729,8 @@ fun AppearancePage(
                     ListItem(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                         modifier = Modifier.clickable { onNavigateToMediaPlayer() },
-                        headlineContent = { Text("Media Player Customisation", fontWeight = FontWeight.SemiBold) },
-                        supportingContent = { Text("Preview, controls alignment, layer order & animations", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                        headlineContent = { Text("Tùy chỉnh Trình phát nhạc", fontWeight = FontWeight.SemiBold) },
+                        supportingContent = { Text("Xem trước, căn chỉnh nút, thứ tự lớp & hiệu ứng", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) },
                         leadingContent = {
                             Surface(
                                 modifier = Modifier.size(38.dp),
@@ -2749,7 +2746,7 @@ fun AppearancePage(
                         trailingContent = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                contentDescription = "Open Media Player Customisation",
+                                contentDescription = "Mở Tùy chỉnh Trình phát nhạc",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.size(16.dp)
                             )
@@ -2783,17 +2780,17 @@ fun GeneralPage(
     if (showWeatherDialog) {
         AlertDialog(
             onDismissRequest = { showWeatherDialog = false },
-            title = { Text("Weather Location") },
+            title = { Text("Vị trí thời tiết") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        "Enter a city or location name to show weather for (e.g. London, Paris, New York, Thessaloniki). Leave blank for automatic time-zone approximation.",
+                        "Nhập tên thành phố hoặc địa điểm để hiển thị thời tiết (VD: Ha Noi, Ho Chi Minh, Da Nang). Để trống để tự động ước tính theo múi giờ.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     OutlinedTextField(
                         value = weatherCityInput,
                         onValueChange = { weatherCityInput = it },
-                        label = { Text("City or Town") },
+                        label = { Text("Thành phố hoặc Địa phương") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -2806,12 +2803,12 @@ fun GeneralPage(
                         showWeatherDialog = false
                     }
                 ) {
-                    Text("Save")
+                    Text("Lưu")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showWeatherDialog = false }) {
-                    Text("Cancel")
+                    Text("Hủy")
                 }
             }
         )
@@ -2821,12 +2818,12 @@ fun GeneralPage(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("General", fontWeight = FontWeight.Bold) },
+                title = { Text("Cài đặt chung", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Quay lại"
                         )
                     }
                 },
@@ -2845,7 +2842,7 @@ fun GeneralPage(
         ) {
             // SECTION: DISPLAY & BEHAVIOR
             item {
-                SectionHeader(title = "Display & Behavior")
+                SectionHeader(title = "Hiển thị & Hành vi")
             }
 
             item {
@@ -2856,7 +2853,7 @@ fun GeneralPage(
                     SettingsCardItem(position = GroupPosition.TOP, isActive = settings.hideOnLockScreen) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Hide on Lock Screen", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Ẩn trên màn hình khóa", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -2874,7 +2871,7 @@ fun GeneralPage(
                     SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.showInLandscape) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Show in Landscape", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Hiển thị khi xoay ngang", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.ScreenRotation, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -2892,7 +2889,7 @@ fun GeneralPage(
                     SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.swapActivitiesOnSwipe) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Swipe to Swap Activities", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Vuốt để đổi hoạt động", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.TouchApp, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -2911,14 +2908,14 @@ fun GeneralPage(
 
             // SECTION: INTERACTION & FEEDBACK
             item {
-                SectionHeader(title = "Interaction & Feedback")
+                SectionHeader(title = "Tương tác & Phản hồi")
             }
 
             item {
                 SettingsCardItem(position = GroupPosition.SINGLE, isActive = settings.hapticsEnabled) {
                     ListItem(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        headlineContent = { Text("Haptic Feedback", fontWeight = FontWeight.SemiBold) },
+                        headlineContent = { Text("Phản hồi xúc giác (Rung)", fontWeight = FontWeight.SemiBold) },
                         leadingContent = {
                             Icon(Icons.Default.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         },
@@ -2936,7 +2933,7 @@ fun GeneralPage(
 
             // SECTION: NOTIFICATIONS
             item {
-                SectionHeader(title = "Notifications")
+                SectionHeader(title = "Thông báo")
             }
 
             item {
@@ -2947,7 +2944,7 @@ fun GeneralPage(
                     SettingsCardItem(position = GroupPosition.TOP, isActive = settings.autoDismissNotifications) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Auto-Dismiss Notifications", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Tự động ẩn thông báo", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -2965,7 +2962,7 @@ fun GeneralPage(
                     if (settings.autoDismissNotifications) {
                         SettingsCardItem(position = GroupPosition.MIDDLE) {
                             SliderSettingItem(
-                                label = "Auto-Dismiss Duration",
+                                label = "Thời gian tự động ẩn",
                                 value = settings.notificationAutoDismissSeconds.toFloat(),
                                 unit = "s",
                                 valueRange = 1f..10f,
@@ -2979,9 +2976,9 @@ fun GeneralPage(
 
                     SettingsCardItem(position = GroupPosition.BOTTOM) {
                         SliderSettingItem(
-                            label = "Notification Max Lines",
+                            label = "Số dòng thông báo tối đa",
                             value = settings.notificationMaxLines.toFloat(),
-                            unit = "lines",
+                            unit = "dòng",
                             valueRange = 1f..6f,
                             steps = 4,
                             onValueChange = { lines ->
@@ -2994,7 +2991,7 @@ fun GeneralPage(
 
             // SECTION: SERVICES & FEATURES
             item {
-                SectionHeader(title = "Services & Features")
+                SectionHeader(title = "Dịch vụ & Tính năng")
             }
 
             item {
@@ -3005,7 +3002,7 @@ fun GeneralPage(
                     SettingsCardItem(position = GroupPosition.TOP, isActive = settings.dismissMediaOnPause) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Dismiss Media on Pause", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Ẩn trình phát nhạc khi tạm dừng", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.MusicNote, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -3029,7 +3026,7 @@ fun GeneralPage(
                             },
                             headlineContent = {
                                 Text(
-                                    if (settings.weatherCity.isBlank()) "Weather Location" else "Weather Location (${settings.weatherCity})",
+                                    if (settings.weatherCity.isBlank()) "Vị trí thời tiết" else "Vị trí thời tiết (${settings.weatherCity})",
                                     fontWeight = FontWeight.SemiBold
                                 )
                             },
@@ -3048,7 +3045,7 @@ fun GeneralPage(
                             trailingContent = {
                                 Icon(
                                     Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                    contentDescription = "Set Location",
+                                    contentDescription = "Đặt vị trí",
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                     modifier = Modifier.size(16.dp)
                                 )
@@ -3078,7 +3075,7 @@ fun AnimationCurveEditor(
     settings: IslandSettings,
     onUpdateSettings: ((IslandSettings) -> IslandSettings) -> Unit
 ) {
-    val targets = listOf("Expand", "Appear", "Split")
+    val targets = listOf("Mở rộng", "Xuất hiện", "Tách đôi")
     var selected by remember { mutableStateOf(0) }
     val defaults = listOf(0.74f to 380f, 0.60f to 280f, 0.63f to 320f)
     val damping = when (selected) { 0 -> settings.expandDamping; 1 -> settings.appearDamping; else -> settings.splitDamping }
@@ -3103,11 +3100,11 @@ fun AnimationCurveEditor(
             ) {
                 Icon(Icons.Default.Animation, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(Modifier.width(16.dp))
-                Text("Animation Curves", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("Đường cong chuyển động", fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 TextButton(onClick = { setCurve(defaults[selected].first, defaults[selected].second) }, enabled = !isDefault) {
                     Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(4.dp))
-                    Text("Reset")
+                    Text("Đặt lại")
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -3205,14 +3202,14 @@ fun AnimationCurveEditor(
 
             val bounce = ((1f - damping) / 0.7f).coerceIn(0f, 1f)
             SliderSettingItemPct(
-                label = "Bounce",
+                label = "Độ nảy (Bounce)",
                 valueText = "${(bounce * 100).toInt()}%",
                 value = bounce,
                 valueRange = 0f..1f,
                 onValueChange = { b -> setCurve((1f - 0.7f * b), stiffness) }
             )
             SliderSettingItemPct(
-                label = "Snap",
+                label = "Độ nhạy (Snap)",
                 valueText = "${stiffness.toInt()}",
                 value = stiffness,
                 valueRange = 150f..700f,
@@ -3303,7 +3300,7 @@ fun MediaPlayerCustomizationPage(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Media Player",
+                        text = "Trình phát nhạc",
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -3311,7 +3308,7 @@ fun MediaPlayerCustomizationPage(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Quay lại"
                         )
                     }
                 },
@@ -3330,7 +3327,7 @@ fun MediaPlayerCustomizationPage(
         ) {
             // SECTION 1: PREVIEW
             item {
-                SectionHeader(title = "Preview")
+                SectionHeader(title = "Xem trước")
             }
 
             item {
@@ -3398,7 +3395,7 @@ fun MediaPlayerCustomizationPage(
 
             // SECTION 2: CONTROLS ALIGNMENT
             item {
-                SectionHeader(title = "Controls Alignment")
+                SectionHeader(title = "Căn chỉnh nút điều khiển")
             }
 
             item {
@@ -3409,9 +3406,9 @@ fun MediaPlayerCustomizationPage(
                     horizontalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     val alignments = listOf(
-                        "LEFT" to "Left",
-                        "CENTER" to "Center",
-                        "RIGHT" to "Right"
+                        "LEFT" to "Trái",
+                        "CENTER" to "Giữa",
+                        "RIGHT" to "Phải"
                     )
                     alignments.forEachIndexed { index, (key, label) ->
                         val isSelected = settings.mediaControlAlignment == key
@@ -3464,7 +3461,7 @@ fun MediaPlayerCustomizationPage(
 
             // SECTION 3: LAYER ORDER
             item {
-                SectionHeader(title = "Layer Order")
+                SectionHeader(title = "Thứ tự hiển thị")
             }
 
             item {
@@ -3482,9 +3479,9 @@ fun MediaPlayerCustomizationPage(
                         }
 
                         val (title, icon) = when (layerKey) {
-                            "COVER_AND_TITLE" -> "Album cover and title" to Icons.Default.Album
-                            "SLIDER" -> "Media slider" to Icons.Default.LinearScale
-                            "CONTROLS" -> "Control buttons" to Icons.Default.PlayCircleOutline
+                            "COVER_AND_TITLE" -> "Ảnh bìa và tên bài hát" to Icons.Default.Album
+                            "SLIDER" -> "Thanh trượt thời gian" to Icons.Default.LinearScale
+                            "CONTROLS" -> "Các nút điều khiển" to Icons.Default.PlayCircleOutline
                             else -> layerKey to Icons.Default.Layers
                         }
 
@@ -3520,7 +3517,7 @@ fun MediaPlayerCustomizationPage(
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.KeyboardArrowUp,
-                                                contentDescription = "Move Up",
+                                                contentDescription = "Di chuyển lên",
                                                 tint = if (index > 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                                             )
                                         }
@@ -3539,7 +3536,7 @@ fun MediaPlayerCustomizationPage(
                                         ) {
                                             Icon(
                                                 imageVector = Icons.Default.KeyboardArrowDown,
-                                                contentDescription = "Move Down",
+                                                contentDescription = "Di chuyển xuống",
                                                 tint = if (index < currentOrder.size - 1) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
                                             )
                                         }
@@ -3553,7 +3550,7 @@ fun MediaPlayerCustomizationPage(
 
             // SECTION 4: OPTIONS & ANIMATIONS
             item {
-                SectionHeader(title = "Options & Animations")
+                SectionHeader(title = "Tùy chọn & Hiệu ứng")
             }
 
             item {
@@ -3564,7 +3561,7 @@ fun MediaPlayerCustomizationPage(
                     SettingsCardItem(position = GroupPosition.TOP, isActive = settings.mediaWaveAnimation) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Ambient Album Wave", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Sóng nhạc theo màu ảnh bìa", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -3582,7 +3579,7 @@ fun MediaPlayerCustomizationPage(
                     SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.wavyProgressBar) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Wavy Progress Scrubber", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Thanh tiến trình dạng sóng", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.LinearScale, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -3600,7 +3597,7 @@ fun MediaPlayerCustomizationPage(
                     SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.spinningAlbumArt) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Spinning Vinyl Cover", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Ảnh bìa đĩa than xoay tròn", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.Album, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -3618,7 +3615,7 @@ fun MediaPlayerCustomizationPage(
                     SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.blurredAlbumArtBackground) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Blurred Album Art Background", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Làm mờ ảnh bìa làm nền", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Icon(Icons.Default.MusicNote, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
@@ -3655,12 +3652,12 @@ fun DroidbarPage(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Droidbar", fontWeight = FontWeight.Bold) },
+                title = { Text("Thanh cạnh Droidbar", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Quay lại"
                         )
                     }
                 },
@@ -3682,7 +3679,7 @@ fun DroidbarPage(
                 SettingsCardItem(position = GroupPosition.SINGLE, isActive = settings.droidbarEnabled) {
                     ListItem(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        headlineContent = { Text("Enable Droidbar", fontWeight = FontWeight.SemiBold) },
+                        headlineContent = { Text("Bật Thanh cạnh Droidbar", fontWeight = FontWeight.SemiBold) },
                         leadingContent = {
                             Surface(
                                 modifier = Modifier.size(38.dp),
@@ -3715,10 +3712,10 @@ fun DroidbarPage(
                 SettingsCardItem(position = GroupPosition.SINGLE) {
                     ListItem(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        headlineContent = { Text("Configure displayed apps", fontWeight = FontWeight.SemiBold) },
+                        headlineContent = { Text("Cấu hình ứng dụng hiển thị", fontWeight = FontWeight.SemiBold) },
                         supportingContent = {
                             Text(
-                                if (settings.droidbarUseMostUsedApps) "6 most used apps (auto)" else "Custom app selection",
+                                if (settings.droidbarUseMostUsedApps) "6 ứng dụng dùng nhiều nhất (tự động)" else "Tùy chọn ứng dụng thủ công",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -3738,7 +3735,7 @@ fun DroidbarPage(
                         trailingContent = {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                contentDescription = "Configure",
+                                contentDescription = "Cấu hình",
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                 modifier = Modifier.size(16.dp)
                             )
@@ -3758,8 +3755,8 @@ fun DroidbarPage(
                     ) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Overlay Permission Required", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error) },
-                            supportingContent = { Text("Required to display the edge bar over other apps", style = MaterialTheme.typography.bodySmall) },
+                            headlineContent = { Text("Cần quyền Hiển thị trên ứng dụng khác", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error) },
+                            supportingContent = { Text("Cần thiết để hiển thị thanh công cụ cạnh màn hình trên các ứng dụng khác", style = MaterialTheme.typography.bodySmall) },
                             trailingContent = {
                                 Button(
                                     onClick = {
@@ -3774,7 +3771,7 @@ fun DroidbarPage(
                                     },
                                     shape = RoundedCornerShape(12.dp)
                                 ) {
-                                    Text("Grant", fontWeight = FontWeight.SemiBold)
+                                    Text("Cấp quyền", fontWeight = FontWeight.SemiBold)
                                 }
                             }
                         )
@@ -3784,7 +3781,7 @@ fun DroidbarPage(
 
             // CONTROLS SECTION (NO DESCRIPTIONS)
             item {
-                SectionHeader(title = "Controls")
+                SectionHeader(title = "Điều khiển nhanh")
             }
 
             item {
@@ -3795,7 +3792,7 @@ fun DroidbarPage(
                     SettingsCardItem(position = GroupPosition.TOP) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Flashlight", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Đèn pin", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Surface(
                                     modifier = Modifier.size(38.dp),
@@ -3827,7 +3824,7 @@ fun DroidbarPage(
                     SettingsCardItem(position = GroupPosition.MIDDLE) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Ring mode", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Chế độ chuông", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Surface(
                                     modifier = Modifier.size(38.dp),
@@ -3859,7 +3856,7 @@ fun DroidbarPage(
                     SettingsCardItem(position = GroupPosition.MIDDLE) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Screenshot", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Chụp màn hình", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Surface(
                                     modifier = Modifier.size(38.dp),
@@ -3923,7 +3920,7 @@ fun DroidbarPage(
                     SettingsCardItem(position = GroupPosition.BOTTOM) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Mobile data", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Dữ liệu di động", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Surface(
                                     modifier = Modifier.size(38.dp),
@@ -3956,7 +3953,7 @@ fun DroidbarPage(
 
             // APPEARANCE & FEEDBACK SECTION (NO DESCRIPTIONS)
             item {
-                SectionHeader(title = "Appearance & Feedback", icon = Icons.Default.Palette)
+                SectionHeader(title = "Giao diện & Phản hồi", icon = Icons.Default.Palette)
             }
 
             item {
@@ -3966,7 +3963,7 @@ fun DroidbarPage(
                 ) {
                     SettingsCardItem(position = GroupPosition.TOP) {
                         SliderSettingItem(
-                            label = "Background opacity",
+                            label = "Độ mờ nền",
                             value = (settings.droidbarBackgroundOpacity * 100f).roundToInt().toFloat(),
                             unit = "%",
                             valueRange = 0f..100f,
@@ -3978,7 +3975,7 @@ fun DroidbarPage(
 
                     SettingsCardItem(position = GroupPosition.MIDDLE) {
                         SliderSettingItem(
-                            label = "Max height",
+                            label = "Chiều cao tối đa",
                             value = settings.droidbarMaxHeightDp.toFloat(),
                             unit = "dp",
                             valueRange = 160f..600f,
@@ -3990,7 +3987,7 @@ fun DroidbarPage(
 
                     SettingsCardItem(position = GroupPosition.MIDDLE) {
                         SliderSettingItem(
-                            label = "Y position",
+                            label = "Vị trí dọc (Y)",
                             value = settings.droidbarYOffsetDp.toFloat(),
                             unit = "dp",
                             valueRange = -250f..250f,
@@ -4003,7 +4000,7 @@ fun DroidbarPage(
                     SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.droidbarHapticsEnabled) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Haptic feedback", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Phản hồi xúc giác (Rung)", fontWeight = FontWeight.SemiBold) },
                             leadingContent = {
                                 Surface(
                                     modifier = Modifier.size(38.dp),
@@ -4055,12 +4052,12 @@ fun DroidbarAppsConfigPage(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Configure Apps", fontWeight = FontWeight.Bold) },
+                title = { Text("Cấu hình ứng dụng", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Quay lại"
                         )
                     }
                 },
@@ -4082,10 +4079,10 @@ fun DroidbarAppsConfigPage(
                 SettingsCardItem(position = GroupPosition.SINGLE) {
                     ListItem(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        headlineContent = { Text("Use most used apps", fontWeight = FontWeight.SemiBold) },
+                        headlineContent = { Text("Dùng ứng dụng mở nhiều nhất", fontWeight = FontWeight.SemiBold) },
                         supportingContent = {
                             Text(
-                                "Automatically display your 6 most frequently used apps in Droidbar",
+                                "Tự động hiển thị 6 ứng dụng bạn sử dụng thường xuyên nhất trên Droidbar",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -4105,7 +4102,7 @@ fun DroidbarAppsConfigPage(
             // WHEN OFF: MANUALLY CHANGE EACH APP
             if (!settings.droidbarUseMostUsedApps) {
                 item {
-                    SectionHeader(title = "App Slots (1 - 6)")
+                    SectionHeader(title = "Vị trí ứng dụng (1 - 6)")
                 }
 
                 item {
@@ -4140,7 +4137,7 @@ fun DroidbarAppsConfigPage(
                                     colors = ListItemDefaults.colors(containerColor = Color.Transparent),
                                     headlineContent = {
                                         Text(
-                                            text = appInfo?.label ?: "Slot ${slotIndex + 1}: Select App",
+                                            text = appInfo?.label ?: "Vị trí ${slotIndex + 1}: Chọn ứng dụng",
                                             fontWeight = FontWeight.SemiBold,
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
@@ -4148,7 +4145,7 @@ fun DroidbarAppsConfigPage(
                                     },
                                     supportingContent = {
                                         Text(
-                                            text = if (appInfo != null) "Slot ${slotIndex + 1} • Tap to change" else "Slot ${slotIndex + 1} (Empty)",
+                                            text = if (appInfo != null) "Vị trí ${slotIndex + 1} • Nhấn để đổi" else "Vị trí ${slotIndex + 1} (Trống)",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -4169,7 +4166,7 @@ fun DroidbarAppsConfigPage(
                                                 } else {
                                                     Icon(
                                                         imageVector = Icons.Default.Add,
-                                                        contentDescription = "Add",
+                                                        contentDescription = "Thêm",
                                                         tint = MaterialTheme.colorScheme.primary,
                                                         modifier = Modifier.size(20.dp)
                                                     )
@@ -4180,7 +4177,7 @@ fun DroidbarAppsConfigPage(
                                     trailingContent = {
                                         Icon(
                                             imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                            contentDescription = "Select",
+                                            contentDescription = "Chọn",
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -4247,7 +4244,7 @@ fun AppPickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("Select an App", fontWeight = FontWeight.Bold)
+            Text("Chọn một ứng dụng", fontWeight = FontWeight.Bold)
         },
         text = {
             Column(
@@ -4259,7 +4256,7 @@ fun AppPickerDialog(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = { Text("Search apps...") },
+                    placeholder = { Text("Tìm kiếm ứng dụng...") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
@@ -4328,7 +4325,7 @@ fun AppPickerDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Hủy")
             }
         }
     )

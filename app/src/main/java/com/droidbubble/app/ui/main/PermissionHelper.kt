@@ -70,8 +70,8 @@ object PermissionHelper {
             list.add(
                 PermissionItem(
                     id = "overlay",
-                    title = "Display over other apps",
-                    description = "Required to render the Dynamic Island over all applications",
+                    title = "Hiển thị trên các ứng dụng khác",
+                    description = "Cần thiết để hiển thị Đảo động trên mọi ứng dụng",
                     isGranted = false,
                     createIntent = { ctx ->
                         Intent(
@@ -87,8 +87,8 @@ object PermissionHelper {
             list.add(
                 PermissionItem(
                     id = "notification_listener",
-                    title = "Notification & Media Access",
-                    description = "Required to display active media playback and incoming notification alerts",
+                    title = "Truy cập Thông báo & Đa phương tiện",
+                    description = "Cần thiết để hiển thị trình phát nhạc và thông báo đến",
                     isGranted = false,
                     createIntent = {
                         Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
@@ -101,8 +101,8 @@ object PermissionHelper {
             list.add(
                 PermissionItem(
                     id = "post_notifications",
-                    title = "Post Notifications",
-                    description = "Required for foreground service indicators on Android 13+",
+                    title = "Gửi thông báo",
+                    description = "Cần thiết để duy trì dịch vụ chạy nền trên Android 13+",
                     isGranted = false,
                     createIntent = { ctx ->
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -124,8 +124,8 @@ object PermissionHelper {
             list.add(
                 PermissionItem(
                     id = "battery_optimization",
-                    title = "Battery Unrestricted",
-                    description = "Prevents Android from killing the Island service during background standby",
+                    title = "Không hạn chế pin",
+                    description = "Ngăn hệ thống tự động tắt dịch vụ Đảo động khi chạy nền",
                     isGranted = false,
                     createIntent = { ctx ->
                         Intent(
@@ -141,8 +141,8 @@ object PermissionHelper {
             list.add(
                 PermissionItem(
                     id = "accessibility",
-                    title = "Status Bar Touch Override",
-                    description = "Required to elevate the Island above the status bar so taps are never blocked when using other apps",
+                    title = "Chạm trên thanh trạng thái (Trợ năng)",
+                    description = "Cần thiết để hiển thị Đảo động đè lên thanh trạng thái và nhận thao tác chạm mượt mà",
                     isGranted = false,
                     createIntent = {
                         Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
