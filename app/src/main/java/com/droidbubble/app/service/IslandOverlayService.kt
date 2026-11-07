@@ -581,8 +581,8 @@ class IslandOverlayService : Service() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification_island)
-            .setContentTitle("Droidbubble is active")
-            .setContentText("Dynamic Island is running")
+            .setContentTitle("Androidisland đang hoạt động")
+            .setContentText("Đảo động đang chạy")
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setSilent(true)
@@ -1210,10 +1210,10 @@ override fun onDestroy() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_UPDATES_ID,
-                "App Updates",
+                "Cập nhật ứng dụng",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Notifies when a new Droidbubble update is available"
+                description = "Thông báo khi có bản cập nhật Androidisland mới"
                 setShowBadge(true)
             }
             notificationManager.createNotificationChannel(channel)
@@ -1232,8 +1232,8 @@ override fun onDestroy() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_UPDATES_ID)
             .setSmallIcon(R.drawable.ic_notification_island)
-            .setContentTitle("Update to $version")
-            .setContentText("Update to $version")
+            .setContentTitle("Cập nhật lên phiên bản $version")
+            .setContentText("Nhấn để tải và cài đặt bản cập nhật $version")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setOngoing(true)
             .setAutoCancel(false)
@@ -1257,10 +1257,10 @@ override fun onDestroy() {
             }
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Droidbubble Service",
+                "Dịch vụ Androidisland",
                 NotificationManager.IMPORTANCE_MIN
             ).apply {
-                description = "Keeps Dynamic Island running smoothly"
+                description = "Giữ cho Đảo động hoạt động ổn định"
                 setShowBadge(false)
                 enableLights(false)
                 enableVibration(false)

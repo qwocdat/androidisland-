@@ -234,8 +234,8 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
 
                     val networkLabel = when {
                         isWifi -> "Wi-Fi"
-                        isCellular -> "Cellular 5G"
-                        else -> "Network"
+                        isCellular -> "Di động 5G"
+                        else -> "Mạng"
                     }
 
                     val info = NetworkSpeedInfo(
@@ -349,11 +349,11 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
                 val condition = mapWeatherCodeToCondition(weatherCode)
 
                 val hourly = listOf(
-                    HourlyWeather("Now", tempC, condition),
+                    HourlyWeather("Hiện tại", tempC, condition),
                     HourlyWeather("+1h", tempC + 1, condition),
                     HourlyWeather("+2h", highC, condition),
                     HourlyWeather("+3h", tempC, condition),
-                    HourlyWeather("+4h", lowC + 2, "Clear")
+                    HourlyWeather("+4h", lowC + 2, "Quang đãng")
                 )
 
                 val weatherInfo = WeatherInfo(
@@ -390,7 +390,7 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
             IslandStateManager.updateWeather(
                 WeatherInfo(
                     temperatureC = 22,
-                    condition = "Partly Cloudy",
+                    condition = "Có mây rải rác",
                     highC = 25,
                     lowC = 16,
                     humidityPct = 52,
@@ -404,17 +404,17 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
 
     private fun mapWeatherCodeToCondition(code: Int): String {
         return when (code) {
-            0 -> "Clear"
-            1 -> "Mainly Clear"
-            2 -> "Partly Cloudy"
-            3 -> "Overcast"
-            45, 48 -> "Foggy"
-            51, 53, 55 -> "Drizzle"
-            61, 63, 65 -> "Rainy"
-            71, 73, 75 -> "Snowy"
-            80, 81, 82 -> "Showers"
-            95, 96, 99 -> "Thunderstorm"
-            else -> "Partly Cloudy"
+            0 -> "Quang đãng"
+            1 -> "Trời ít mây"
+            2 -> "Có mây rải rác"
+            3 -> "Nhiều mây"
+            45, 48 -> "Sương mù"
+            51, 53, 55 -> "Mưa phùn"
+            61, 63, 65 -> "Có mưa"
+            71, 73, 75 -> "Có tuyết"
+            80, 81, 82 -> "Mưa rào"
+            95, 96, 99 -> "Giông bão"
+            else -> "Có mây rải rác"
         }
     }
 
@@ -435,8 +435,9 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
             lower.contains("toronto") -> Triple(43.65, -79.38, "Toronto")
             lower.contains("europe") -> Triple(48.85, 2.35, "Central Europe")
             lower.contains("america") -> Triple(40.71, -74.00, "Eastern Time")
+            lower.contains("saigon") || lower.contains("ho_chi_minh") || lower.contains("hanoi") || lower.contains("bangkok") -> Triple(21.0285, 105.8542, "Hà Nội")
             lower.contains("asia") -> Triple(35.67, 139.65, "Tokyo")
-            else -> Triple(37.98, 23.72, "Local Weather")
+            else -> Triple(21.0285, 105.8542, "Thời tiết địa phương")
         }
     }
 
@@ -479,7 +480,7 @@ class PersistentWidgetTelemetryManager(private val context: Context) {
             val formatted = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(triggerTime))
             val hours = diffMs / (1000 * 60 * 60)
             val mins = (diffMs % (1000 * 60 * 60)) / (1000 * 60)
-            val timeRemaining = if (hours > 0) "in ${hours}h ${mins}m" else "in ${mins}m"
+            val timeRemaining = if (hours > 0) "còn ${hours}g ${mins}p" else "còn ${mins}p"
             IslandStateManager.updateAlarm(
                 IslandStateManager.AlarmInfo(
                     triggerTimeMs = triggerTime,

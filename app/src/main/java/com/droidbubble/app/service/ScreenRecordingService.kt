@@ -118,10 +118,10 @@ class ScreenRecordingService : Service() {
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.presence_video_online)
-            .setContentTitle("Recording Screen")
-            .setContentText("Tap Stop to finish screen capture")
+            .setContentTitle("Đang quay màn hình")
+            .setContentText("Nhấn Dừng để hoàn tất ghi màn hình")
             .setContentIntent(openPendingIntent)
-            .addAction(android.R.drawable.ic_media_pause, "Stop", stopPendingIntent)
+            .addAction(android.R.drawable.ic_media_pause, "Dừng", stopPendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
@@ -152,7 +152,7 @@ class ScreenRecordingService : Service() {
             val density = metrics.densityDpi
 
             val moviesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MOVIES)
-            val appRecordingsDir = File(moviesDir, "Droidbubble")
+            val appRecordingsDir = File(moviesDir, "Androidisland")
             if (!appRecordingsDir.exists()) appRecordingsDir.mkdirs()
 
             val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
@@ -175,7 +175,7 @@ class ScreenRecordingService : Service() {
             }
 
             virtualDisplay = mediaProjection?.createVirtualDisplay(
-                "DroidbubbleScreenCapture",
+                "AndroidislandScreenCapture",
                 width,
                 height,
                 density,
@@ -283,10 +283,10 @@ class ScreenRecordingService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Droidbubble Screen Recording",
+                "Quay màn hình Androidisland",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows notifications when screen recording is active"
+                description = "Hiển thị thông báo khi đang quay màn hình"
             }
             val manager = getSystemService(NotificationManager::class.java)
             manager?.createNotificationChannel(channel)

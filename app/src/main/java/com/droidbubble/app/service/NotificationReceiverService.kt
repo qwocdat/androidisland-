@@ -416,7 +416,7 @@ class NotificationReceiverService : NotificationListenerService() {
             IslandStateManager.updateMedia(null)
             return
         }
-        val title = getControllerTitle(controller) ?: if (isPlaying) "Playing Audio" else null
+        val title = getControllerTitle(controller) ?: if (isPlaying) "Đang phát âm thanh" else null
         if (title == null) {
             IslandStateManager.updateMedia(null)
             return
@@ -637,7 +637,7 @@ class NotificationReceiverService : NotificationListenerService() {
                     person?.name?.toString()?.takeIf { it.isNotBlank() }
                 } else null
             }
-            ?: "Active Call"
+            ?: "Cuộc gọi đang diễn ra"
 
         activeEndCallAction = null
         activeMuteOrSpeakerAction = null
