@@ -27,7 +27,7 @@ android {
     }
 
     base {
-        archivesName.set("Droidtools")
+        archivesName.set("Androidisland")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
