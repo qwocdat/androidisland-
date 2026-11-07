@@ -62,7 +62,7 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Floating Dynamic Island UI overlay rendered across all applications" />
+                android:value="Giao diện Đảo động Androidisland hiển thị nổi trên mọi ứng dụng" />
         </service>
 
         <!-- Screen Recording Service with MediaProjection -->
