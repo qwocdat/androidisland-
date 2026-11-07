@@ -21,8 +21,8 @@ val DEFAULT_MEDIA_LAYERS = listOf(
 )
 
 enum class DesignLanguage(val id: String, val displayName: String) {
-    DROIDBUBBLE("DROIDBUBBLE", "Droidbubble"),
-    GLASS("GLASS", "Droidbubble glass"),
+    DROIDBUBBLE("DROIDBUBBLE", "Androidisland"),
+    GLASS("GLASS", "Kính trong suốt"),
     MATERIAL3("MATERIAL3", "Material 3")
 }
 

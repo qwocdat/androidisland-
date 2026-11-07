@@ -15,19 +15,19 @@ data class HourlyWeather(
 
 data class WeatherInfo(
     val temperatureC: Int = 22,
-    val condition: String = "Partly Cloudy",
+    val condition: String = "Có mây rải rác",
     val highC: Int = 25,
     val lowC: Int = 16,
     val humidityPct: Int = 54,
     val windKmh: Int = 14,
     val uvIndex: Int = 3,
-    val cityName: String = "Local Weather",
+    val cityName: String = "Thời tiết địa phương",
     val hourlyForecast: List<HourlyWeather> = listOf(
-        HourlyWeather("Now", 22, "Partly Cloudy"),
-        HourlyWeather("+1h", 23, "Sunny"),
-        HourlyWeather("+2h", 24, "Sunny"),
-        HourlyWeather("+3h", 23, "Partly Cloudy"),
-        HourlyWeather("+4h", 20, "Clear")
+        HourlyWeather("Hiện tại", 22, "Có mây rải rác"),
+        HourlyWeather("+1h", 23, "Nắng"),
+        HourlyWeather("+2h", 24, "Nắng"),
+        HourlyWeather("+3h", 23, "Có mây rải rác"),
+        HourlyWeather("+4h", 20, "Quang đãng")
     )
 )
 
