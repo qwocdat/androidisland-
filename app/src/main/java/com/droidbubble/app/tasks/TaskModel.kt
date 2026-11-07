@@ -24,41 +24,41 @@ sealed class TaskAction {
 
     fun getDisplayName(): String {
         return when (this) {
-            is OpenApp -> "Open $appLabel"
+            is OpenApp -> "Mở $appLabel"
             is Wifi -> when (type) {
-                ToggleActionType.TOGGLE -> "Toggle Wi-Fi"
-                ToggleActionType.TURN_ON -> "Turn On Wi-Fi"
-                ToggleActionType.TURN_OFF -> "Turn Off Wi-Fi"
+                ToggleActionType.TOGGLE -> "Bật/Tắt Wi-Fi"
+                ToggleActionType.TURN_ON -> "Bật Wi-Fi"
+                ToggleActionType.TURN_OFF -> "Tắt Wi-Fi"
             }
             is MobileData -> when (type) {
-                ToggleActionType.TOGGLE -> "Toggle Mobile Data"
-                ToggleActionType.TURN_ON -> "Turn On Mobile Data"
-                ToggleActionType.TURN_OFF -> "Turn Off Mobile Data"
+                ToggleActionType.TOGGLE -> "Bật/Tắt Dữ liệu di động"
+                ToggleActionType.TURN_ON -> "Bật Dữ liệu di động"
+                ToggleActionType.TURN_OFF -> "Tắt Dữ liệu di động"
             }
             is Flashlight -> when (type) {
-                ToggleActionType.TOGGLE -> "Toggle Flashlight"
-                ToggleActionType.TURN_ON -> "Turn On Flashlight"
-                ToggleActionType.TURN_OFF -> "Turn Off Flashlight"
+                ToggleActionType.TOGGLE -> "Bật/Tắt Đèn pin"
+                ToggleActionType.TURN_ON -> "Bật Đèn pin"
+                ToggleActionType.TURN_OFF -> "Tắt Đèn pin"
             }
             is LowPower -> when (type) {
-                ToggleActionType.TOGGLE -> "Toggle Low Power Mode"
-                ToggleActionType.TURN_ON -> "Turn On Low Power Mode"
-                ToggleActionType.TURN_OFF -> "Turn Off Low Power Mode"
+                ToggleActionType.TOGGLE -> "Bật/Tắt Tiết kiệm pin"
+                ToggleActionType.TURN_ON -> "Bật Tiết kiệm pin"
+                ToggleActionType.TURN_OFF -> "Tắt Tiết kiệm pin"
             }
             is AirplaneMode -> when (type) {
-                ToggleActionType.TOGGLE -> "Toggle Airplane Mode"
-                ToggleActionType.TURN_ON -> "Turn On Airplane Mode"
-                ToggleActionType.TURN_OFF -> "Turn Off Airplane Mode"
+                ToggleActionType.TOGGLE -> "Bật/Tắt Chế độ máy bay"
+                ToggleActionType.TURN_ON -> "Bật Chế độ máy bay"
+                ToggleActionType.TURN_OFF -> "Tắt Chế độ máy bay"
             }
             is Bluetooth -> when (type) {
-                ToggleActionType.TOGGLE -> "Toggle Bluetooth"
-                ToggleActionType.TURN_ON -> "Turn On Bluetooth"
-                ToggleActionType.TURN_OFF -> "Turn Off Bluetooth"
+                ToggleActionType.TOGGLE -> "Bật/Tắt Bluetooth"
+                ToggleActionType.TURN_ON -> "Bật Bluetooth"
+                ToggleActionType.TURN_OFF -> "Tắt Bluetooth"
             }
             is RingerMode -> when (type) {
-                RingerActionType.SET_RING -> "Set Ring Mode"
-                RingerActionType.SET_VIBRATE -> "Set Vibrate Mode"
-                RingerActionType.TOGGLE -> "Toggle Ring / Vibrate"
+                RingerActionType.SET_RING -> "Đặt chế độ Chuông"
+                RingerActionType.SET_VIBRATE -> "Đặt chế độ Rung"
+                RingerActionType.TOGGLE -> "Chuyển đổi Chuông / Rung"
             }
         }
     }

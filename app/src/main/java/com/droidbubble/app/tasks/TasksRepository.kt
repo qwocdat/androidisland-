@@ -113,7 +113,7 @@ class TasksRepository(context: Context) {
             for (i in 0 until array.length()) {
                 val obj = array.getJSONObject(i)
                 val id = obj.optString("id", java.util.UUID.randomUUID().toString())
-                val name = obj.optString("name", "Untitled")
+                val name = obj.optString("name", "Chưa đặt tên")
                 val iconName = obj.optString("iconName", "Bolt")
                 val showInBubble = obj.optBoolean("showInBubble", true)
                 val actionsList = mutableListOf<TaskAction>()

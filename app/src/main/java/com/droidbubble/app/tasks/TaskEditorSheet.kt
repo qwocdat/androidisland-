@@ -62,7 +62,7 @@ fun TaskEditorScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = if (initialShortcut == null) "New Shortcut" else "Edit Shortcut",
+                        text = if (initialShortcut == null) "Phím tắt mới" else "Sửa phím tắt",
                         fontWeight = FontWeight.Bold
                     )
                 },
@@ -70,7 +70,7 @@ fun TaskEditorScreen(
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
+                            contentDescription = "Quay lại"
                         )
                     }
                 },
@@ -91,7 +91,7 @@ fun TaskEditorScreen(
                         },
                         enabled = name.isNotBlank() && actions.isNotEmpty()
                     ) {
-                        Text("Save", fontWeight = FontWeight.Bold)
+                        Text("Lưu", fontWeight = FontWeight.Bold)
                     }
                 }
             )
@@ -130,7 +130,7 @@ fun TaskEditorScreen(
                             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = TaskIcons.getIcon(selectedIconName),
-                                    contentDescription = "Pick icon",
+                                    contentDescription = "Chọn biểu tượng",
                                     modifier = Modifier.size(28.dp)
                                 )
                             }
@@ -139,7 +139,7 @@ fun TaskEditorScreen(
                         OutlinedTextField(
                             value = name,
                             onValueChange = { name = it },
-                            label = { Text("Shortcut Name") },
+                            label = { Text("Tên phím tắt") },
                             singleLine = true,
                             shape = RoundedCornerShape(16.dp),
                             modifier = Modifier.weight(1f)
@@ -157,7 +157,7 @@ fun TaskEditorScreen(
                 ) {
                     ListItem(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        headlineContent = { Text("Show in Droidbubble", fontWeight = FontWeight.Medium) },
+                        headlineContent = { Text("Hiển thị trên Androidisland", fontWeight = FontWeight.Medium) },
                         leadingContent = {
                             Icon(
                                 imageVector = Icons.Default.Widgets,
@@ -185,7 +185,7 @@ fun TaskEditorScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Actions (${actions.size})",
+                        text = "Hành động (${actions.size})",
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         color = MaterialTheme.colorScheme.primary
@@ -217,7 +217,7 @@ fun TaskEditorScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                             )
                             Text(
-                                text = "No actions chained yet",
+                                text = "Chưa có hành động nào được thêm",
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -263,7 +263,7 @@ fun TaskEditorScreen(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.Delete,
-                                        contentDescription = "Remove",
+                                        contentDescription = "Xóa",
                                         tint = MaterialTheme.colorScheme.error
                                     )
                                 }
@@ -284,7 +284,7 @@ fun TaskEditorScreen(
                 ) {
                     Icon(imageVector = Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Add Action", fontWeight = FontWeight.SemiBold)
+                    Text("Thêm hành động", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -294,7 +294,7 @@ fun TaskEditorScreen(
     if (showIconPicker) {
         AlertDialog(
             onDismissRequest = { showIconPicker = false },
-            title = { Text("Choose Icon", fontWeight = FontWeight.Bold) },
+            title = { Text("Chọn biểu tượng", fontWeight = FontWeight.Bold) },
             text = {
                 Box(modifier = Modifier.size(width = 300.dp, height = 340.dp)) {
                     LazyVerticalGrid(
@@ -336,7 +336,7 @@ fun TaskEditorScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showIconPicker = false }) {
-                    Text("Cancel")
+                    Text("Hủy")
                 }
             }
         )
@@ -346,7 +346,7 @@ fun TaskEditorScreen(
     if (showAddActionDialog) {
         AlertDialog(
             onDismissRequest = { showAddActionDialog = false },
-            title = { Text("Add Action Block", fontWeight = FontWeight.Bold) },
+            title = { Text("Thêm khối hành động", fontWeight = FontWeight.Bold) },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -354,7 +354,7 @@ fun TaskEditorScreen(
                 ) {
                     // Block 1: Open an app
                     ActionBlockRow(
-                        title = "Open an app",
+                        title = "Mở ứng dụng",
                         icon = Icons.Default.Apps,
                         onClick = {
                             showAddActionDialog = false
@@ -374,7 +374,7 @@ fun TaskEditorScreen(
 
                     // Block 3: Mobile data
                     ActionBlockRow(
-                        title = "Mobile data",
+                        title = "Dữ liệu di động",
                         icon = Icons.Default.SignalCellularAlt,
                         onClick = {
                             showAddActionDialog = false
@@ -384,7 +384,7 @@ fun TaskEditorScreen(
 
                     // Block 4: Flashlight
                     ActionBlockRow(
-                        title = "Flashlight",
+                        title = "Đèn pin",
                         icon = Icons.Default.FlashlightOn,
                         onClick = {
                             showAddActionDialog = false
@@ -394,7 +394,7 @@ fun TaskEditorScreen(
 
                     // Block 5: Low power mode
                     ActionBlockRow(
-                        title = "Low power mode",
+                        title = "Chế độ tiết kiệm pin",
                         icon = Icons.Default.BatteryChargingFull,
                         onClick = {
                             showAddActionDialog = false
@@ -404,7 +404,7 @@ fun TaskEditorScreen(
 
                     // Block 6: Aeroplane mode
                     ActionBlockRow(
-                        title = "Aeroplane mode",
+                        title = "Chế độ máy bay",
                         icon = Icons.Default.AirplanemodeActive,
                         onClick = {
                             showAddActionDialog = false
@@ -424,7 +424,7 @@ fun TaskEditorScreen(
 
                     // Block 8: Ringer mode
                     ActionBlockRow(
-                        title = "Ringer mode",
+                        title = "Chế độ chuông",
                         icon = Icons.Default.NotificationsActive,
                         onClick = {
                             showAddActionDialog = false
@@ -435,7 +435,7 @@ fun TaskEditorScreen(
             },
             confirmButton = {
                 TextButton(onClick = { showAddActionDialog = false }) {
-                    Text("Cancel")
+                    Text("Hủy")
                 }
             }
         )
@@ -447,18 +447,18 @@ fun TaskEditorScreen(
         if (blockKey == "ringer_mode") {
             AlertDialog(
                 onDismissRequest = { showSubActionDialog = null },
-                title = { Text("Ringer Mode Action", fontWeight = FontWeight.Bold) },
+                title = { Text("Hành động chế độ chuông", fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ActionOptionButton("Set Ring Mode") {
+                        ActionOptionButton("Đặt chế độ Chuông") {
                             actions = actions + TaskAction.RingerMode(RingerActionType.SET_RING)
                             showSubActionDialog = null
                         }
-                        ActionOptionButton("Set Vibrate Mode") {
+                        ActionOptionButton("Đặt chế độ Rung") {
                             actions = actions + TaskAction.RingerMode(RingerActionType.SET_VIBRATE)
                             showSubActionDialog = null
                         }
-                        ActionOptionButton("Toggle Ring / Vibrate") {
+                        ActionOptionButton("Chuyển đổi Chuông / Rung") {
                             actions = actions + TaskAction.RingerMode(RingerActionType.TOGGLE)
                             showSubActionDialog = null
                         }
@@ -466,36 +466,36 @@ fun TaskEditorScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { showSubActionDialog = null }) {
-                        Text("Cancel")
+                        Text("Hủy")
                     }
                 }
             )
         } else {
             val title = when (blockKey) {
-                "wifi" -> "Wi-Fi Action"
-                "mobile_data" -> "Mobile Data Action"
-                "flashlight" -> "Flashlight Action"
-                "low_power" -> "Low Power Mode Action"
-                "airplane_mode" -> "Aeroplane Mode Action"
-                "bluetooth" -> "Bluetooth Action"
-                else -> "Action"
+                "wifi" -> "Hành động Wi-Fi"
+                "mobile_data" -> "Hành động Dữ liệu di động"
+                "flashlight" -> "Hành động Đèn pin"
+                "low_power" -> "Hành động Tiết kiệm pin"
+                "airplane_mode" -> "Hành động Chế độ máy bay"
+                "bluetooth" -> "Hành động Bluetooth"
+                else -> "Hành động"
             }
             AlertDialog(
                 onDismissRequest = { showSubActionDialog = null },
                 title = { Text(title, fontWeight = FontWeight.Bold) },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ActionOptionButton("Toggle") {
+                        ActionOptionButton("Bật / Tắt") {
                             val action = createToggleAction(blockKey, ToggleActionType.TOGGLE)
                             if (action != null) actions = actions + action
                             showSubActionDialog = null
                         }
-                        ActionOptionButton("Turn On") {
+                        ActionOptionButton("Bật") {
                             val action = createToggleAction(blockKey, ToggleActionType.TURN_ON)
                             if (action != null) actions = actions + action
                             showSubActionDialog = null
                         }
-                        ActionOptionButton("Turn Off") {
+                        ActionOptionButton("Tắt") {
                             val action = createToggleAction(blockKey, ToggleActionType.TURN_OFF)
                             if (action != null) actions = actions + action
                             showSubActionDialog = null
@@ -504,7 +504,7 @@ fun TaskEditorScreen(
                 },
                 confirmButton = {
                     TextButton(onClick = { showSubActionDialog = null }) {
-                        Text("Cancel")
+                        Text("Hủy")
                     }
                 }
             )

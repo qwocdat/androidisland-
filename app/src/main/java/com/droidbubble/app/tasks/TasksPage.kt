@@ -70,12 +70,12 @@ fun TasksPage(
             modifier = modifier,
             topBar = {
                 TopAppBar(
-                    title = { Text("Tasks", fontWeight = FontWeight.Bold) },
+                    title = { Text("Tác vụ", fontWeight = FontWeight.Bold) },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
+                                contentDescription = "Quay lại"
                             )
                         }
                     }
@@ -93,7 +93,7 @@ fun TasksPage(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "New Shortcut",
+                        contentDescription = "Phím tắt mới",
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -126,7 +126,7 @@ fun TasksPage(
                             }
                         }
                         Text(
-                            text = "No shortcuts yet",
+                            text = "Chưa có phím tắt nào",
                             fontWeight = FontWeight.Bold,
                             fontSize = 18.sp,
                             color = MaterialTheme.colorScheme.onSurface
@@ -165,8 +165,8 @@ fun TasksPage(
         val s = shortcutToDelete!!
         AlertDialog(
             onDismissRequest = { shortcutToDelete = null },
-            title = { Text("Delete Shortcut") },
-            text = { Text("Are you sure you want to delete \"${s.name}\"?") },
+            title = { Text("Xóa phím tắt") },
+            text = { Text("Bạn có chắc chắn muốn xóa \"${s.name}\" không?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -174,12 +174,12 @@ fun TasksPage(
                         shortcutToDelete = null
                     }
                 ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                    Text("Xóa", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { shortcutToDelete = null }) {
-                    Text("Cancel")
+                    Text("Hủy")
                 }
             }
         )
@@ -249,7 +249,7 @@ private fun TaskShortcutCard(
                     IconButton(onClick = { showMenu = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
-                            contentDescription = "Options",
+                            contentDescription = "Tùy chọn",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -258,7 +258,7 @@ private fun TaskShortcutCard(
                         onDismissRequest = { showMenu = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Run") },
+                            text = { Text("Chạy") },
                             leadingIcon = { Icon(Icons.Default.PlayArrow, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -267,7 +267,7 @@ private fun TaskShortcutCard(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Edit") },
+                            text = { Text("Chỉnh sửa") },
                             leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
                             onClick = {
                                 showMenu = false
@@ -275,7 +275,7 @@ private fun TaskShortcutCard(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Delete", color = MaterialTheme.colorScheme.error) },
+                            text = { Text("Xóa", color = MaterialTheme.colorScheme.error) },
                             leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                             onClick = {
                                 showMenu = false
