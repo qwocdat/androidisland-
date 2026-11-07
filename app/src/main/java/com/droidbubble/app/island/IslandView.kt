@@ -2620,7 +2620,7 @@ fun IslandOverlayRoot(
                         val chargingLabel = if (wattage != null && wattage >= 0.5) {
                             "${wattage.roundToInt().coerceAtLeast(1)}W"
                         } else {
-                            "Charging"
+                            "Đang sạc"
                         }
                         val mintChargingGreen = Color(0xFF7CE8A0)
 
@@ -2675,7 +2675,7 @@ fun IslandOverlayRoot(
                                         )
                                         Icon(
                                             imageVector = Icons.Default.Bolt,
-                                            contentDescription = "Charging",
+                                            contentDescription = "Đang sạc",
                                             tint = Color(0xFFB8FFD0),
                                             modifier = Modifier.size(16.dp)
                                         )
@@ -2746,7 +2746,7 @@ fun IslandOverlayRoot(
                                             )
                                             Icon(
                                                 imageVector = Icons.Default.Bolt,
-                                                contentDescription = "Charging",
+                                                contentDescription = "Đang sạc",
                                                 tint = Color(0xFFB8FFD0),
                                                 modifier = Modifier.size(16.dp)
                                             )
@@ -2767,14 +2767,14 @@ fun IslandOverlayRoot(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.LockOpen,
-                                    contentDescription = "Unlocked",
+                                    contentDescription = "Đã mở khóa",
                                     tint = Color.White,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 if (unlockCheckmarkAlpha > 0.01f) {
                                     Icon(
                                         imageVector = Icons.Default.Check,
-                                        contentDescription = "Success",
+                                        contentDescription = "Thành công",
                                         tint = Color.White,
                                         modifier = Modifier
                                             .graphicsLayer {
@@ -2801,7 +2801,7 @@ fun IslandOverlayRoot(
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.LockOpen,
-                                        contentDescription = "Unlocked",
+                                        contentDescription = "Đã mở khóa",
                                         tint = Color.White,
                                         modifier = Modifier.size(19.dp)
                                     )
@@ -2818,7 +2818,7 @@ fun IslandOverlayRoot(
                                     if (unlockCheckmarkAlpha > 0.01f) {
                                         Icon(
                                             imageVector = Icons.Default.Check,
-                                            contentDescription = "Success",
+                                            contentDescription = "Thành công",
                                             tint = Color.White,
                                             modifier = Modifier
                                                 .graphicsLayer {
@@ -3187,7 +3187,7 @@ fun CompactSpinningVinylCover(
         if (bitmap != null) {
             Image(
                 bitmap = bitmap.asImageBitmap(),
-                contentDescription = "Vinyl Cover",
+                contentDescription = "Đĩa than",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
@@ -3292,7 +3292,7 @@ fun AuxiliaryBubbleContent(
         IslandPriority.CALL -> {
             Icon(
                 imageVector = Icons.Default.Call,
-                contentDescription = "Active Call",
+                contentDescription = "Cuộc gọi đang diễn ra",
                 tint = if (isM3) m3Primary else Color(0xFF30D158),
                 modifier = Modifier.size(16.dp)
             )
@@ -3304,7 +3304,7 @@ fun AuxiliaryBubbleContent(
             if (notification?.iconBitmap != null) {
                 Image(
                     bitmap = notification.iconBitmap.asImageBitmap(),
-                    contentDescription = "Notification Icon",
+                    contentDescription = "Biểu tượng thông báo",
                     modifier = Modifier
                         .size(18.dp)
                         .clip(if (isM3) M3CookieShape else CircleShape)
@@ -3362,7 +3362,7 @@ fun AuxiliaryBubbleContent(
             } else if (displayArt != null) {
                 Image(
                     bitmap = displayArt.asImageBitmap(),
-                    contentDescription = "Media Art",
+                    contentDescription = "Ảnh bìa nhạc",
                     modifier = Modifier
                         .size(18.dp)
                         .clip(vinylShape)
@@ -3395,7 +3395,7 @@ fun AuxiliaryBubbleContent(
                 )
                 Icon(
                     imageVector = Icons.Default.FlashlightOn,
-                    contentDescription = "Flashlight",
+                    contentDescription = "Đèn pin",
                     tint = if (isM3) m3Primary else Color.White,
                     modifier = Modifier.size(16.dp)
                 )
@@ -3435,7 +3435,7 @@ fun AuxiliaryBubbleContent(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Icon(
                     imageVector = Icons.Default.Alarm,
-                    contentDescription = "Upcoming Alarm",
+                    contentDescription = "Báo thức sắp tới",
                     tint = if (isM3) m3Primary else Color(0xFFFF9F0A),
                     modifier = Modifier.size(15.dp)
                 )
@@ -3490,7 +3490,7 @@ fun CompactContent(
                 val chargingLabel = if (wattage != null && wattage >= 0.5) {
                     "${wattage.roundToInt().coerceAtLeast(1)}W"
                 } else {
-                    "Charging"
+                    "Đang sạc"
                 }
                 Box(modifier = Modifier.padding(start = if (isCompactDual) 4.dp else 5.dp)) {
                     Text(
@@ -3507,7 +3507,7 @@ fun CompactContent(
             IslandPriority.CALL -> {
                 Icon(
                     imageVector = Icons.Default.Call,
-                    contentDescription = "Active Call",
+                    contentDescription = "Cuộc gọi đang diễn ra",
                     tint = if (isM3) m3Primary else Color(0xFF30D158),
                     modifier = Modifier.size(17.dp)
                 )
@@ -3538,7 +3538,7 @@ fun CompactContent(
                     )
                     Icon(
                         imageVector = Icons.Default.FlashlightOn,
-                        contentDescription = "Flashlight",
+                        contentDescription = "Đèn pin",
                         tint = if (isM3) m3Primary else Color.White,
                         modifier = Modifier.size(17.dp)
                     )
@@ -3549,7 +3549,7 @@ fun CompactContent(
                 if (notification?.iconBitmap != null) {
                     Image(
                         bitmap = notification.iconBitmap.asImageBitmap(),
-                        contentDescription = "Notification Icon",
+                        contentDescription = "Biểu tượng thông báo",
                         modifier = Modifier
                             .size(20.dp)
                             .clip(if (isM3) M3CookieShape else CircleShape)
@@ -3568,7 +3568,7 @@ fun CompactContent(
                 if (notification?.iconBitmap != null) {
                     Image(
                         bitmap = notification.iconBitmap.asImageBitmap(),
-                        contentDescription = "Download Icon",
+                        contentDescription = "Biểu tượng tải xuống",
                         modifier = Modifier
                             .size(18.dp)
                             .clip(if (isM3) M3CookieShape else CircleShape)
@@ -3598,7 +3598,7 @@ fun CompactContent(
                 } else if (displayArt != null) {
                     Image(
                         bitmap = displayArt.asImageBitmap(),
-                        contentDescription = "Media Art",
+                        contentDescription = "Ảnh bìa nhạc",
                         modifier = Modifier
                             .size(20.dp)
                             .clip(staticMediaShape)
@@ -3624,13 +3624,13 @@ fun CompactContent(
 
             IslandPriority.WEATHER -> {
                 val weatherIcon = when {
-                    weatherInfo.condition.contains("Sun", ignoreCase = true) || weatherInfo.condition.contains("Clear", ignoreCase = true) -> Icons.Default.WbSunny
-                    weatherInfo.condition.contains("Rain", ignoreCase = true) -> Icons.Default.WaterDrop
+                    weatherInfo.condition.contains("Sun", ignoreCase = true) || weatherInfo.condition.contains("Clear", ignoreCase = true) || weatherInfo.condition.contains("Nắng", ignoreCase = true) || weatherInfo.condition.contains("Quang", ignoreCase = true) -> Icons.Default.WbSunny
+                    weatherInfo.condition.contains("Rain", ignoreCase = true) || weatherInfo.condition.contains("Mưa", ignoreCase = true) -> Icons.Default.WaterDrop
                     else -> Icons.Default.Cloud
                 }
                 Icon(
                     imageVector = weatherIcon,
-                    contentDescription = "Weather",
+                    contentDescription = "Thời tiết",
                     tint = if (isM3) m3Primary else Color(0xFFFF9F0A),
                     modifier = Modifier.size(15.dp)
                 )
@@ -3639,7 +3639,7 @@ fun CompactContent(
             IslandPriority.NETWORK_SPEED -> {
                 Icon(
                     imageVector = if (networkSpeedInfo.isWifi) Icons.Default.Wifi else Icons.Default.ArrowDownward,
-                    contentDescription = "Speed",
+                    contentDescription = "Tốc độ",
                     tint = if (isM3) m3Primary else Color(0xFF64D2FF),
                     modifier = Modifier.size(14.dp)
                 )
@@ -3649,7 +3649,7 @@ fun CompactContent(
             IslandPriority.ALARM -> {
                 Icon(
                     imageVector = Icons.Default.Alarm,
-                    contentDescription = "Upcoming Alarm",
+                    contentDescription = "Báo thức sắp tới",
                     tint = if (isM3) m3Primary else Color(0xFFFF9F0A),
                     modifier = Modifier.size(15.dp)
                 )
@@ -3691,7 +3691,7 @@ fun CompactContent(
 
             IslandPriority.POP_NOTIFICATION -> {
                 Text(
-                    text = notification?.title ?: "Notification",
+                    text = notification?.title ?: "Thông báo",
                     color = if (isM3) m3OnSurface else Color(0xFFE5E5EA),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Medium,
@@ -3816,7 +3816,7 @@ fun CompactContent(
                             )
                             Icon(
                                 imageVector = Icons.Default.Bolt,
-                                contentDescription = "Charging",
+                                contentDescription = "Đang sạc",
                                 tint = if (isM3) m3Primary else Color(0xFFB8FFD0),
                                 modifier = Modifier.size(15.dp)
                             )
@@ -4033,7 +4033,7 @@ fun ExpandedFlashlightView(
             ) {
                 Icon(
                     imageVector = Icons.Default.FlashlightOn,
-                    contentDescription = "Flashlight",
+                    contentDescription = "Đèn pin",
                     tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     modifier = Modifier.size(24.dp)
                 )
@@ -4293,7 +4293,7 @@ fun ExpandedFlashlightView(
         ) {
             Icon(
                 imageVector = Icons.Default.FlashlightOn,
-                contentDescription = "Turn off flashlight",
+                contentDescription = "Tắt đèn pin",
                 tint = Color.White,
                 modifier = Modifier.size(46.dp)
             )
@@ -4456,7 +4456,7 @@ fun ExpandedMediaView(
                 if (displayArt != null) {
                     Image(
                         bitmap = displayArt.asImageBitmap(),
-                        contentDescription = "Cover Art",
+                        contentDescription = "Ảnh bìa",
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
@@ -4497,7 +4497,7 @@ fun ExpandedMediaView(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = media?.title?.ifBlank { "No Media Playing" } ?: "No Media Playing",
+                    text = media?.title?.ifBlank { "Không có nhạc đang phát" } ?: "Không có nhạc đang phát",
                     color = Color.White,
                     fontSize = titleSize,
                     fontWeight = FontWeight.Bold,
@@ -4510,7 +4510,7 @@ fun ExpandedMediaView(
                 )
                 Spacer(modifier = Modifier.height(3.dp))
                 Text(
-                    text = media?.artist?.ifBlank { "Unknown Artist" } ?: "Unknown Artist",
+                    text = media?.artist?.ifBlank { "Nghệ sĩ không xác định" } ?: "Nghệ sĩ không xác định",
                     color = Color(0xFFA1A1AA),
                     fontSize = artistSize,
                     fontWeight = FontWeight.Medium,
@@ -4684,7 +4684,7 @@ fun ExpandedMediaView(
                 ) {
                     Icon(
                         imageVector = Icons.Default.FastRewind,
-                        contentDescription = "Previous",
+                        contentDescription = "Bài trước",
                         tint = controlsTint,
                         modifier = Modifier.size(prevNextIcon)
                     )
@@ -4704,7 +4704,7 @@ fun ExpandedMediaView(
                 ) {
                     Icon(
                         imageVector = if (media?.isPlaying == true) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = "Play/Pause",
+                        contentDescription = "Phát/Tạm dừng",
                         tint = playButtonIconTint,
                         modifier = Modifier
                             .size(playBtnIcon)
@@ -4722,7 +4722,7 @@ fun ExpandedMediaView(
                 ) {
                     Icon(
                         imageVector = Icons.Default.FastForward,
-                        contentDescription = "Next",
+                        contentDescription = "Bài tiếp",
                         tint = controlsTint,
                         modifier = Modifier.size(prevNextIcon)
                     )
@@ -4757,7 +4757,7 @@ fun ExpandedChargingView(
     val chargingLabel = if (wattage != null && wattage >= 0.5) {
         "${wattage.roundToInt().coerceAtLeast(1)}W"
     } else {
-        "Charging"
+        "Đang sạc"
     }
 
     val iconSize = (32.dp * scale).coerceIn(26.dp, 38.dp)
@@ -4793,7 +4793,7 @@ fun ExpandedChargingView(
             ) {
                 Icon(
                     imageVector = Icons.Default.Bolt,
-                    contentDescription = "Charging",
+                    contentDescription = "Đang sạc",
                     tint = Color(0xFFB8FFD0),
                     modifier = Modifier.size((22.dp * scale).coerceIn(18.dp, 26.dp))
                 )
@@ -4839,7 +4839,7 @@ fun ExpandedNotificationView(
     var replyText by remember { mutableStateOf("") }
 
     val replyAction = remember(notification) {
-        notification?.actions?.firstOrNull { it.isReply || it.title.contains("Reply", ignoreCase = true) }
+        notification?.actions?.firstOrNull { it.isReply || it.title.contains("Reply", ignoreCase = true) || it.title.contains("Trả lời", ignoreCase = true) }
     }
 
     fun openNotification() {
@@ -4914,7 +4914,7 @@ fun ExpandedNotificationView(
                     if (notification?.iconBitmap != null) {
                         Image(
                             bitmap = notification.iconBitmap.asImageBitmap(),
-                            contentDescription = "App Icon",
+                            contentDescription = "Biểu tượng ứng dụng",
                             modifier = Modifier.fillMaxSize()
                         )
                     } else {
@@ -4934,7 +4934,7 @@ fun ExpandedNotificationView(
                 val notifDismissTint = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFF8E8E93)
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = notification?.title ?: "Notification",
+                        text = notification?.title ?: "Thông báo",
                         color = notifTitleColor,
                         fontSize = titleSize,
                         fontWeight = FontWeight.Bold,
@@ -4961,7 +4961,7 @@ fun ExpandedNotificationView(
                 ) {
                     Icon(
                         Icons.Default.Close,
-                        contentDescription = "Dismiss",
+                        contentDescription = "Đóng",
                         tint = notifDismissTint,
                         modifier = Modifier.size(20.dp)
                     )
@@ -4995,7 +4995,7 @@ fun ExpandedNotificationView(
                 // Smart reply choices chips
                 val smartChoices = remember(replyAction) {
                     val choices = replyAction?.remoteInputChoices ?: emptyList()
-                    if (choices.isNotEmpty()) choices else listOf("OK", "Sure", "Thanks!")
+                    if (choices.isNotEmpty()) choices else listOf("OK", "Được chứ", "Cảm ơn!")
                 }
 
                 Row(
@@ -5056,7 +5056,7 @@ fun ExpandedNotificationView(
                         decorationBox = { innerTextField ->
                             if (replyText.isEmpty()) {
                                 Text(
-                                    text = replyAction?.remoteInputLabel ?: "Type a reply...",
+                                    text = replyAction?.remoteInputLabel ?: "Nhập nội dung trả lời...",
                                     color = Color(0xFF71717A),
                                     fontSize = 14.sp
                                 )
@@ -5072,7 +5072,7 @@ fun ExpandedNotificationView(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Send,
-                            contentDescription = "Send Reply",
+                            contentDescription = "Gửi trả lời",
                             tint = if (replyText.isNotBlank()) Color.White else Color(0xFF52525B),
                             modifier = Modifier.size(18.dp)
                         )
@@ -5087,7 +5087,7 @@ fun ExpandedNotificationView(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Cancel",
+                            contentDescription = "Hủy",
                             tint = Color(0xFF71717A),
                             modifier = Modifier.size(16.dp)
                         )
@@ -5101,7 +5101,7 @@ fun ExpandedNotificationView(
                 val list = mutableListOf<NotificationActionItem>()
                 val notifActions = notification?.actions ?: emptyList()
                 notifActions.take(2).forEach { action ->
-                    val isThisReply = action == replyAction || action.isReply || action.title.contains("Reply", ignoreCase = true)
+                    val isThisReply = action == replyAction || action.isReply || action.title.contains("Reply", ignoreCase = true) || action.title.contains("Trả lời", ignoreCase = true)
                     list.add(
                         NotificationActionItem(
                             title = action.title,
@@ -5121,7 +5121,7 @@ fun ExpandedNotificationView(
                 }
                 list.add(
                     NotificationActionItem(
-                        title = "Open",
+                        title = "Mở",
                         isPrimary = true,
                         onClick = { openNotification() }
                     )
@@ -5226,7 +5226,7 @@ fun ExpandedProgressView(
         while (s.endsWith("•") || s.endsWith("·") || s.endsWith("-")) {
             s = s.substring(0, s.length - 1).trim()
         }
-        s.ifBlank { notification?.appName?.ifBlank { "In progress..." } ?: "In progress..." }
+        s.ifBlank { notification?.appName?.ifBlank { "Đang xử lý..." } ?: "Đang xử lý..." }
     }
 
     val primaryAction = remember(notification) {
@@ -5285,7 +5285,7 @@ fun ExpandedProgressView(
                 if (notification?.iconBitmap != null) {
                     Image(
                         bitmap = notification.iconBitmap.asImageBitmap(),
-                        contentDescription = "App Icon",
+                        contentDescription = "Biểu tượng ứng dụng",
                         modifier = Modifier.fillMaxSize()
                     )
                 } else {
@@ -5311,7 +5311,7 @@ fun ExpandedProgressView(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    text = notification?.title?.ifBlank { "Downloading" } ?: "Downloading",
+                    text = notification?.title?.ifBlank { "Đang tải xuống" } ?: "Đang tải xuống",
                     color = progTitleColor,
                     fontSize = titleSize,
                     fontWeight = FontWeight.Bold,
@@ -5434,7 +5434,7 @@ fun ExpandedProgressView(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Dismiss",
+                        contentDescription = "Đóng",
                         tint = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onSurface else Color(0xFFF4F4F5),
                         modifier = Modifier.size(actionIconSize)
                     )
@@ -5453,7 +5453,7 @@ fun ExpandedProgressView(
             ) {
                 Icon(
                     imageVector = Icons.Default.OpenInNew,
-                    contentDescription = "Open",
+                    contentDescription = "Mở",
                     tint = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onSurface else Color.Black,
                     modifier = Modifier.size(actionIconSize)
                 )
@@ -5518,7 +5518,7 @@ fun ExpandedRecordingView(
             ) {
                 Icon(
                     imageVector = if (recording.isPaused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                    contentDescription = if (recording.isPaused) "Resume" else "Pause",
+                    contentDescription = if (recording.isPaused) "Tiếp tục" else "Tạm dừng",
                     modifier = Modifier.size(iconSize)
                 )
             }
@@ -5538,7 +5538,7 @@ fun ExpandedRecordingView(
             ) {
                 Icon(
                     imageVector = Icons.Default.Stop,
-                    contentDescription = "Stop",
+                    contentDescription = "Dừng",
                     tint = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onErrorContainer else Color(0xFFFF453A),
                     modifier = Modifier.size(iconSize)
                 )
@@ -5581,7 +5581,7 @@ fun ExpandedCallView(
             val callNameColor = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onSurface else Color.White
             val callAccentColor = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.primary else Color(0xFF30D158)
             Text(
-                text = activeCall.callerName.ifBlank { "Active Call" },
+                text = activeCall.callerName.ifBlank { "Cuộc gọi đang diễn ra" },
                 color = callNameColor,
                 fontSize = callerSize,
                 fontWeight = FontWeight.Bold,
@@ -5645,7 +5645,7 @@ fun ExpandedCallView(
                 }
                 Icon(
                     imageVector = secondaryIcon,
-                    contentDescription = if (activeCall.isSpeaker) "Speaker" else if (activeCall.isMuted) "Unmute" else "Mute",
+                    contentDescription = if (activeCall.isSpeaker) "Loa ngoài" else if (activeCall.isMuted) "Bật mic" else "Tắt mic",
                     modifier = Modifier.size(iconSize)
                 )
             }
@@ -5665,7 +5665,7 @@ fun ExpandedCallView(
             ) {
                 Icon(
                     imageVector = Icons.Default.CallEnd,
-                    contentDescription = "End Call",
+                    contentDescription = "Kết thúc cuộc gọi",
                     tint = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onErrorContainer else Color.White,
                     modifier = Modifier.size(iconSize)
                 )
@@ -5682,14 +5682,14 @@ fun ExpandedIdleView(onCollapse: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = "Droidbubble Island",
+            text = "Đảo động Androidisland",
             color = Color.White,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = "Ready for Media, Notifications & Recording",
+            text = "Sẵn sàng cho Nhạc, Thông báo & Quay màn hình",
             color = Color(0xFFA1A1AA),
             fontSize = 12.sp
         )
@@ -5702,7 +5702,7 @@ fun ExpandedIdleView(onCollapse: () -> Unit) {
                 contentColor = Color.White
             )
         ) {
-            Text("Collapse", fontSize = 12.sp)
+            Text("Thu gọn", fontSize = 12.sp)
         }
     }
 }
@@ -6243,7 +6243,7 @@ fun ExpandedFpsView(
         ) {
             Icon(
                 imageVector = Icons.Default.OpenInNew,
-                contentDescription = "Display Settings",
+                contentDescription = "Cài đặt hiển thị",
                 tint = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onSurface else Color.Black,
                 modifier = Modifier.size(actionIconSize)
             )
@@ -6259,10 +6259,10 @@ fun ExpandedWeatherView(
     designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE
 ) {
     val weatherIcon = when {
-        weatherInfo.condition.contains("Sun", ignoreCase = true) || weatherInfo.condition.contains("Clear", ignoreCase = true) -> Icons.Default.WbSunny
-        weatherInfo.condition.contains("Rain", ignoreCase = true) || weatherInfo.condition.contains("Drizzle", ignoreCase = true) || weatherInfo.condition.contains("Shower", ignoreCase = true) -> Icons.Default.WaterDrop
-        weatherInfo.condition.contains("Snow", ignoreCase = true) -> Icons.Default.AcUnit
-        weatherInfo.condition.contains("Thunder", ignoreCase = true) -> Icons.Default.Bolt
+        weatherInfo.condition.contains("Sun", ignoreCase = true) || weatherInfo.condition.contains("Clear", ignoreCase = true) || weatherInfo.condition.contains("Nắng", ignoreCase = true) || weatherInfo.condition.contains("Quang", ignoreCase = true) -> Icons.Default.WbSunny
+        weatherInfo.condition.contains("Rain", ignoreCase = true) || weatherInfo.condition.contains("Drizzle", ignoreCase = true) || weatherInfo.condition.contains("Shower", ignoreCase = true) || weatherInfo.condition.contains("Mưa", ignoreCase = true) -> Icons.Default.WaterDrop
+        weatherInfo.condition.contains("Snow", ignoreCase = true) || weatherInfo.condition.contains("Tuyết", ignoreCase = true) -> Icons.Default.AcUnit
+        weatherInfo.condition.contains("Thunder", ignoreCase = true) || weatherInfo.condition.contains("Giông", ignoreCase = true) || weatherInfo.condition.contains("Bão", ignoreCase = true) -> Icons.Default.Bolt
         else -> Icons.Default.Cloud
     }
     val iconTint = if (weatherIcon == Icons.Default.WbSunny) Color(0xFFFFD60A) else Color(0xFF64D2FF)
@@ -6290,7 +6290,7 @@ fun ExpandedWeatherView(
             val weatherSubColor = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFFA1A1AA)
             Icon(
                 imageVector = weatherIcon,
-                contentDescription = "Weather",
+                contentDescription = "Thời tiết",
                 tint = weatherIconColor,
                 modifier = Modifier.size(iconSize)
             )
@@ -6311,7 +6311,7 @@ fun ExpandedWeatherView(
                 )
 
                 Text(
-                    text = "${weatherInfo.cityName.ifBlank { "Local Weather" }} • ${weatherInfo.condition.ifBlank { "Clear" }}",
+                    text = "${weatherInfo.cityName.ifBlank { "Thời tiết địa phương" }} • ${weatherInfo.condition.ifBlank { "Quang đãng" }}",
                     color = weatherSubColor,
                     fontSize = subtitleSize,
                     fontWeight = FontWeight.Medium,
@@ -6336,7 +6336,7 @@ fun ExpandedWeatherView(
         ) {
             Icon(
                 imageVector = Icons.Default.Refresh,
-                contentDescription = "Refresh Weather",
+                contentDescription = "Làm mới thời tiết",
                 modifier = Modifier.size(actionIconSize)
             )
         }
@@ -6375,7 +6375,7 @@ fun ExpandedNetworkSpeedView(
             val netSubColor = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFFA1A1AA)
             Icon(
                 imageVector = if (networkSpeedInfo.isWifi) Icons.Default.Wifi else Icons.Default.SignalCellularAlt,
-                contentDescription = "Network",
+                contentDescription = "Mạng",
                 tint = netIconColor,
                 modifier = Modifier.size(iconSize)
             )
@@ -6395,7 +6395,7 @@ fun ExpandedNetworkSpeedView(
                 )
 
                 Text(
-                    text = "↑ ${networkSpeedInfo.uploadSpeedFormatted} • ${networkSpeedInfo.networkLabel.ifBlank { "Network" }}",
+                    text = "↑ ${networkSpeedInfo.uploadSpeedFormatted} • ${networkSpeedInfo.networkLabel.ifBlank { "Mạng" }}",
                     color = netSubColor,
                     fontSize = subtitleSize,
                     fontWeight = FontWeight.Medium,
@@ -6424,7 +6424,7 @@ fun ExpandedNetworkSpeedView(
         ) {
             Icon(
                 imageVector = Icons.Default.OpenInNew,
-                contentDescription = "Wi-Fi Settings",
+                contentDescription = "Cài đặt Wi-Fi",
                 tint = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onSurface else Color.Black,
                 modifier = Modifier.size(actionIconSize)
             )
@@ -6459,7 +6459,7 @@ private fun BluetoothModePill(
             if (bluetoothCheckmarkAlpha > 0.01f) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Connected",
+                    contentDescription = "Đã kết nối",
                     tint = Color.White,
                     modifier = Modifier
                         .graphicsLayer {
@@ -6500,7 +6500,7 @@ private fun BluetoothModePill(
                 if (bluetoothCheckmarkAlpha > 0.01f) {
                     Icon(
                         imageVector = Icons.Default.Check,
-                        contentDescription = "Connected",
+                        contentDescription = "Đã kết nối",
                         tint = Color.White,
                         modifier = Modifier
                             .graphicsLayer {
@@ -6538,9 +6538,9 @@ private fun RingerModePill(
         Color.White
     }
     val labelText = when (displayRingerMode) {
-        IslandStateManager.RingerMode.SILENT -> "Silent"
-        IslandStateManager.RingerMode.VIBRATE -> "Vibrate"
-        IslandStateManager.RingerMode.RING -> "Ring"
+        IslandStateManager.RingerMode.SILENT -> "Im lặng"
+        IslandStateManager.RingerMode.VIBRATE -> "Rung"
+        IslandStateManager.RingerMode.RING -> "Chuông"
     }
     val labelColor = if (displayRingerMode == IslandStateManager.RingerMode.SILENT) {
         Color(0xFFFF3B30)
@@ -6663,7 +6663,7 @@ private fun AirplaneModePill(
     teardropEarRadius: Dp
 ) {
     val airplaneOrange = Color(0xFFFF9500)
-    val labelText = if (displayAirplaneMode) "On" else "Off"
+    val labelText = if (displayAirplaneMode) "Bật" else "Tắt"
     val p = flightProgress
     val transX = if (displayAirplaneMode) {
         (-42f * (1f - p)).dp
@@ -6702,7 +6702,7 @@ private fun AirplaneModePill(
         ) {
             Icon(
                 imageVector = Icons.Default.AirplanemodeActive,
-                contentDescription = "Airplane Mode",
+                contentDescription = "Chế độ máy bay",
                 tint = airplaneOrange,
                 modifier = Modifier
                     .graphicsLayer {
@@ -6744,7 +6744,7 @@ private fun AirplaneModePill(
             ) {
                 Icon(
                     imageVector = Icons.Default.AirplanemodeActive,
-                    contentDescription = "Airplane Mode",
+                    contentDescription = "Chế độ máy bay",
                     tint = airplaneOrange,
                     modifier = Modifier
                         .graphicsLayer {
@@ -6837,11 +6837,11 @@ fun ExpandedAlarmView(
     val textColor = if (isM3) MaterialTheme.colorScheme.onSurface else Color.White
     val subColor = if (isM3) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFFA1A1AA)
 
-    val timeText = alarmInfo?.formattedTime?.ifBlank { "Upcoming Alarm" } ?: "Upcoming Alarm"
+    val timeText = alarmInfo?.formattedTime?.ifBlank { "Báo thức sắp tới" } ?: "Báo thức sắp tới"
     val subText = if (alarmInfo != null && alarmInfo.timeRemainingFormatted.isNotBlank()) {
-        "Alarm • ${alarmInfo.timeRemainingFormatted}"
+        "Báo thức • ${alarmInfo.timeRemainingFormatted}"
     } else {
-        "Next Alarm"
+        "Báo thức tiếp theo"
     }
 
     Row(
@@ -6857,7 +6857,7 @@ fun ExpandedAlarmView(
         ) {
             Icon(
                 imageVector = Icons.Default.Alarm,
-                contentDescription = "Alarm",
+                contentDescription = "Báo thức",
                 tint = iconColor,
                 modifier = Modifier.size(iconSize)
             )
@@ -6920,7 +6920,7 @@ fun ExpandedAlarmView(
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                contentDescription = "Open Alarms",
+                contentDescription = "Mở báo thức",
                 modifier = Modifier.size(actionIconSize)
             )
         }
@@ -6962,7 +6962,7 @@ private fun TaskConfirmationPill(
             )
             Icon(
                 imageVector = Icons.Default.Check,
-                contentDescription = "Success",
+                contentDescription = "Thành công",
                 tint = Color(0xFF30D158),
                 modifier = Modifier
                     .size(18.dp)
@@ -7000,7 +7000,7 @@ private fun TaskConfirmationPill(
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,
-                    contentDescription = "Success",
+                    contentDescription = "Thành công",
                     tint = Color(0xFF30D158),
                     modifier = Modifier
                         .size(19.dp)
