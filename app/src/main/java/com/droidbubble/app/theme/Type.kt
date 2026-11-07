@@ -20,14 +20,14 @@ data class IslandFontOption(
 )
 
 val ISLAND_FONTS = listOf(
-    IslandFontOption("DEFAULT", "System Default", FontFamily.Default),
+    IslandFontOption("DEFAULT", "Mặc định hệ thống", FontFamily.Default),
     IslandFontOption("GOOGLE_SANS", "Google Sans Flex", GoogleSansFlex),
-    IslandFontOption("SANS_SERIF", "Clean Sans", FontFamily.SansSerif),
-    IslandFontOption("SERIF", "Classic Serif", FontFamily.Serif),
-    IslandFontOption("MONOSPACE", "Monospace", FontFamily.Monospace),
-    IslandFontOption("ROUNDED", "Modern Rounded", FontFamily(Typeface.create("sans-serif-rounded", Typeface.NORMAL))),
-    IslandFontOption("CONDENSED", "Condensed", FontFamily(Typeface.create("sans-serif-condensed", Typeface.NORMAL))),
-    IslandFontOption("CURSIVE", "Casual Script", FontFamily.Cursive)
+    IslandFontOption("SANS_SERIF", "Sans gọn gàng", FontFamily.SansSerif),
+    IslandFontOption("SERIF", "Serif cổ điển", FontFamily.Serif),
+    IslandFontOption("MONOSPACE", "Đơn cách (Monospace)", FontFamily.Monospace),
+    IslandFontOption("ROUNDED", "Bo tròn hiện đại", FontFamily(Typeface.create("sans-serif-rounded", Typeface.NORMAL))),
+    IslandFontOption("CONDENSED", "Chữ hẹp (Condensed)", FontFamily(Typeface.create("sans-serif-condensed", Typeface.NORMAL))),
+    IslandFontOption("CURSIVE", "Chữ viết tay", FontFamily.Cursive)
 )
 
 fun getIslandFontFamily(key: String): FontFamily {
