@@ -32,9 +32,9 @@ sealed interface UpdateCheckResult {
 
 object UpdateManager {
 
-    private const val GITHUB_RELEASES_API = "https://api.github.com/repos/Velocity081/droidtools/releases"
-    private const val GITHUB_RELEASES_ATOM = "https://github.com/Velocity081/droidtools/releases.atom"
-    private const val DEFAULT_USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Droidtools) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
+    private const val GITHUB_RELEASES_API = "https://api.github.com/repos/digitalxiao/androidisland/releases"
+    private const val GITHUB_RELEASES_ATOM = "https://github.com/digitalxiao/androidisland/releases.atom"
+    private const val DEFAULT_USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Androidisland) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 
     fun getCurrentVersion(context: Context): String {
         return try {
@@ -59,7 +59,7 @@ object UpdateManager {
         }
 
         // Fallback error
-        apiResult ?: UpdateCheckResult.Error("Unable to reach GitHub. Please check connection.")
+        apiResult ?: UpdateCheckResult.Error("Không thể kết nối GitHub. Vui lòng kiểm tra mạng.")
     }
 
     private fun fetchFromApi(context: Context): UpdateCheckResult {
@@ -73,7 +73,7 @@ object UpdateManager {
         }
 
         if (connection.responseCode !in 200..299) {
-            return UpdateCheckResult.Error("HTTP Error: ${connection.responseCode}")
+            return UpdateCheckResult.Error("Lỗi HTTP: ${connection.responseCode}")
         }
 
         val responseText = connection.inputStream.bufferedReader().use { it.readText() }
@@ -87,7 +87,7 @@ object UpdateManager {
             val relObj = releasesArray.getJSONObject(i)
             val tagName = relObj.optString("tag_name", "").trim()
             val name = relObj.optString("name", tagName)
-            val body = relObj.optString("body", "No changelog provided.")
+            val body = relObj.optString("body", "Không có ghi chú thay đổi.")
             val prerelease = relObj.optBoolean("prerelease", false)
             val isBeta = prerelease || tagName.contains("beta", ignoreCase = true) || name.contains("beta", ignoreCase = true)
 
@@ -107,7 +107,7 @@ object UpdateManager {
             }
 
             val finalUrl = apkUrl
-                ?: "https://github.com/Velocity081/droidtools/releases/download/$tagName/Droidtools.apk"
+                ?: "https://github.com/digitalxiao/androidisland/releases/download/$tagName/Androidisland.apk"
 
             val cleanVersion = tagName.removePrefix("v").removePrefix("V").trim()
             targetRelease = AppReleaseInfo(
@@ -142,7 +142,7 @@ object UpdateManager {
         }
 
         if (connection.responseCode !in 200..299) {
-            return UpdateCheckResult.Error("HTTP Error: ${connection.responseCode}")
+            return UpdateCheckResult.Error("Lỗi HTTP: ${connection.responseCode}")
         }
 
         val atomXml = connection.inputStream.bufferedReader().use { it.readText() }
@@ -188,14 +188,14 @@ object UpdateManager {
 
             val isBeta = tag.contains("beta", ignoreCase = true) || title.contains("beta", ignoreCase = true)
             val cleanVersion = tag.removePrefix("v").removePrefix("V").trim()
-            val downloadUrl = "https://github.com/Velocity081/droidtools/releases/download/$tag/Droidtools.apk"
+            val downloadUrl = "https://github.com/digitalxiao/androidisland/releases/download/$tag/Androidisland.apk"
 
             releases.add(
                 AppReleaseInfo(
                     tagName = tag,
                     version = cleanVersion,
                     name = title,
-                    changelog = changelog.ifBlank { "No changelog provided." },
+                    changelog = changelog.ifBlank { "Không có ghi chú thay đổi." },
                     isBeta = isBeta,
                     downloadUrl = downloadUrl,
                     apkSize = 0L
@@ -281,7 +281,7 @@ object UpdateManager {
             val actualConn = connection ?: return@withContext null
             val totalBytes = actualConn.contentLengthLong.coerceAtLeast(1L)
             val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
-            val outputFile = File(updatesDir, "Droidtools-update.apk")
+            val outputFile = File(updatesDir, "Androidisland-update.apk")
             if (outputFile.exists()) outputFile.delete()
 
             actualConn.inputStream.use { input ->
