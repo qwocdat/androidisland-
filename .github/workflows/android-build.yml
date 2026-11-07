@@ -32,8 +32,9 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
-      - name: Thiết lập Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Chấp nhận bản quyền Android SDK
+        run: |
+          yes | sdkmanager --licenses || true
 
       - name: Cấu hình Gradle Cache
         uses: gradle/actions/setup-gradle@v4
