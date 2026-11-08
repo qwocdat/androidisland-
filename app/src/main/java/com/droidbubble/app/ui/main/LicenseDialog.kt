@@ -3,6 +3,8 @@ package com.droidbubble.app.ui.main
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,9 +24,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,9 +57,10 @@ fun LicenseActivationScreen(
     onActivated: () -> Unit
 ) {
     val context = LocalContext.current
-    val deviceId = remember { LicenseManager.getDeviceId(context) }
+    val deviceId = remember { LicenseManager.getUserUid(context) }
     var keyInput by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isChecking by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -116,7 +121,7 @@ fun LicenseActivationScreen(
                         textAlign = TextAlign.Center
                     )
 
-                    // Hộp hiển thị Mã thiết bị (Device ID) để người dùng gửi lấy key
+                    // Hộp hiển thị Mã thiết bị (Device ID / UID)
                     Surface(
                         shape = RoundedCornerShape(14.dp),
                         color = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -129,7 +134,7 @@ fun LicenseActivationScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column {
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = "Mã thiết bị (Device ID)",
                                     style = MaterialTheme.typography.labelSmall,
@@ -146,7 +151,7 @@ fun LicenseActivationScreen(
                                 onClick = {
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
                                     clipboard?.setPrimaryClip(ClipData.newPlainText("Device ID", deviceId))
-                                    Toast.makeText(context, "Đã sao chép Mã thiết bị: $deviceId", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(context, "Đã sao chép: $deviceId", Toast.LENGTH_SHORT).show()
                                 }
                             ) {
                                 Icon(
@@ -166,7 +171,7 @@ fun LicenseActivationScreen(
                             errorMessage = null
                         },
                         label = { Text("Nhập License Key") },
-                        placeholder = { Text("VD: DIGITALXIAO-VIP hoặc DX-XXXX-YYYY") },
+                        placeholder = { Text("VD: DXIAO-XXXX-XXXX-XXXX") },
                         leadingIcon = {
                             Icon(Icons.Default.Lock, contentDescription = null)
                         },
@@ -183,6 +188,28 @@ fun LicenseActivationScreen(
                             fontSize = 12.5.sp,
                             fontWeight = FontWeight.Medium
                         )
+                    }
+
+                    // Nút Lấy Key trực tiếp từ hệ thống getkey
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val url = LicenseManager.getKeyPageUrl(context)
+                                runCatching {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                                }.onFailure {
+                                    Toast.makeText(context, "Không mở được trình duyệt: $url", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Nhận mã Key (Get Key)", fontSize = 12.sp)
+                        }
                     }
                 }
             },
@@ -210,19 +237,39 @@ fun LicenseActivationScreen(
 
                     Button(
                         onClick = {
-                            if (LicenseManager.verifyAndActivate(context, keyInput)) {
-                                Toast.makeText(context, "Kích hoạt bản quyền thành công!", Toast.LENGTH_SHORT).show()
-                                onActivated()
-                            } else {
-                                errorMessage = "Mã Key không hợp lệ! Vui lòng kiểm tra lại hoặc liên hệ digitalxiao."
+                            if (keyInput.isBlank()) {
+                                errorMessage = "Vui lòng nhập License Key"
+                                return@Button
+                            }
+                            isChecking = true
+                            errorMessage = null
+                            LicenseManager.verifyAndActivateKey(context, keyInput) { res ->
+                                isChecking = false
+                                if (res.success) {
+                                    Toast.makeText(context, res.message, Toast.LENGTH_SHORT).show()
+                                    onActivated()
+                                } else {
+                                    errorMessage = res.message
+                                }
                             }
                         },
+                        enabled = !isChecking,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1.3f)
                     ) {
-                        Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Kích hoạt", fontWeight = FontWeight.Bold)
+                        if (isChecking) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Đang kiểm tra...", fontSize = 12.sp)
+                        } else {
+                            Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Kích hoạt", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
