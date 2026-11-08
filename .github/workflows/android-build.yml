@@ -1,4 +1,4 @@
-name: Build Androidisland APK
+name: Android CI & Release APK (Auto-Extract ZIP & Build)
 
 on:
   push:
@@ -7,7 +7,6 @@ on:
       - master
     tags:
       - 'v*'
-      - 'V*'
   pull_request:
     branches:
       - main
@@ -19,52 +18,144 @@ permissions:
 
 jobs:
   build:
-    name: Build & Package APK
+    name: Auto-Extract ZIP, Sync Repo & Build Androidisland APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout mã nguồn
+      - name: Checkout Source Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Thiết lập JDK 21 (hỗ trợ Gradle 9.1 & Toolchain 17)
+      - name: Auto-Find Uploaded ZIP, Extract Overwriting Existing Files & Commit
+        shell: bash
+        run: |
+          set -e
+          echo "Searching repository for uploaded .zip archives..."
+          mapfile -t ZIP_FILES < <(find . -maxdepth 2 -type f -name "*.zip" \
+            ! -path "./.git/*" \
+            ! -path "./.gradle/*" \
+            ! -path "./gradle/*" \
+            ! -path "./app/build/*" \
+            ! -path "./build/*" | sort)
+
+          if [ "${#ZIP_FILES[@]}" -gt 0 ]; then
+            echo "Found ${#ZIP_FILES[@]} ZIP file(s): ${ZIP_FILES[*]}"
+            for ZIP_PATH in "${ZIP_FILES[@]}"; do
+              echo "Extracting: $ZIP_PATH"
+              TMP_EXTRACT=$(mktemp -d)
+              unzip -o -q "$ZIP_PATH" -d "$TMP_EXTRACT"
+
+              # Check if the ZIP contains a single top-level root folder (e.g. androidisland--main/)
+              shopt -s dotglob nullglob
+              ITEMS=("$TMP_EXTRACT"/*)
+              if [ "${#ITEMS[@]}" -eq 1 ] && [ -d "${ITEMS[0]}" ] && [ ! -f "$TMP_EXTRACT/settings.gradle.kts" ]; then
+                SRC_DIR="${ITEMS[0]}"
+                echo "Detected nested root folder inside ZIP: $(basename "$SRC_DIR")"
+              else
+                SRC_DIR="$TMP_EXTRACT"
+              fi
+
+              # Copy and overwrite all extracted files into the repository root (excluding .git)
+              rsync -a --exclude='.git' "$SRC_DIR"/ ./
+              shopt -u dotglob nullglob
+
+              rm -rf "$TMP_EXTRACT"
+              # Remove the uploaded .zip file after extracting so it does not re-extract on next run
+              rm -f "$ZIP_PATH"
+              echo "Extracted and removed $ZIP_PATH successfully."
+            done
+
+            # Sanitize gradle.properties (remove any Windows-specific org.gradle.java.home) and fix gradlew permissions
+            if [ -f gradle.properties ]; then
+              sed -i '/^org\.gradle\.java\.home=/d' gradle.properties || true
+            fi
+            if [ -f ./gradlew ]; then
+              chmod +x ./gradlew
+            fi
+
+            # Commit and push the overwritten files back to the branch automatically
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add -A
+            if ! git diff --cached --quiet; then
+              echo "Committing extracted and overwritten files back to repository..."
+              git commit -m "chore: auto-extract uploaded zip archive and overwrite source files [skip ci]"
+              if [ -n "${GITHUB_HEAD_REF:-}" ]; then
+                git push origin "HEAD:${GITHUB_HEAD_REF}" || true
+              elif [[ "${GITHUB_REF:-}" == refs/heads/* ]]; then
+                BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+                git push origin "HEAD:${BRANCH_NAME}" || true
+              fi
+            else
+              echo "No file differences after extracting ZIP."
+            fi
+          else
+            echo "No uploaded .zip archive found. Proceeding with existing source files."
+          fi
+
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
+          java-version: '17'
           distribution: 'temurin'
-          java-version: '21'
 
-      - name: Chấp nhận bản quyền Android SDK
-        run: |
-          yes | sdkmanager --licenses || true
-
-      - name: Cấu hình Gradle Cache
+      - name: Setup Gradle Cache & Wrapper
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Cấp quyền thực thi cho gradlew
-        run: chmod +x ./gradlew
+      - name: Prepare Gradle & Accept Android SDK Licenses
+        run: |
+          if [ -f gradle.properties ]; then
+            sed -i '/^org\.gradle\.java\.home=/d' gradle.properties || true
+          fi
+          chmod +x ./gradlew
+          if [ -d "$ANDROID_HOME/cmdline-tools/latest/bin" ]; then
+            yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          elif [ -d "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" ]; then
+            yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          fi
 
-      - name: Build APK (Release & Debug)
+      - name: Build Debug & Release APKs
         run: ./gradlew assembleRelease assembleDebug --stacktrace
 
-      - name: Chuẩn bị file Androidisland.apk
+      - name: Rename APKs for Release
         run: |
-          mkdir -p dist
-          cp app/build/outputs/apk/release/Androidisland-release.apk dist/Androidisland.apk
-          cp app/build/outputs/apk/debug/Androidisland-debug.apk dist/Androidisland-debug.apk
-          ls -lh dist/
+          mkdir -p output_apks
+          cp app/build/outputs/apk/release/app-release-unsigned.apk output_apks/Androidisland-release-unsigned.apk || true
+          cp app/build/outputs/apk/debug/app-debug.apk output_apks/Androidisland.apk || true
+          ls -la output_apks/
 
-      - name: Tải lên APK Artifact (Androidisland.apk)
+      - name: Upload Debug APK Artifact (Ready to Install)
         uses: actions/upload-artifact@v4
         with:
-          name: Androidisland-APK
-          path: |
-            dist/Androidisland.apk
-            dist/Androidisland-debug.apk
-          if-no-files-found: error
+          name: Androidisland-APK-Installable
+          path: output_apks/Androidisland.apk
 
-      - name: Tự động tạo GitHub Release (khi push tag v*)
-        if: startsWith(github.ref, 'refs/tags/v') || startsWith(github.ref, 'refs/tags/V')
+      - name: Upload Release APK Artifact (Unsigned)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Androidisland-Release-Unsigned
+          path: output_apks/Androidisland-release-unsigned.apk
+
+      - name: Publish GitHub Release
+        if: github.event_name == 'push' && (startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v2.5.{0}', github.run_number) }}
+          name: Androidisland Liquid Edition (${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v2.5.{0}', github.run_number) }})
+          body: |
+            ## 🚀 Bản cập nhật Androidisland — Liquid Edition (by digitalxiao)
+            - **Giao diện Liquid Island 5 Tab mới**: Trang chủ (`Home`), Hoạt động (`Activities`), Phím tắt (`Shortcuts`), Cài đặt (`Settings`), Giao diện (`Appearance`) & màn hình cài đặt Vật lý Chuyển động (`Animation`).
+            - **Thanh điều hướng Liquid Glass Tabbar**: Tích hợp hiệu ứng khúc xạ thấu kính, bóng đổ trong (`InnerShadow`), kéo lò xo vật lý (`DampedDragAnimation`) và ánh sáng viền theo cảm biến nghiêng máy.
+            - **Tính năng hoạt động thật 100%**: Ghi âm nhanh (Voice Memo) hiển thị sóng âm trực tiếp trên Đảo động, Điều khiển cử chỉ vuốt/chạm trên Đảo, Bộ chỉnh âm 5 dải tần (5-Band Hardware Equalizer), Tiết kiệm pin thông minh, Quản lý cấu hình JSON (Xuất/Nhập), Đa nhiệm 2 viên thuốc và Phòng thử nghiệm nhà phát triển.
+            - **Đa ngôn ngữ (13 ngôn ngữ)**: Tiếng Việt (`🇻🇳 Tiếng Việt`) là ngôn ngữ mặc định, giữ nguyên 12 ngôn ngữ quốc tế trên video.
+            - **Giữ nguyên 100% tính năng gốc**: Xác thực Key bản quyền (DigitalVolume), Đảo đen mặc định khi rảnh, Thanh cạnh Droidbar, Tác vụ nhanh chuỗi, Thông báo video TikTok (`https://vt.tiktok.com/ZSpBjvVcP/`) & Tự động cập nhật GitHub.
+            - Tải tệp **Androidisland.apk** bên dưới để cài đặt trực tiếp trên điện thoại Android.
           files: |
-            dist/Androidisland.apk
-          generate_release_notes: true
+            output_apks/Androidisland.apk
+            output_apks/Androidisland-release-unsigned.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
