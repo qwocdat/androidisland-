@@ -20,12 +20,15 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Auto-Find Uploaded ZIP, Extract Overwriting Existing Files & Push
+      - name: Auto-Find Uploaded ZIP, Extract Overwriting Existing Files & Commit to Repo
         shell: bash
         run: |
           set -e
-          echo "Scanning for uploaded zip files in repo..."
+          echo "=========================================================="
+          echo "Scanning for uploaded zip files in repository..."
+          echo "=========================================================="
           mapfile -t ZIP_FILES < <(find . -maxdepth 2 -type f -name "*.zip" \
             ! -path "./.git/*" \
             ! -path "./.gradle/*" \
@@ -36,30 +39,31 @@ jobs:
           if [ "${#ZIP_FILES[@]}" -gt 0 ]; then
             echo "Found ${#ZIP_FILES[@]} ZIP file(s): ${ZIP_FILES[*]}"
             for ZIP_PATH in "${ZIP_FILES[@]}"; do
-              echo "===> Extracting: $ZIP_PATH"
+              echo "===> Unzipping: $ZIP_PATH"
               TMP_EXTRACT=$(mktemp -d)
               unzip -o -q "$ZIP_PATH" -d "$TMP_EXTRACT"
 
-              # Check if ZIP has a root wrapper folder
+              # Check if the ZIP contains a single root wrapper directory (e.g. androidisland--main/)
               shopt -s dotglob nullglob
               ITEMS=("$TMP_EXTRACT"/*)
               if [ "${#ITEMS[@]}" -eq 1 ] && [ -d "${ITEMS[0]}" ] && [ ! -f "$TMP_EXTRACT/settings.gradle.kts" ]; then
                 SRC_DIR="${ITEMS[0]}"
-                echo "Nested folder detected: $(basename "$SRC_DIR")"
+                echo "Nested root directory detected: $(basename "$SRC_DIR")"
               else
                 SRC_DIR="$TMP_EXTRACT"
               fi
 
-              # Overwrite files into root
+              # Overwrite files into root repository
               rsync -a --exclude='.git' "$SRC_DIR"/ ./
               shopt -u dotglob nullglob
               rm -rf "$TMP_EXTRACT"
 
-              # Delete the zip file so it is removed from repo
+              # Delete the zip file so it is permanently replaced by its extracted content
               rm -f "$ZIP_PATH"
-              echo "Extracted and deleted: $ZIP_PATH"
+              echo "Successfully unzipped and deleted: $ZIP_PATH"
             done
 
+            # Ensure gradle.properties does not contain invalid local Java home and gradlew is executable
             if [ -f gradle.properties ]; then
               sed -i '/^org\.gradle\.java\.home=/d' gradle.properties || true
             fi
@@ -67,25 +71,26 @@ jobs:
               chmod +x ./gradlew
             fi
 
-            # Git commit and push back to branch
+            # Git commit and push extracted files back to repo branch
             git config --global user.name "github-actions[bot]"
             git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add -A
 
             if ! git diff --cached --quiet; then
-              echo "Committing extracted files..."
+              echo "Committing extracted files to repository..."
               git commit -m "chore: auto-extract uploaded zip and overwrite source files [skip ci]"
-              CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-              if [ "$CURRENT_BRANCH" = "HEAD" ]; then
-                CURRENT_BRANCH="${GITHUB_REF_NAME:-main}"
+              CURRENT_BRANCH="${GITHUB_REF_NAME:-main}"
+              if [ -z "$CURRENT_BRANCH" ] || [ "$CURRENT_BRANCH" = "HEAD" ]; then
+                CURRENT_BRANCH="main"
               fi
-              echo "Pushing changes back to origin/$CURRENT_BRANCH..."
-              git push origin "HEAD:$CURRENT_BRANCH" || git push -f origin "HEAD:$CURRENT_BRANCH" || true
+              echo "Pushing changes to origin $CURRENT_BRANCH..."
+              git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "HEAD:$CURRENT_BRANCH"
+              echo "Successfully pushed extracted changes to $CURRENT_BRANCH!"
             else
-              echo "No diff after extracting zip."
+              echo "No diff detected after unzipping."
             fi
           else
-            echo "No zip files found in repository."
+            echo "No zip files found in repository. Proceeding with existing source files."
           fi
 
       - name: Set up JDK 17
@@ -115,7 +120,7 @@ jobs:
       - name: Collect Generated APKs
         run: |
           mkdir -p output_apks
-          echo "Scanning built APKs:"
+          echo "Scanning built APKs under app/build/outputs/apk/:"
           find app/build/outputs/apk/ -type f -name "*.apk" -ls
 
           DEBUG_APK=$(find app/build/outputs/apk/debug/ -type f -name "*.apk" 2>/dev/null | head -n 1)
@@ -131,11 +136,13 @@ jobs:
           if [ -n "$DEBUG_APK" ] && [ -f "$DEBUG_APK" ]; then
             echo "Found debug APK: $DEBUG_APK"
             cp "$DEBUG_APK" output_apks/Androidisland.apk
+            cp "$DEBUG_APK" output_apks/app-debug.apk
           fi
 
           if [ -n "$RELEASE_APK" ] && [ -f "$RELEASE_APK" ]; then
             echo "Found release APK: $RELEASE_APK"
             cp "$RELEASE_APK" output_apks/Androidisland-release-unsigned.apk
+            cp "$RELEASE_APK" output_apks/app-release-unsigned.apk
           fi
 
           ls -la output_apks/
@@ -164,7 +171,7 @@ jobs:
             - **Thanh điều hướng Liquid Glass Tabbar**: Tích hợp hiệu ứng khúc xạ thấu kính, bóng đổ trong (`InnerShadow`), kéo lò xo vật lý (`DampedDragAnimation`) và ánh sáng viền theo cảm biến nghiêng máy.
             - **Tính năng hoạt động thật 100%**: Ghi âm nhanh (Voice Memo) hiển thị sóng âm trực tiếp trên Đảo động, Điều khiển cử chỉ vuốt/chạm trên Đảo, Bộ chỉnh âm 5 dải tần (5-Band Hardware Equalizer), Tiết kiệm pin thông minh, Quản lý cấu hình JSON (Xuất/Nhập), Đa nhiệm 2 viên thuốc và Phòng thử nghiệm nhà phát triển.
             - **Đa ngôn ngữ (13 ngôn ngữ)**: Tiếng Việt (`🇻🇳 Tiếng Việt`) là ngôn ngữ mặc định, giữ nguyên 12 ngôn ngữ quốc tế trên video.
-            - **Giữ nguyên 100% tính năng gốc**: Xác thực Key bản quyền (DigitalVolume), Đảo đen mặc định khi rảnh, Thanh cạnh Droidbar, Tác vụ nhanh chuỗi, Thông báo video TikTok (`https://vt.tiktok.com/ZSpBjvVcP/`) & Tự động cập nhật GitHub.
+            - **Hợp nhất Server Key DigitalVolume**: Xác thực Key bản quyền định dạng `DXIAO-...` và kết nối trực tiếp server xác thực dùng chung với dự án DigitalVolume.
             - Tải tệp **Androidisland.apk** bên dưới để cài đặt trực tiếp trên điện thoại Android.
           files: |
             output_apks/*.apk
