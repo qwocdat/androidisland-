@@ -242,6 +242,8 @@ import com.droidbubble.app.ui.liquid.LiquidAppearanceTab
 import com.droidbubble.app.ui.liquid.LiquidGlassNavigationBar
 import com.droidbubble.app.ui.liquid.LiquidHomeTab
 import com.droidbubble.app.ui.liquid.LiquidNavItem
+import com.droidbubble.app.ui.liquid.layerBackdrop
+import com.droidbubble.app.ui.liquid.rememberLayerBackdrop
 import com.droidbubble.app.ui.liquid.LiquidSettingsTab
 import com.droidbubble.app.ui.liquid.LiquidShortcutsTab
 import com.droidbubble.app.ui.liquid.getStringsForLanguage
@@ -576,6 +578,7 @@ fun MainScreen(
                     )
                 }
 
+                val rootBackdrop = rememberLayerBackdrop()
                 Box(
                     modifier = modifier
                         .fillMaxSize()
@@ -584,6 +587,8 @@ fun MainScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background)
+                            .layerBackdrop(rootBackdrop)
                             .statusBarsPadding()
                     ) {
                         // Top Header Bar matching video UI
@@ -774,7 +779,9 @@ fun MainScreen(
                                 selectedBottomTab = idx
                             },
                             accentColor = MaterialTheme.colorScheme.primary,
-                            isDark = !isLightTheme
+                            isDark = !isLightTheme,
+                            backdrop = rootBackdrop,
+                            isBlurActive = true
                         )
                     }
                 }

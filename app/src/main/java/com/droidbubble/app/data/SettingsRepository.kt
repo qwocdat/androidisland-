@@ -142,10 +142,10 @@ class SettingsRepository(private val context: Context) {
             dismissMediaOnPause = preferences[PreferencesKeys.DISMISS_MEDIA_ON_PAUSE] ?: false,
             alwaysShowPill = preferences[PreferencesKeys.ALWAYS_SHOW_PILL] ?: true,
             showDualActivityInCompact = preferences[PreferencesKeys.SHOW_DUAL_ACTIVITY_IN_COMPACT] ?: true,
-            showFps = preferences[PreferencesKeys.SHOW_FPS] ?: false,
-            showWeather = preferences[PreferencesKeys.SHOW_WEATHER] ?: false,
-            showNetworkSpeed = preferences[PreferencesKeys.SHOW_NETWORK_SPEED] ?: false,
-            showAlarm = preferences[PreferencesKeys.SHOW_ALARM] ?: true,
+            showFps = false,
+            showWeather = false,
+            showNetworkSpeed = false,
+            showAlarm = false,
             autoDismissNotifications = preferences[PreferencesKeys.AUTO_DISMISS_NOTIFICATIONS] ?: false,
             notificationAutoDismissSeconds = preferences[PreferencesKeys.NOTIFICATION_AUTO_DISMISS_SECONDS] ?: 3,
             persistentCharging = preferences[PreferencesKeys.PERSISTENT_CHARGING] ?: false,
@@ -278,7 +278,13 @@ class SettingsRepository(private val context: Context) {
                 activityExpandedWidthDp = j.optInt("activityExpandedWidthDp", base.activityExpandedWidthDp),
                 activityExpandedHeightDp = j.optInt("activityExpandedHeightDp", base.activityExpandedHeightDp),
                 activityCompactWidthDp = j.optInt("activityCompactWidthDp", base.activityCompactWidthDp),
-                activityCompactHeightDp = j.optInt("activityCompactHeightDp", base.activityCompactHeightDp)
+                activityCompactHeightDp = j.optInt("activityCompactHeightDp", base.activityCompactHeightDp),
+                showFps = j.optBoolean("v2ShowFps", false),
+                showWeather = j.optBoolean("v2ShowWeather", false),
+                showNetworkSpeed = j.optBoolean("v2ShowNetworkSpeed", false),
+                showAlarm = j.optBoolean("v2ShowAlarm", false),
+                hideNativeOsIsland = j.optBoolean("hideNativeOsIsland", true),
+                nativeIslandMaskBoost = j.optBoolean("nativeIslandMaskBoost", true)
             )
         }.getOrDefault(base)
     }
@@ -363,6 +369,12 @@ class SettingsRepository(private val context: Context) {
             put("cornerRadiusDp", s.cornerRadiusDp)
             put("expandedCornerRadiusDp", s.expandedCornerRadiusDp)
             put("alwaysShowPill", s.alwaysShowPill)
+            put("v2ShowFps", s.showFps)
+            put("v2ShowWeather", s.showWeather)
+            put("v2ShowNetworkSpeed", s.showNetworkSpeed)
+            put("v2ShowAlarm", s.showAlarm)
+            put("hideNativeOsIsland", s.hideNativeOsIsland)
+            put("nativeIslandMaskBoost", s.nativeIslandMaskBoost)
         }.toString()
     }
 

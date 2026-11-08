@@ -901,6 +901,10 @@ class NotificationReceiverService : NotificationListenerService() {
 
         val packageName = sbn.packageName
         if (packageName == this.packageName) return // Ignore self
+        if (currentSettings.hideNativeOsIsland && (packageName == "miui.systemui.plugin" || packageName == "com.miui.systemui.plugin" || packageName == "com.oplus.fluidcloud" || packageName == "com.vivo.smartisland" || packageName == "com.hihonor.magiccapsule")) {
+            runCatching { snoozeNotification(sbn.key, 30000L) }
+            return
+        }
         if (currentSettings.blockedPackages.contains(packageName)) return
 
         val notification = sbn.notification ?: return

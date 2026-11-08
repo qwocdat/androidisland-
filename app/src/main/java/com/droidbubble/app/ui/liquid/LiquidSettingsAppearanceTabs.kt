@@ -104,6 +104,7 @@ import com.droidbubble.app.model.IslandSettings
 import com.droidbubble.app.model.MediaInfo
 import com.droidbubble.app.model.NotificationInfo
 import com.droidbubble.app.service.HardwareEqualizerManager
+import com.droidbubble.app.service.NativeIslandSuppressor
 import com.droidbubble.app.service.VoiceMemoManager
 import com.droidbubble.app.theme.ISLAND_FONTS
 import com.droidbubble.app.ui.main.CutoutModeOption
@@ -260,6 +261,49 @@ fun LiquidSettingsTab(
                         Switch(
                             checked = settings.alwaysShowPill,
                             onCheckedChange = { v -> onUpdateSettings { it.copy(alwaysShowPill = v) } }
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (isVi) "Ẩn HyperIsland / Đảo mặc định hệ điều hành" else "Hide HyperIsland / Native OS Island",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = remember { NativeIslandSuppressor.getDetectedOsIslandName() },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = settings.hideNativeOsIsland,
+                            onCheckedChange = { v ->
+                                onUpdateSettings { it.copy(hideNativeOsIsland = v) }
+                                NativeIslandSuppressor.applyNativeIslandSuppression(context, v)
+                            }
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (isVi) "Lớp phủ đen che kín Đảo hệ thống" else "Opaque Black Cutout Mask",
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = settings.nativeIslandMaskBoost,
+                            onCheckedChange = { v -> onUpdateSettings { it.copy(nativeIslandMaskBoost = v) } }
                         )
                     }
                 }

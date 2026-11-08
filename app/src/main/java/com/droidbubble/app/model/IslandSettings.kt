@@ -65,7 +65,7 @@ data class IslandSettings(
     val showFps: Boolean = false,
     val showWeather: Boolean = false,
     val showNetworkSpeed: Boolean = false,
-    val showAlarm: Boolean = true,
+    val showAlarm: Boolean = false,
     val autoDismissNotifications: Boolean = false,
     val notificationAutoDismissSeconds: Int = 3,
     val persistentCharging: Boolean = false,
@@ -180,7 +180,10 @@ data class IslandSettings(
     val activityExpandedWidthDp: Int = 300,
     val activityExpandedHeightDp: Int = 80,
     val activityCompactWidthDp: Int = 170,
-    val activityCompactHeightDp: Int = 38
+    val activityCompactHeightDp: Int = 38,
+    // Hide Native OS Island (HyperIsland / Fluid Cloud / Atomic Island / Magic Capsule)
+    val hideNativeOsIsland: Boolean = true,
+    val nativeIslandMaskBoost: Boolean = true
 ) {
     val isGlass: Boolean get() = designLanguage == DesignLanguage.GLASS || glassEnabled
     val isMaterial3: Boolean get() = designLanguage == DesignLanguage.MATERIAL3

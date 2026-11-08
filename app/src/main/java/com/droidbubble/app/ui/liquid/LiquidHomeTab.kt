@@ -122,6 +122,7 @@ import com.droidbubble.app.model.ActiveCallState
 import com.droidbubble.app.model.IslandSettings
 import com.droidbubble.app.model.MediaInfo
 import com.droidbubble.app.model.ScreenRecordingState
+import com.droidbubble.app.service.NativeIslandSuppressor
 import com.droidbubble.app.service.VoiceMemoManager
 import com.droidbubble.app.ui.main.MainScreenViewModel
 import com.droidbubble.app.ui.main.PermissionHelper
@@ -530,6 +531,80 @@ fun LiquidHomeTab(
                             Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, modifier = Modifier.size(16.dp))
                         }
                     )
+                }
+
+                val detectedOsIsland = remember { NativeIslandSuppressor.getDetectedOsIslandName() }
+                Surface(
+                    shape = RoundedCornerShape(22.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(38.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                }
+                                Column {
+                                    Text("Ẩn HyperIsland / Đảo mặc định", fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                                    Text(detectedOsIsland, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                            Switch(
+                                checked = settings.hideNativeOsIsland,
+                                onCheckedChange = { enabled ->
+                                    viewModel.updateSettings { it.copy(hideNativeOsIsland = enabled) }
+                                    NativeIslandSuppressor.applyNativeIslandSuppression(context, enabled)
+                                }
+                            )
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "Lớp phủ đen che kín Đảo hệ thống",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Switch(
+                                checked = settings.nativeIslandMaskBoost,
+                                onCheckedChange = { boost ->
+                                    viewModel.updateSettings { it.copy(nativeIslandMaskBoost = boost) }
+                                }
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = { NativeIslandSuppressor.openNativeIslandSystemSettings(context) },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Mở cài đặt Đảo hệ thống trên máy", fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                        }
+                    }
                 }
 
                 val savedKey = remember { LicenseManager.getSavedKey(context) ?: "VIP" }

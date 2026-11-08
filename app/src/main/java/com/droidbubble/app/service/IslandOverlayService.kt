@@ -801,6 +801,7 @@ class IslandOverlayService : Service() {
                 currentSettings = settings
                 persistentTelemetryManager?.updateSettings(settings)
                 HardwareEqualizerManager.applyFromSettings(settings)
+                NativeIslandSuppressor.applyNativeIslandSuppression(this@IslandOverlayService, settings.hideNativeOsIsland)
                 IslandStateManager.dismissMediaOnPause = settings.dismissMediaOnPause
                 IslandStateManager.autoDismissNotifications = settings.autoDismissNotifications
                 IslandStateManager.autoDismissNotificationSeconds = settings.notificationAutoDismissSeconds

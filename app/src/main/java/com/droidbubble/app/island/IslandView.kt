@@ -1103,7 +1103,7 @@ fun IslandOverlayRoot(
         isFpsActive -> fpsIslandWidth
         isWeatherActive -> weatherIslandWidth
         isOccupied || hasPersistent -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
-        else -> (settings.widthDp * 0.68f).dp.coerceIn(96.dp, 148.dp) + (teardropEarRadius * 2f)
+        else -> settings.widthDp.dp.coerceIn(100.dp, 220.dp) + (if (settings.hideNativeOsIsland && settings.nativeIslandMaskBoost) 8.dp else 0.dp) + (teardropEarRadius * 2f)
     }
 
     // Expanded Cards: Card 1 (and Card 2 if dual mode).
@@ -2638,7 +2638,9 @@ fun IslandOverlayRoot(
                                 if (!isExpanded && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && !isTaskConfirmation) {
                                     triggerHaptic()
                                     if (!isOccupied && !hasPersistent) {
-                                        IslandStateManager.expand(IslandPriority.IDLE)
+                                        if (settings.islandGesturesEnabled) {
+                                            IslandGestureDispatcher.executeGestureAction(context, settings.longPressAction, settings)
+                                        }
                                     } else {
                                         openAppForPriority(
                                             context = context,
