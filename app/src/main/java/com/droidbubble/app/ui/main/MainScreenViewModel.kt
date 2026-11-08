@@ -2,8 +2,6 @@ package com.droidbubble.app.ui.main
 
 import android.content.Context
 import android.content.Intent
-import android.content.pm.ApplicationInfo
-import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -121,6 +119,20 @@ class MainScreenViewModel(private val repository: SettingsRepository) : ViewMode
     fun updateSettings(update: (IslandSettings) -> IslandSettings) {
         viewModelScope.launch {
             repository.updateSettings(update)
+        }
+    }
+
+    fun exportConfig(onResult: (String) -> Unit) {
+        viewModelScope.launch {
+            val json = repository.exportConfigJson()
+            onResult(json)
+        }
+    }
+
+    fun importConfig(json: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val ok = repository.importConfigJson(json)
+            onResult(ok)
         }
     }
 

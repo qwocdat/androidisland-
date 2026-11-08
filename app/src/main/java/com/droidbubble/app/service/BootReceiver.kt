@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings
 import com.droidbubble.app.data.SettingsRepository
+import com.droidbubble.app.util.LicenseManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -13,6 +14,7 @@ import kotlinx.coroutines.launch
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
+            if (!LicenseManager.isActivated(context)) return
             val repository = SettingsRepository(context)
             CoroutineScope(Dispatchers.IO).launch {
                 val settings = repository.settingsFlow.first()

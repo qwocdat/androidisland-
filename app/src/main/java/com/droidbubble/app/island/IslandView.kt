@@ -203,6 +203,8 @@ import com.droidbubble.app.model.DesignLanguage
 import com.droidbubble.app.model.MediaInfo
 import com.droidbubble.app.model.NotificationInfo
 import com.droidbubble.app.model.ScreenRecordingState
+import com.droidbubble.app.model.VoiceMemoState
+import com.droidbubble.app.service.IslandGestureDispatcher
 import java.util.Locale
 import kotlin.math.PI
 import kotlin.math.abs
@@ -467,6 +469,7 @@ fun IslandOverlayRoot(
     val notification by IslandStateManager.activeNotification.collectAsState()
     val progressNotification by IslandStateManager.activeProgress.collectAsState()
     val recording by IslandStateManager.screenRecordingState.collectAsState()
+    val voiceMemo by IslandStateManager.voiceMemoState.collectAsState()
     val activeCall by IslandStateManager.activeCallState.collectAsState()
     val temporaryCharging by IslandStateManager.activeCharging.collectAsState()
     val persistentChargingInfo by IslandStateManager.persistentCharging.collectAsState()
@@ -511,6 +514,7 @@ fun IslandOverlayRoot(
 
     val idleBounceY = remember { Animatable(0f) }
     val idleBounceScale = remember { Animatable(1f) }
+    val idleStretchX = remember { Animatable(1f) }
 
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -533,6 +537,7 @@ fun IslandOverlayRoot(
         }
     }
     val isCall = allowInOrientation && activeCall.isActive && settings.showCalls
+    val isVoiceMemo = allowInOrientation && voiceMemo.isRecording && settings.showVoiceMemo
     val isRecording = allowInOrientation && recording.isRecording && settings.showScreenRecording
     val isProgress = allowInOrientation && currentProgress != null && settings.showLiveProgress
     val isNotification = allowInOrientation && currentNotif != null && settings.showNotifications
@@ -564,13 +569,14 @@ fun IslandOverlayRoot(
     val isNetworkSpeed = allowInOrientation && settings.showNetworkSpeed
     val hasPersistent = isFps || isWeather || isNetworkSpeed || isAlarm
 
-    val isOccupied = allowInOrientation && (isCall || isRecording || isNotification || isMedia || isProgress || isCharging || isPersistentCharging || isUnlock || isBluetooth || isFlashlight || isRingerMode || isAirplaneMode || isTaskConfirmation || hasPersistent)
+    val isOccupied = allowInOrientation && (isCall || isVoiceMemo || isRecording || isNotification || isMedia || isProgress || isCharging || isPersistentCharging || isUnlock || isBluetooth || isFlashlight || isRingerMode || isAirplaneMode || isTaskConfirmation || hasPersistent)
 
     // Unified priority list ordered dynamically by settings.featurePriorities (with persistent views at the bottom by default):
     val orderedActivePriorities = buildList {
         for (featureKey in settings.featurePriorities) {
             when (featureKey) {
                 "CALL" -> if (isCall) add(IslandPriority.CALL)
+                "VOICE_MEMO" -> if (isVoiceMemo) add(IslandPriority.VOICE_MEMO)
                 "MEDIA" -> if (isMedia) add(IslandPriority.MEDIA)
                 "PROGRESS" -> if (isProgress) add(IslandPriority.PROGRESS)
                 "RECORDING" -> if (isRecording) add(IslandPriority.SCREEN_RECORDING)
@@ -584,6 +590,7 @@ fun IslandOverlayRoot(
             }
         }
         if (isCall && IslandPriority.CALL !in this) add(0, IslandPriority.CALL)
+        if (isVoiceMemo && IslandPriority.VOICE_MEMO !in this) add(IslandPriority.VOICE_MEMO)
         if (isMedia && IslandPriority.MEDIA !in this) add(IslandPriority.MEDIA)
         if (isProgress && IslandPriority.PROGRESS !in this) add(IslandPriority.PROGRESS)
         if (isRecording && IslandPriority.SCREEN_RECORDING !in this) add(IslandPriority.SCREEN_RECORDING)
@@ -674,7 +681,7 @@ fun IslandOverlayRoot(
     val primaryOutlineColor = when {
         isCharging -> defaultTaskOutline
         compactPrimaryPriority == IslandPriority.CALL -> greenCallOutline
-        compactPrimaryPriority == IslandPriority.SCREEN_RECORDING -> redRecordingOutline
+        compactPrimaryPriority == IslandPriority.SCREEN_RECORDING || compactPrimaryPriority == IslandPriority.VOICE_MEMO -> redRecordingOutline
         compactPrimaryPriority == IslandPriority.MEDIA -> mediaOutline
         compactPrimaryPriority == IslandPriority.FLASHLIGHT -> flashlightOutline
         compactPrimaryPriority == IslandPriority.CHARGING -> defaultTaskOutline
@@ -684,7 +691,7 @@ fun IslandOverlayRoot(
     // Card 2 / Auxiliary Bubble (Secondary Island):
     val secondaryOutlineColor = when {
         compactSecondaryPriority == IslandPriority.CALL -> greenCallOutline
-        compactSecondaryPriority == IslandPriority.SCREEN_RECORDING -> redRecordingOutline
+        compactSecondaryPriority == IslandPriority.SCREEN_RECORDING || compactSecondaryPriority == IslandPriority.VOICE_MEMO -> redRecordingOutline
         compactSecondaryPriority == IslandPriority.MEDIA -> mediaOutline
         compactSecondaryPriority == IslandPriority.FLASHLIGHT -> flashlightOutline
         compactSecondaryPriority == IslandPriority.CHARGING -> defaultTaskOutline
@@ -694,7 +701,7 @@ fun IslandOverlayRoot(
     // Card 3 (Tertiary Expanded Island):
     val tertiaryOutlineColor = when {
         tertiaryPriority == IslandPriority.CALL -> greenCallOutline
-        tertiaryPriority == IslandPriority.SCREEN_RECORDING -> redRecordingOutline
+        tertiaryPriority == IslandPriority.SCREEN_RECORDING || tertiaryPriority == IslandPriority.VOICE_MEMO -> redRecordingOutline
         tertiaryPriority == IslandPriority.MEDIA -> mediaOutline
         tertiaryPriority == IslandPriority.FLASHLIGHT -> flashlightOutline
         else -> defaultTaskOutline
@@ -1030,6 +1037,7 @@ fun IslandOverlayRoot(
         }
     }
     val isCallActive = isCall && primaryPriority == IslandPriority.CALL
+    val isVoiceMemoActive = isVoiceMemo && primaryPriority == IslandPriority.VOICE_MEMO
     val isRecordingActive = isRecording && primaryPriority == IslandPriority.SCREEN_RECORDING
     val isFpsActive = isFps && primaryPriority == IslandPriority.FPS
     val isWeatherActive = isWeather && primaryPriority == IslandPriority.WEATHER
@@ -1050,7 +1058,7 @@ fun IslandOverlayRoot(
         IslandPriority.NETWORK_SPEED -> 114.dp
         IslandPriority.FPS -> 108.dp
         IslandPriority.CHARGING -> 112.dp
-        IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 104.dp
+        IslandPriority.CALL, IslandPriority.VOICE_MEMO, IslandPriority.SCREEN_RECORDING -> 104.dp
         IslandPriority.WEATHER -> 98.dp
         IslandPriority.ALARM -> 98.dp
         else -> 96.dp
@@ -1059,7 +1067,7 @@ fun IslandOverlayRoot(
         IslandPriority.NETWORK_SPEED -> 146.dp
         IslandPriority.FPS -> 140.dp
         IslandPriority.CHARGING -> 138.dp
-        IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 138.dp
+        IslandPriority.CALL, IslandPriority.VOICE_MEMO, IslandPriority.SCREEN_RECORDING -> 138.dp
         IslandPriority.WEATHER -> 134.dp
         IslandPriority.ALARM -> 136.dp
         else -> 132.dp
@@ -1089,12 +1097,13 @@ fun IslandOverlayRoot(
         isUnlock || isBluetooth -> unlockIslandWidth
         isCompactDual && !isSwapMerging -> compactMainFull + (teardropEarRadius * 2f)
         isCallActive -> callIslandWidth
+        isVoiceMemoActive -> recordingIslandWidth
         isRecordingActive -> recordingIslandWidth
         isNetworkSpeedActive -> networkSpeedIslandWidth
         isFpsActive -> fpsIslandWidth
         isWeatherActive -> weatherIslandWidth
         isOccupied || hasPersistent -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
-        else -> settings.widthDp.dp.coerceAtLeast(80.dp) + (teardropEarRadius * 2f)
+        else -> (settings.widthDp * 0.68f).dp.coerceIn(96.dp, 148.dp) + (teardropEarRadius * 2f)
     }
 
     // Expanded Cards: Card 1 (and Card 2 if dual mode).
@@ -1117,7 +1126,7 @@ fun IslandOverlayRoot(
     }
 
     val targetCard1Height = when {
-        isExpanded && (primaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.CALL || primaryPriority == IslandPriority.FPS || primaryPriority == IslandPriority.WEATHER || primaryPriority == IslandPriority.NETWORK_SPEED || primaryPriority == IslandPriority.CHARGING || primaryPriority == IslandPriority.ALARM) -> (78.dp * settings.expandedScale).coerceAtLeast(68.dp)
+        isExpanded && (primaryPriority == IslandPriority.VOICE_MEMO || primaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.CALL || primaryPriority == IslandPriority.FPS || primaryPriority == IslandPriority.WEATHER || primaryPriority == IslandPriority.NETWORK_SPEED || primaryPriority == IslandPriority.CHARGING || primaryPriority == IslandPriority.ALARM) -> (78.dp * settings.expandedScale).coerceAtLeast(68.dp)
         isExpanded && primaryPriority == IslandPriority.PROGRESS -> (84.dp * settings.expandedScale).coerceAtLeast(74.dp)
         isExpanded && primaryPriority == IslandPriority.POP_NOTIFICATION -> (notifBaseHeight * settings.expandedScale).coerceAtLeast(136.dp)
         isExpanded && primaryPriority == IslandPriority.FLASHLIGHT -> if (settings.designLanguage == DesignLanguage.MATERIAL3) (74.dp * settings.expandedScale).coerceAtLeast(60.dp) else (205.dp * settings.expandedScale).coerceAtLeast(165.dp)
@@ -1148,6 +1157,7 @@ fun IslandOverlayRoot(
     fun getExpandedHeightForPriority(priority: IslandPriority?): Dp {
         val baseH = when (priority) {
             IslandPriority.CALL,
+            IslandPriority.VOICE_MEMO,
             IslandPriority.SCREEN_RECORDING,
             IslandPriority.FPS,
             IslandPriority.WEATHER,
@@ -1161,6 +1171,7 @@ fun IslandOverlayRoot(
         }
         val minH = when (priority) {
             IslandPriority.CALL,
+            IslandPriority.VOICE_MEMO,
             IslandPriority.SCREEN_RECORDING,
             IslandPriority.FPS,
             IslandPriority.WEATHER,
@@ -1339,9 +1350,9 @@ fun IslandOverlayRoot(
         }
     }
 
-    LaunchedEffect(isExpanded, isOccupied, primaryPriority) {
+    LaunchedEffect(isExpanded, isOccupied, primaryPriority, settings.alwaysShowPill) {
         if (isExpanded) {
-            if (!isOccupied || primaryPriority == IslandPriority.IDLE) {
+            if ((!isOccupied && !settings.alwaysShowPill) || (primaryPriority == IslandPriority.IDLE && !settings.alwaysShowPill)) {
                 IslandStateManager.collapse()
             }
         }
@@ -1354,14 +1365,23 @@ fun IslandOverlayRoot(
         return@CompositionLocalProvider
     }
 
-    val swipeToSwapModifier = if (!isExpanded && isCompactDual && settings.swapActivitiesOnSwipe) {
-        Modifier.pointerInput(isSwappingActivities) {
+    val swipeToSwapModifier = if (!isExpanded && (isCompactDual && settings.swapActivitiesOnSwipe || settings.islandGesturesEnabled)) {
+        Modifier.pointerInput(isSwappingActivities, isCompactDual, settings.islandGesturesEnabled, settings.swipeLeftAction, settings.swipeRightAction) {
             var totalDragX = 0f
             detectHorizontalDragGestures(
                 onDragStart = { totalDragX = 0f },
                 onDragEnd = {
-                    if (!isSwappingActivities && kotlin.math.abs(totalDragX) > 18f) {
-                        triggerSwapActivities()
+                    if (kotlin.math.abs(totalDragX) > 22f) {
+                        if (isCompactDual && settings.swapActivitiesOnSwipe && !isSwappingActivities) {
+                            triggerSwapActivities()
+                        } else if (settings.islandGesturesEnabled) {
+                            triggerHaptic()
+                            if (totalDragX < 0f) {
+                                IslandGestureDispatcher.executeGestureAction(context, settings.swipeLeftAction, settings)
+                            } else {
+                                IslandGestureDispatcher.executeGestureAction(context, settings.swipeRightAction, settings)
+                            }
+                        }
                     }
                     totalDragX = 0f
                 },
@@ -1623,7 +1643,7 @@ fun IslandOverlayRoot(
                                                 )
                                             )
                                         }
-                                        primaryPriority == IslandPriority.SCREEN_RECORDING -> {
+                                        primaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.VOICE_MEMO -> {
                                             val redTint = Color(0xFFFF453A)
                                             Brush.verticalGradient(
                                                 colors = listOf(
@@ -1695,6 +1715,7 @@ fun IslandOverlayRoot(
 
                             if (!isCharging && expandedAlpha > 0.01f) {
                                 val isCompactRowCard1 = primaryPriority == IslandPriority.FLASHLIGHT ||
+                                        primaryPriority == IslandPriority.VOICE_MEMO ||
                                         primaryPriority == IslandPriority.SCREEN_RECORDING ||
                                         primaryPriority == IslandPriority.CALL ||
                                         primaryPriority == IslandPriority.PROGRESS ||
@@ -1720,6 +1741,7 @@ fun IslandOverlayRoot(
                                         media = currentMedia,
                                         notification = if (primaryPriority == IslandPriority.PROGRESS) currentProgress else currentNotif,
                                         recording = recording,
+                                        voiceMemo = voiceMemo,
                                         activeCall = activeCall,
                                         flashlightLevel = flashlightLevel,
                                         maxFlashlightLevel = maxFlashlightLevel,
@@ -1912,7 +1934,7 @@ fun IslandOverlayRoot(
                                                 )
                                             )
                                         }
-                                        secondaryPriority == IslandPriority.SCREEN_RECORDING -> {
+                                        secondaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.VOICE_MEMO -> {
                                             val redTint = Color(0xFFFF453A)
                                             Brush.verticalGradient(
                                                 colors = listOf(
@@ -1977,6 +1999,7 @@ fun IslandOverlayRoot(
 
                             if (animatedCard2Alpha > 0.15f && secondaryPriority != null) {
                                 val isCompactRowCard2 = secondaryPriority == IslandPriority.FLASHLIGHT ||
+                                        secondaryPriority == IslandPriority.VOICE_MEMO ||
                                         secondaryPriority == IslandPriority.SCREEN_RECORDING ||
                                         secondaryPriority == IslandPriority.CALL ||
                                         secondaryPriority == IslandPriority.PROGRESS ||
@@ -1997,6 +2020,7 @@ fun IslandOverlayRoot(
                                         media = currentMedia,
                                         notification = if (secondaryPriority == IslandPriority.PROGRESS) currentProgress else currentNotif,
                                         recording = recording,
+                                        voiceMemo = voiceMemo,
                                         activeCall = activeCall,
                                         flashlightLevel = flashlightLevel,
                                         maxFlashlightLevel = maxFlashlightLevel,
@@ -2187,7 +2211,7 @@ fun IslandOverlayRoot(
                                                 )
                                             )
                                         }
-                                        tertiaryPriority == IslandPriority.SCREEN_RECORDING -> {
+                                        tertiaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.VOICE_MEMO -> {
                                             val redTint = Color(0xFFFF453A)
                                             Brush.verticalGradient(
                                                 colors = listOf(
@@ -2252,6 +2276,7 @@ fun IslandOverlayRoot(
 
                             if (animatedCard3Alpha > 0.15f && tertiaryPriority != null) {
                                 val isCompactRowCard3 = tertiaryPriority == IslandPriority.FLASHLIGHT ||
+                                        tertiaryPriority == IslandPriority.VOICE_MEMO ||
                                         tertiaryPriority == IslandPriority.SCREEN_RECORDING ||
                                         tertiaryPriority == IslandPriority.CALL ||
                                         tertiaryPriority == IslandPriority.PROGRESS ||
@@ -2272,6 +2297,7 @@ fun IslandOverlayRoot(
                                         media = currentMedia,
                                         notification = if (tertiaryPriority == IslandPriority.PROGRESS) currentProgress else currentNotif,
                                         recording = recording,
+                                        voiceMemo = voiceMemo,
                                         activeCall = activeCall,
                                         flashlightLevel = flashlightLevel,
                                         maxFlashlightLevel = maxFlashlightLevel,
@@ -2444,6 +2470,7 @@ fun IslandOverlayRoot(
                                     media = currentMedia,
                                     notification = if (secondaryPriority == IslandPriority.PROGRESS) currentProgress else currentNotif,
                                     recording = recording,
+                                    voiceMemo = voiceMemo,
                                     fpsInfo = fpsInfo,
                                     weatherInfo = weatherInfo,
                                     networkSpeedInfo = networkSpeedInfo,
@@ -2506,14 +2533,14 @@ fun IslandOverlayRoot(
                                 transformOrigin = TransformOrigin(0.5f, 0f)
                             }
                             translationY = idleBounceY.value.dp.toPx()
-                            scaleX = idleBounceScale.value
+                            scaleX = idleBounceScale.value * idleStretchX.value
                             scaleY = teardropScaleY
                         }
                         .then(swipeToSwapModifier)
                         .clip(compactPillShape)
                         .background(if (animatedCompactWidth > 2.dp) Color.Black else Color.Transparent)
                         .then(
-                            if (settings.showOutline && settings.designLanguage != DesignLanguage.MATERIAL3 && animatedCompactWidth > 8.dp) {
+                            if (settings.showOutline && (isOccupied || hasPersistent) && settings.designLanguage != DesignLanguage.MATERIAL3 && animatedCompactWidth > 8.dp) {
                                 val outlineAlpha = primaryOutlineColor.alpha * compactPillAlpha
                                 if (settings.isTeardropCutout) {
                                     Modifier.drawWithContent {
@@ -2571,14 +2598,32 @@ fun IslandOverlayRoot(
                                         launch {
                                             idleBounceScale.snapTo(1f)
                                             idleBounceScale.animateTo(
-                                                targetValue = 0.95f,
-                                                animationSpec = tween(70, easing = FastOutSlowInEasing)
+                                                targetValue = 0.94f,
+                                                animationSpec = tween(65, easing = FastOutSlowInEasing)
                                             )
                                             idleBounceScale.animateTo(
-                                                targetValue = 1.04f,
-                                                animationSpec = tween(90, easing = FastOutSlowInEasing)
+                                                targetValue = 1.05f,
+                                                animationSpec = tween(85, easing = FastOutSlowInEasing)
                                             )
                                             idleBounceScale.animateTo(
+                                                targetValue = 1.0f,
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                    stiffness = Spring.StiffnessLow
+                                                )
+                                            )
+                                        }
+                                        launch {
+                                            idleStretchX.snapTo(1f)
+                                            idleStretchX.animateTo(
+                                                targetValue = 1.14f,
+                                                animationSpec = tween(80, easing = FastOutSlowInEasing)
+                                            )
+                                            idleStretchX.animateTo(
+                                                targetValue = 0.96f,
+                                                animationSpec = tween(95, easing = FastOutSlowInEasing)
+                                            )
+                                            idleStretchX.animateTo(
                                                 targetValue = 1.0f,
                                                 animationSpec = spring(
                                                     dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -2592,17 +2637,21 @@ fun IslandOverlayRoot(
                             onLongClick = {
                                 if (!isExpanded && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && !isTaskConfirmation) {
                                     triggerHaptic()
-                                    openAppForPriority(
-                                        context = context,
-                                        priority = primaryPriority,
-                                        media = currentMedia,
-                                        notification = currentNotif,
-                                        progress = currentProgress,
-                                        activeCall = activeCall,
-                                        onDismissNotification = {
-                                            IslandStateManager.dismissCurrentNotification()
-                                        }
-                                    )
+                                    if (!isOccupied && !hasPersistent) {
+                                        IslandStateManager.expand(IslandPriority.IDLE)
+                                    } else {
+                                        openAppForPriority(
+                                            context = context,
+                                            priority = primaryPriority,
+                                            media = currentMedia,
+                                            notification = currentNotif,
+                                            progress = currentProgress,
+                                            activeCall = activeCall,
+                                            onDismissNotification = {
+                                                IslandStateManager.dismissCurrentNotification()
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         ),
@@ -2880,6 +2929,7 @@ fun IslandOverlayRoot(
                                 media = currentMedia,
                                 notification = if (compactPrimaryPriority == IslandPriority.PROGRESS) currentProgress else currentNotif,
                                 recording = recording,
+                                voiceMemo = voiceMemo,
                                 activeCall = activeCall,
                                 isCompactDual = isCompactDual,
                                 isLeftCutout = settings.isLeftCutout,
@@ -3276,6 +3326,7 @@ fun AuxiliaryBubbleContent(
     media: MediaInfo?,
     notification: NotificationInfo?,
     recording: ScreenRecordingState,
+    voiceMemo: VoiceMemoState = VoiceMemoState(),
     fpsInfo: FpsInfo = FpsInfo(),
     weatherInfo: WeatherInfo = WeatherInfo(),
     networkSpeedInfo: NetworkSpeedInfo = NetworkSpeedInfo(),
@@ -3294,6 +3345,14 @@ fun AuxiliaryBubbleContent(
                 imageVector = Icons.Default.Call,
                 contentDescription = "Cuộc gọi đang diễn ra",
                 tint = if (isM3) m3Primary else Color(0xFF30D158),
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        IslandPriority.VOICE_MEMO -> {
+            Icon(
+                imageVector = Icons.Default.Mic,
+                contentDescription = "Ghi âm",
+                tint = Color(0xFFFF453A),
                 modifier = Modifier.size(16.dp)
             )
         }
@@ -3462,6 +3521,7 @@ fun CompactContent(
     media: MediaInfo?,
     notification: NotificationInfo?,
     recording: ScreenRecordingState,
+    voiceMemo: VoiceMemoState = VoiceMemoState(),
     activeCall: ActiveCallState = ActiveCallState(),
     isCompactDual: Boolean = false,
     isLeftCutout: Boolean = false,
@@ -3510,6 +3570,13 @@ fun CompactContent(
                     contentDescription = "Cuộc gọi đang diễn ra",
                     tint = if (isM3) m3Primary else Color(0xFF30D158),
                     modifier = Modifier.size(17.dp)
+                )
+            }
+
+            IslandPriority.VOICE_MEMO -> {
+                EqualizerVisualizer(
+                    isPlaying = voiceMemo.isRecording,
+                    barColor = Color(0xFFFF453A)
                 )
             }
 
@@ -3669,6 +3736,19 @@ fun CompactContent(
                     color = if (isM3) m3Primary else Color(0xFF30D158),
                     fontSize = if (isCompactDual) 10.5.sp else 11.sp,
                     fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
+
+            IslandPriority.VOICE_MEMO -> {
+                val minutes = voiceMemo.durationSeconds / 60
+                val seconds = voiceMemo.durationSeconds % 60
+                Text(
+                    text = String.format(Locale.US, "%02d:%02d", minutes, seconds),
+                    color = Color(0xFFFF453A),
+                    fontSize = if (isCompactDual) 10.5.sp else 11.sp,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     softWrap = false
                 )
@@ -3846,7 +3926,7 @@ fun CompactContent(
         val leftWeight = when (priority) {
             IslandPriority.NETWORK_SPEED -> 0.75f
             IslandPriority.FPS -> 0.85f
-            IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 0.85f
+            IslandPriority.CALL, IslandPriority.VOICE_MEMO, IslandPriority.SCREEN_RECORDING -> 0.85f
             IslandPriority.WEATHER -> 0.90f
             IslandPriority.ALARM -> 0.85f
             else -> 1f
@@ -3854,7 +3934,7 @@ fun CompactContent(
         val rightWeight = when (priority) {
             IslandPriority.NETWORK_SPEED -> 1.25f
             IslandPriority.FPS -> 1.15f
-            IslandPriority.CALL, IslandPriority.SCREEN_RECORDING -> 1.15f
+            IslandPriority.CALL, IslandPriority.VOICE_MEMO, IslandPriority.SCREEN_RECORDING -> 1.15f
             IslandPriority.WEATHER -> 1.10f
             IslandPriority.ALARM -> 1.15f
             else -> 1f
@@ -3909,6 +3989,7 @@ fun ExpandedCardContent(
     media: MediaInfo?,
     notification: NotificationInfo?,
     recording: ScreenRecordingState,
+    voiceMemo: VoiceMemoState = VoiceMemoState(),
     activeCall: ActiveCallState = ActiveCallState(),
     flashlightLevel: Int = 1,
     maxFlashlightLevel: Int = 1,
@@ -3929,6 +4010,9 @@ fun ExpandedCardContent(
     when (priority) {
         IslandPriority.CALL -> {
             ExpandedCallView(activeCall, onCollapse, scale, designLanguage = designLanguage)
+        }
+        IslandPriority.VOICE_MEMO -> {
+            ExpandedVoiceMemoView(voiceMemo, onCollapse, scale, designLanguage = designLanguage)
         }
         IslandPriority.SCREEN_RECORDING -> {
             ExpandedRecordingView(recording, onCollapse, scale, designLanguage = designLanguage)
@@ -3980,9 +4064,6 @@ fun ExpandedCardContent(
             ExpandedAlarmView(alarmInfo = alarmInfo, onCollapse = onCollapse, scale = scale, designLanguage = designLanguage)
         }
         IslandPriority.IDLE -> {
-            LaunchedEffect(Unit) {
-                onCollapse()
-            }
             ExpandedIdleView(onCollapse)
         }
     }
@@ -5540,6 +5621,99 @@ fun ExpandedRecordingView(
                     imageVector = Icons.Default.Stop,
                     contentDescription = "Dừng",
                     tint = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onErrorContainer else Color(0xFFFF453A),
+                    modifier = Modifier.size(iconSize)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+
+@Composable
+fun ExpandedVoiceMemoView(
+    voiceMemo: VoiceMemoState,
+    onCollapse: () -> Unit,
+    scale: Float = 1.0f,
+    designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE
+) {
+    val minutes = voiceMemo.durationSeconds / 60
+    val seconds = voiceMemo.durationSeconds % 60
+    val timerText = String.format(Locale.US, "%02d:%02d", minutes, seconds)
+    val timerSize = (20 * scale).coerceIn(17f, 24f).sp
+    val circleButtonSize = (44.dp * scale).coerceIn(38.dp, 52.dp)
+    val iconSize = (20.dp * scale).coerceIn(18.dp, 24.dp)
+    val coralRed = Color(0xFFFF453A)
+
+    Row(
+        modifier = Modifier.fillMaxSize(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Animated Coral Waveform matching the video (00:14)
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.5.dp)
+        ) {
+            val transition = rememberInfiniteTransition(label = "voice_memo_wave")
+            val phase by transition.animateFloat(
+                initialValue = 0f,
+                targetValue = 6.283f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(900, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart
+                ),
+                label = "vm_phase"
+            )
+            val weights = listOf(0.25f, 0.45f, 0.85f, 1.0f, 0.65f, 0.40f, 0.75f, 0.95f, 0.55f, 0.35f, 0.60f, 0.30f, 0.20f, 0.25f, 0.20f)
+            weights.forEachIndexed { idx, w ->
+                val dynamicFactor = if (voiceMemo.isRecording) {
+                    (0.45f + 0.55f * kotlin.math.abs(kotlin.math.sin(phase + idx * 0.55f))) * w
+                } else 0.2f
+                val barH = (4.dp + (22.dp * dynamicFactor)).coerceIn(4.dp, 24.dp)
+                Box(
+                    modifier = Modifier
+                        .width(2.8.dp)
+                        .height(barH)
+                        .clip(RoundedCornerShape(1.5.dp))
+                        .background(coralRed.copy(alpha = (0.45f + 0.55f * w).coerceIn(0.4f, 1f)))
+                )
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = timerText,
+                color = coralRed,
+                fontSize = timerSize,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.5.sp,
+                maxLines = 1
+            )
+
+            BouncyFilledTonalButton(
+                onClick = {
+                    IslandStateManager.onStopVoiceMemo?.invoke()
+                    onCollapse()
+                },
+                modifier = Modifier.size(circleButtonSize),
+                shape = CircleShape,
+                contentPadding = PaddingValues(0.dp),
+                colors = ButtonDefaults.filledTonalButtonColors(
+                    containerColor = coralRed,
+                    contentColor = Color.White
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Stop,
+                    contentDescription = "Dừng ghi âm",
+                    tint = Color.White,
                     modifier = Modifier.size(iconSize)
                 )
             }

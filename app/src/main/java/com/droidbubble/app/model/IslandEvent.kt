@@ -66,6 +66,13 @@ data class ScreenRecordingState(
     val isPaused: Boolean = false
 )
 
+data class VoiceMemoState(
+    val isRecording: Boolean = false,
+    val durationSeconds: Long = 0L,
+    val amplitude: Float = 0.65f,
+    val filePath: String? = null
+)
+
 data class ActiveCallState(
     val isActive: Boolean = false,
     val callerName: String = "",
@@ -78,6 +85,7 @@ data class ActiveCallState(
 
 enum class IslandPriority {
     CALL,
+    VOICE_MEMO,
     SCREEN_RECORDING,
     PROGRESS,
     POP_NOTIFICATION,

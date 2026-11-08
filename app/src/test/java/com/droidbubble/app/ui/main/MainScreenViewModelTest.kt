@@ -17,7 +17,7 @@ class MainScreenViewModelTest {
     fun islandSettings_newTogglesDisabledByDefault() {
         val settings = IslandSettings()
         org.junit.Assert.assertFalse(settings.dismissMediaOnPause)
-        org.junit.Assert.assertFalse(settings.alwaysShowPill)
+        org.junit.Assert.assertTrue(settings.alwaysShowPill)
     }
 
     @Test

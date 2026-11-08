@@ -5,6 +5,7 @@ import com.droidbubble.app.model.IslandPriority
 import com.droidbubble.app.model.MediaInfo
 import com.droidbubble.app.model.NotificationInfo
 import com.droidbubble.app.model.ScreenRecordingState
+import com.droidbubble.app.model.VoiceMemoState
 import com.droidbubble.app.model.FpsInfo
 import com.droidbubble.app.model.WeatherInfo
 import com.droidbubble.app.model.NetworkSpeedInfo
@@ -84,6 +85,21 @@ object IslandStateManager {
 
     private val _screenRecordingState = MutableStateFlow(ScreenRecordingState())
     val screenRecordingState: StateFlow<ScreenRecordingState> = _screenRecordingState.asStateFlow()
+
+    private val _voiceMemoState = MutableStateFlow(VoiceMemoState())
+    val voiceMemoState: StateFlow<VoiceMemoState> = _voiceMemoState.asStateFlow()
+    var onStopVoiceMemo: (() -> Unit)? = null
+
+    val isVoiceMemoActive: Boolean
+        get() = _voiceMemoState.value.isRecording
+
+    fun updateVoiceMemoState(state: VoiceMemoState) {
+        val wasRecording = _voiceMemoState.value.isRecording
+        _voiceMemoState.value = state
+        if (wasRecording && !state.isRecording && _isExpanded.value && (_expandedPriority.value == IslandPriority.VOICE_MEMO || !isOccupied)) {
+            collapse()
+        }
+    }
 
     private val _activeCallState = MutableStateFlow(ActiveCallState())
     val activeCallState: StateFlow<ActiveCallState> = _activeCallState.asStateFlow()
@@ -263,13 +279,14 @@ object IslandStateManager {
         get() = _alarmInfo.value != null
 
     val isOccupied: Boolean
-        get() = isCallActive || isRecordingActive || isNotificationActive || isMediaActive || isProgressActive || isChargingActive || isUnlockActive || isBluetoothActive || isFlashlightActive || isRingerModeActive || isAirplaneModeActive || isAlarmActive
+        get() = isCallActive || isVoiceMemoActive || isRecordingActive || isNotificationActive || isMediaActive || isProgressActive || isChargingActive || isUnlockActive || isBluetoothActive || isFlashlightActive || isRingerModeActive || isAirplaneModeActive || isAlarmActive
 
     // Live priority determination: Call is top priority, then Media, Flashlight, Progress, Screen Recording, and Notification alerts last
     val currentPriority: IslandPriority
         get() {
             return when {
                 isCallActive -> IslandPriority.CALL
+                isVoiceMemoActive -> IslandPriority.VOICE_MEMO
                 isMediaActive -> IslandPriority.MEDIA
                 isFlashlightActive -> IslandPriority.FLASHLIGHT
                 isProgressActive -> IslandPriority.PROGRESS

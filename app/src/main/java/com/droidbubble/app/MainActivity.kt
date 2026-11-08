@@ -1,8 +1,7 @@
 package com.droidbubble.app
 
-import android.content.pm.PackageManager
+import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -10,19 +9,23 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.ui.Modifier
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.droidbubble.app.data.SettingsRepository
 import com.droidbubble.app.service.IslandOverlayService
 import com.droidbubble.app.theme.DroidbubbleTheme
+import com.droidbubble.app.ui.main.LicenseActivationScreen
 import com.droidbubble.app.ui.main.MainScreen
 import com.droidbubble.app.ui.main.MainScreenViewModel
 import com.droidbubble.app.ui.main.PermissionHelper
-import android.content.Intent
+import com.droidbubble.app.util.LicenseManager
+
 class MainActivity : ComponentActivity() {
 
     private val viewModel by viewModels<MainScreenViewModel>(
@@ -41,7 +44,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         viewModel.checkPermissions(this)
-        if (PermissionHelper.isOverlayGranted(this)) {
+        if (LicenseManager.isActivated(this) && PermissionHelper.isOverlayGranted(this)) {
             IslandOverlayService.start(this)
         }
         if (intent.getBooleanExtra("EXTRA_SHOW_UPDATE", false)) {
@@ -49,17 +52,42 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            DroidbubbleTheme {
+            val settings by viewModel.settings.collectAsState()
+            DroidbubbleTheme(
+                themeMode = settings.appThemeMode,
+                accentColorKey = settings.accentColorKey
+            ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    MainScreen(viewModel = viewModel)
+                    var isLicenseActivated by remember {
+                        mutableStateOf(LicenseManager.isActivated(this@MainActivity))
+                    }
+
+                    if (!isLicenseActivated) {
+                        LicenseActivationScreen(
+                            onActivated = {
+                                isLicenseActivated = true
+                                if (PermissionHelper.isOverlayGranted(this@MainActivity)) {
+                                    IslandOverlayService.start(this@MainActivity)
+                                }
+                            }
+                        )
+                    } else {
+                        MainScreen(
+                            viewModel = viewModel,
+                            onDeactivateLicense = {
+                                LicenseManager.deactivate(this@MainActivity)
+                                IslandOverlayService.stop(this@MainActivity)
+                                isLicenseActivated = false
+                            }
+                        )
+                    }
                 }
             }
         }
     }
-
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
@@ -72,8 +100,10 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.checkPermissions(this)
-        if (PermissionHelper.isOverlayGranted(this)) {
+        if (LicenseManager.isActivated(this) && PermissionHelper.isOverlayGranted(this)) {
             IslandOverlayService.start(this)
+        } else if (!LicenseManager.isActivated(this)) {
+            IslandOverlayService.stop(this)
         }
     }
 }

@@ -550,7 +550,7 @@ class IslandOverlayService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_STOP) {
+        if (intent?.action == ACTION_STOP || !com.droidbubble.app.util.LicenseManager.isActivated(this)) {
             removeOverlay()
             stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
@@ -662,7 +662,7 @@ class IslandOverlayService : Service() {
         val initialHeight = if (shouldShowCompact) {
             ((currentSettings.topOffsetDp + currentSettings.heightDp + 12) * density).toInt()
         } else 1
-        val initialFlags = if (isOccupied || hasPersistentWidgets) flags else (flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+        val initialFlags = if (shouldShowCompact) flags else (flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
 
         val windowType = if (aService != null) {
             WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
@@ -772,8 +772,9 @@ class IslandOverlayService : Service() {
                 kotlinx.coroutines.flow.combine(
                     IslandStateManager.isDeviceLocked,
                     IslandStateManager.alarmInfo,
-                    IslandStateManager.activeTaskConfirmation
-                ) { _, _, _ -> Unit }
+                    IslandStateManager.activeTaskConfirmation,
+                    IslandStateManager.voiceMemoState
+                ) { _, _, _, _ -> Unit }
             ) { expanded, _, _, _ -> expanded }.collectLatest { expanded ->
                 updateWindowState(expanded)
             }
@@ -799,6 +800,7 @@ class IslandOverlayService : Service() {
             settingsRepository.settingsFlow.collectLatest { settings ->
                 currentSettings = settings
                 persistentTelemetryManager?.updateSettings(settings)
+                HardwareEqualizerManager.applyFromSettings(settings)
                 IslandStateManager.dismissMediaOnPause = settings.dismissMediaOnPause
                 IslandStateManager.autoDismissNotifications = settings.autoDismissNotifications
                 IslandStateManager.autoDismissNotificationSeconds = settings.notificationAutoDismissSeconds
@@ -916,6 +918,7 @@ class IslandOverlayService : Service() {
                     (currentSettings.showMedia && IslandStateManager.isMediaActive) ||
                     (currentSettings.showNotifications && IslandStateManager.isNotificationActive) ||
                     (currentSettings.showLiveProgress && IslandStateManager.isProgressActive) ||
+                    (currentSettings.showVoiceMemo && IslandStateManager.isVoiceMemoActive) ||
                     (currentSettings.showScreenRecording && IslandStateManager.isRecordingActive) ||
                     isFlashlight ||
                     isCharging ||
@@ -938,11 +941,7 @@ class IslandOverlayService : Service() {
             fun applyCompactBounds() {
                 collapseJob?.cancel()
                 if (shouldShowCompact) {
-                    val targetFlags = if (isOccupied || hasPersistentWidgets) {
-                        params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-                    } else {
-                        params.flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-                    }
+                    val targetFlags = params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
                     val compactWindowWidth = if (currentSettings.isLeftCutout) {
                         WindowManager.LayoutParams.MATCH_PARENT
                     } else {

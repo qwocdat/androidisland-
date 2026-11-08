@@ -231,8 +231,24 @@ import com.droidbubble.app.service.IslandOverlayService
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
+import com.droidbubble.app.ui.liquid.LiquidActivitiesTab
+import com.droidbubble.app.ui.liquid.LiquidAnimationSettingsScreen
+import com.droidbubble.app.ui.liquid.LiquidAppearanceTab
+import com.droidbubble.app.ui.liquid.LiquidGlassNavigationBar
+import com.droidbubble.app.ui.liquid.LiquidHomeTab
+import com.droidbubble.app.ui.liquid.LiquidNavTabItem
+import com.droidbubble.app.ui.liquid.LiquidSettingsTab
+import com.droidbubble.app.ui.liquid.LiquidShortcutsTab
+import com.droidbubble.app.ui.liquid.LiquidStrings
+
 enum class MainScreenPage {
     TOOLS_ROOT,
+    ANIMATION_SETTINGS,
     DROIDBUBBLE,
     DIMENSIONS,
     APPEARANCE,
@@ -242,8 +258,6 @@ enum class MainScreenPage {
     DROIDBAR_APPS,
     TASKS
 }
-
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun UpdateCardItem(
@@ -354,10 +368,12 @@ fun UpdateCardItem(
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun MainScreen(
     viewModel: MainScreenViewModel,
+    onDeactivateLicense: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -371,9 +387,13 @@ fun MainScreen(
     val updateState by viewModel.updateState.collectAsState()
     val showUpdateSheet by viewModel.showUpdateSheet.collectAsState()
 
+    val s = remember(settings.appLanguage) { LiquidStrings.forLang(settings.appLanguage) }
+    var selectedBottomTab by remember { mutableIntStateOf(0) }
+
     var showAppFilterSheet by remember { mutableStateOf(false) }
     var appFilterQuery by remember { mutableStateOf("") }
 
+    var showAnimationSettingsPage by remember { mutableStateOf(false) }
     var showDroidbubblePage by remember { mutableStateOf(false) }
     var showDimensionsPage by remember { mutableStateOf(false) }
     var showAppearancePage by remember { mutableStateOf(false) }
@@ -382,7 +402,14 @@ fun MainScreen(
     var showDroidbarPage by remember { mutableStateOf(false) }
     var showDroidbarAppsPage by remember { mutableStateOf(false) }
     var showTasksPage by remember { mutableStateOf(false) }
+
+    var showVideoAnnouncementDialog by remember { mutableStateOf(AnnouncementManager.shouldShow(context)) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
+    var showConfigManagerDialog by remember { mutableStateOf(false) }
+    var configJsonText by remember { mutableStateOf("") }
+    var showQuickSearchDialog by remember { mutableStateOf(false) }
+    var quickSearchQuery by remember { mutableStateOf("") }
+
     var feedbackType by remember { mutableStateOf(FeedbackType.BUG) }
     var feedbackTitle by remember { mutableStateOf("") }
     var feedbackDescription by remember { mutableStateOf("") }
@@ -398,7 +425,6 @@ fun MainScreen(
         }
     }
 
-    // Re-check permissions on every onResume
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -416,6 +442,7 @@ fun MainScreen(
     }
 
     val currentNavPage = when {
+        showAnimationSettingsPage -> MainScreenPage.ANIMATION_SETTINGS
         showTasksPage -> MainScreenPage.TASKS
         showDroidbarAppsPage -> MainScreenPage.DROIDBAR_APPS
         showDroidbarPage -> MainScreenPage.DROIDBAR
@@ -430,13 +457,9 @@ fun MainScreen(
     AnimatedContent(
         targetState = currentNavPage,
         transitionSpec = {
-            val isNavigatingForward = when {
-                initialState == MainScreenPage.TOOLS_ROOT && targetState != MainScreenPage.TOOLS_ROOT -> true
-                initialState == MainScreenPage.DROIDBUBBLE && (targetState == MainScreenPage.DIMENSIONS || targetState == MainScreenPage.APPEARANCE || targetState == MainScreenPage.GENERAL || targetState == MainScreenPage.MEDIA_PLAYER) -> true
-                initialState == MainScreenPage.APPEARANCE && targetState == MainScreenPage.MEDIA_PLAYER -> true
-                initialState == MainScreenPage.DROIDBAR && targetState == MainScreenPage.DROIDBAR_APPS -> true
-                else -> false
-            }
+            val isNavigatingForward = initialState == MainScreenPage.TOOLS_ROOT && targetState != MainScreenPage.TOOLS_ROOT ||
+                initialState == MainScreenPage.DROIDBAR && targetState == MainScreenPage.DROIDBAR_APPS ||
+                initialState == MainScreenPage.APPEARANCE && targetState == MainScreenPage.MEDIA_PLAYER
             if (isNavigatingForward) {
                 (slideInHorizontally(
                     initialOffsetX = { fullWidth -> fullWidth },
@@ -464,6 +487,15 @@ fun MainScreen(
         label = "subPageTransition"
     ) { page ->
         when (page) {
+            MainScreenPage.ANIMATION_SETTINGS -> {
+                BackHandler(onBack = { showAnimationSettingsPage = false })
+                LiquidAnimationSettingsScreen(
+                    settings = settings,
+                    s = s,
+                    onUpdateSettings = { viewModel.updateSettings(it) },
+                    onBack = { showAnimationSettingsPage = false }
+                )
+            }
             MainScreenPage.DIMENSIONS -> {
                 DimensionsPage(
                     settings = settings,
@@ -520,806 +552,424 @@ fun MainScreen(
                     modifier = modifier
                 )
             }
-            MainScreenPage.TOOLS_ROOT -> {
-                val toolsListState = rememberLazyListState()
-                var overscrollOffset by remember { mutableFloatStateOf(0f) }
-                val animatedOverscroll by animateFloatAsState(
-                    targetValue = overscrollOffset,
-                    animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMediumLow),
-                    label = "overscrollOffset"
-                )
-
-                val nestedScrollConnection = remember {
-                    object : NestedScrollConnection {
-                        override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                            if (available.y < 0 && overscrollOffset > 0f) {
-                                val consumed = available.y.coerceAtLeast(-overscrollOffset)
-                                overscrollOffset += consumed
-                                return Offset(0f, consumed)
-                            }
-                            return Offset.Zero
-                        }
-
-                        override fun onPostScroll(
-                            consumed: Offset,
-                            available: Offset,
-                            source: NestedScrollSource
-                        ): Offset {
-                            if (available.y > 0 && toolsListState.firstVisibleItemIndex == 0 && toolsListState.firstVisibleItemScrollOffset == 0) {
-                                val delta = available.y * 0.45f
-                                overscrollOffset = (overscrollOffset + delta).coerceAtMost(160f)
-                                return Offset(0f, available.y)
-                            }
-                            return Offset.Zero
-                        }
-
-                        override suspend fun onPreFling(available: Velocity): Velocity {
-                            overscrollOffset = 0f
-                            return Velocity.Zero
-                        }
-
-                        override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                            overscrollOffset = 0f
-                            return Velocity.Zero
-                        }
-                    }
-                }
-
-                val expandProgress = (animatedOverscroll / 70f).coerceIn(0f, 1f)
-                val appVersion = remember { com.droidbubble.app.util.UpdateManager.getCurrentVersion(context) }
-                val titleSize = (20f + (expandProgress * 8f)).sp
-                val topBarHeight = (64.dp + (expandProgress * 36).dp)
-
-                Scaffold(
-                    modifier = modifier.nestedScroll(nestedScrollConnection),
-                    topBar = {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(topBarHeight)
-                                .background(MaterialTheme.colorScheme.background)
-                                .statusBarsPadding(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.Center
-                            ) {
-                                Text(
-                                    text = "Androidisland",
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = titleSize,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    letterSpacing = if (expandProgress > 0.05f) (0.5.sp * expandProgress) else 0.sp
-                                )
-                                Text(
-                                    text = "by digitalxiao • v$appVersion",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-
-                            IconButton(
-                                onClick = { showFeedbackSheet = true },
-                                modifier = Modifier
-                                    .align(Alignment.CenterEnd)
-                                    .padding(end = 8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Feedback,
-                                    contentDescription = "Gửi phản hồi",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        }
-                    }
-                ) { innerPadding ->
-                    LazyColumn(
-                        state = toolsListState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        item {
-                            UpdateCardItem(
-                                updateState = updateState,
-                                onCheck = { viewModel.checkForUpdates(context) },
-                                onOpenSheet = { viewModel.openUpdateSheet() }
-                            )
-                        }
-
-                        item {
-                            SectionHeader(
-                                title = "Tiện ích",
-                                icon = Icons.Default.Widgets
-                            )
-                        }
-
-                        item {
-                            Column(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                SettingsCardItem(position = GroupPosition.TOP) {
-                                    ListItem(
-                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                        headlineContent = { Text("Androidisland", fontWeight = FontWeight.SemiBold) },
-                                        leadingContent = {
-                                            Surface(
-                                                modifier = Modifier.size(38.dp),
-                                                shape = M3Cookie6Shape,
-                                                color = MaterialTheme.colorScheme.primaryContainer,
-                                                contentColor = MaterialTheme.colorScheme.primary
-                                            ) {
-                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Widgets,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(20.dp),
-                                                        tint = MaterialTheme.colorScheme.primary
-                                                    )
-                                                }
-                                            }
-                                        },
-                                        trailingContent = {
-                                            Icon(
-                                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                                contentDescription = "Mở Androidisland",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        },
-                                        modifier = Modifier.clickable { showDroidbubblePage = true }
-                                    )
-                                }
-
-                                SettingsCardItem(position = GroupPosition.MIDDLE) {
-                                    ListItem(
-                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                        headlineContent = { Text("Thanh cạnh Droidbar", fontWeight = FontWeight.SemiBold) },
-                                        leadingContent = {
-                                            Surface(
-                                                modifier = Modifier.size(38.dp),
-                                                shape = M3Cookie6Shape,
-                                                color = MaterialTheme.colorScheme.primaryContainer,
-                                                contentColor = MaterialTheme.colorScheme.primary
-                                            ) {
-                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.VerticalSplit,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(20.dp),
-                                                        tint = MaterialTheme.colorScheme.primary
-                                                    )
-                                                }
-                                            }
-                                        },
-                                        trailingContent = {
-                                            Icon(
-                                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                                contentDescription = "Mở Thanh cạnh Droidbar",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        },
-                                        modifier = Modifier.clickable { showDroidbarPage = true }
-                                    )
-                                }
-
-                                SettingsCardItem(position = GroupPosition.BOTTOM) {
-                                    ListItem(
-                                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                        headlineContent = { Text("Tác vụ nhanh", fontWeight = FontWeight.SemiBold) },
-                                        leadingContent = {
-                                            Surface(
-                                                modifier = Modifier.size(38.dp),
-                                                shape = M3Cookie6Shape,
-                                                color = MaterialTheme.colorScheme.primaryContainer,
-                                                contentColor = MaterialTheme.colorScheme.primary
-                                            ) {
-                                                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                                    Icon(
-                                                        imageVector = Icons.Default.Bolt,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.size(20.dp),
-                                                        tint = MaterialTheme.colorScheme.primary
-                                                    )
-                                                }
-                                            }
-                                        },
-                                        trailingContent = {
-                                            Icon(
-                                                imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                                contentDescription = "Mở Tác vụ nhanh",
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        },
-                                        modifier = Modifier.clickable { showTasksPage = true }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
             MainScreenPage.DROIDBUBBLE -> {
                 BackHandler(onBack = { showDroidbubblePage = false })
-                var isDraggingIslandActivity by remember { mutableStateOf(false) }
-
-                Scaffold(
-                    modifier = modifier,
-                    topBar = {
-                        TopAppBar(
-                            title = {
-                                Text(
-                                    text = "Androidisland",
-                                    fontWeight = FontWeight.Bold
-                                )
-                            },
-                            navigationIcon = {
-                                IconButton(onClick = { showDroidbubblePage = false }) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "Quay lại Androidisland"
-                                    )
-                                }
-                            },
-                            actions = {
-                                IconButton(onClick = { showFeedbackSheet = true }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Feedback,
-                                        contentDescription = "Gửi phản hồi",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.background
-                            )
-                        )
-                    }
-                ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            userScrollEnabled = !isDraggingIslandActivity,
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            // SECTION 1: PERMISSIONS (Hides individual item once granted, hides whole section when all granted!)
-            if (pendingPermissions.isNotEmpty()) {
-                item {
-                    SectionHeader(
-                        title = "Thiết lập cần thiết",
-                        icon = Icons.Default.Security,
-                        badge = "${pendingPermissions.size} chờ cấp",
-                        badgeColor = MaterialTheme.colorScheme.error
+                DimensionsPage(
+                    settings = settings,
+                    onUpdateSettings = { viewModel.updateSettings(it) },
+                    onBack = { showDroidbubblePage = false },
+                    modifier = modifier
+                )
+            }
+            MainScreenPage.TOOLS_ROOT -> {
+                if (selectedBottomTab != 0) {
+                    BackHandler(onBack = { selectedBottomTab = 0 })
+                }
+                val isLightTheme = settings.appThemeMode == "LIGHT"
+                val navTabs = remember(s) {
+                    listOf(
+                        LiquidNavTabItem(s.tabHome, Icons.Default.Home),
+                        LiquidNavTabItem(s.tabActivities, Icons.Default.Explore),
+                        LiquidNavTabItem(s.tabShortcuts, Icons.Default.Apps),
+                        LiquidNavTabItem(s.tabSettings, Icons.Default.Settings),
+                        LiquidNavTabItem(s.tabAppearance, Icons.Default.Palette)
                     )
                 }
 
-                item {
+                Box(
+                    modifier = modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .statusBarsPadding()
                     ) {
-                        pendingPermissions.forEachIndexed { index, perm ->
-                            val position = when {
-                                pendingPermissions.size == 1 -> GroupPosition.SINGLE
-                                index == 0 -> GroupPosition.TOP
-                                index == pendingPermissions.size - 1 -> GroupPosition.BOTTOM
-                                else -> GroupPosition.MIDDLE
-                            }
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = getGroupedShape(position),
-                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
-                            ) {
-                                ListItem(
-                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                    headlineContent = {
-                                        Text(perm.title, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                    },
-                                    leadingContent = {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .clip(CircleShape)
-                                                .background(MaterialTheme.colorScheme.errorContainer),
-                                            contentAlignment = Alignment.Center
-                                        ) {
+                        // Top Header Bar matching video UI
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            if (selectedBottomTab == 0) {
+                                Column {
+                                    Text(
+                                        text = s.appTitle,
+                                        color = MaterialTheme.colorScheme.onBackground,
+                                        fontSize = 26.sp,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                    Text(
+                                        text = s.appSubtitle,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        letterSpacing = 1.4.sp
+                                    )
+                                }
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Surface(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .clickable { showVideoAnnouncementDialog = true },
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
                                             Icon(
-                                                imageVector = Icons.Default.Warning,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.error,
+                                                imageVector = Icons.Default.PlayCircleOutline,
+                                                contentDescription = "TikTok Video",
+                                                tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(20.dp)
                                             )
                                         }
-                                    },
-                                    trailingContent = {
-                                        Button(
-                                            onClick = {
-                                                runCatching { context.startActivity(perm.createIntent(context)) }
-                                            },
-                                            shape = RoundedCornerShape(12.dp)
-                                        ) {
-                                            Text("Cấp quyền", fontWeight = FontWeight.SemiBold)
-                                        }
                                     }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // SECTION 2: MASTER ENABLE SWITCH
-            item {
-                SettingsCardItem(position = GroupPosition.SINGLE, isActive = settings.isEnabled) {
-                    ListItem(
-                        colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        headlineContent = { Text("Bật Đảo động (Island)", fontWeight = FontWeight.SemiBold) },
-                        leadingContent = {
-                            Icon(Icons.Default.PowerSettingsNew, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                        },
-                        trailingContent = {
-                            Switch(
-                                checked = settings.isEnabled,
-                                onCheckedChange = { enabled ->
-                                    viewModel.toggleEnabled(context, enabled)
-                                }
-                            )
-                        }
-                    )
-                }
-            }
-
-
-
-            // TABS: ISLAND DIMENSIONS & APPEARANCE
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    SettingsCardItem(position = GroupPosition.TOP) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier.clickable { showDimensionsPage = true },
-                            headlineContent = { Text("Kích thước & Vị trí Đảo", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Surface(
-                                    modifier = Modifier.size(38.dp),
-                                    shape = M3Cookie6Shape,
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.primary
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Default.Straighten, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                    contentDescription = "Mở Kích thước & Vị trí Đảo",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier.clickable { showAppearancePage = true },
-                            headlineContent = { Text("Giao diện & Phản hồi", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Surface(
-                                    modifier = Modifier.size(38.dp),
-                                    shape = M3Cookie6Shape,
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.primary
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Default.Palette, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                    contentDescription = "Mở Giao diện & Phản hồi",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier.clickable { showMediaPlayerPage = true },
-                            headlineContent = { Text("Tùy chỉnh Trình phát nhạc", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Surface(
-                                    modifier = Modifier.size(38.dp),
-                                    shape = M3Cookie6Shape,
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.primary
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Default.MusicNote, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                    contentDescription = "Mở Tùy chỉnh Trình phát nhạc",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.BOTTOM) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            modifier = Modifier.clickable { showGeneralPage = true },
-                            headlineContent = { Text("Cài đặt chung", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Surface(
-                                    modifier = Modifier.size(38.dp),
-                                    shape = M3Cookie6Shape,
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.primary
-                                ) {
-                                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-                                    }
-                                }
-                            },
-                            trailingContent = {
-                                Icon(
-                                    Icons.AutoMirrored.Filled.ArrowForwardIos,
-                                    contentDescription = "Mở Cài đặt chung",
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                                    modifier = Modifier.size(16.dp)
-                                )
-                            }
-                        )
-                    }
-                }
-            }
-
-            // SECTION 5A: ISLAND ACTIVITIES (DRAG TO REORDER PRIORITY)
-            item {
-                SectionHeader(
-                    title = "Hoạt động trên Đảo (Kéo để đổi thứ tự)",
-                    icon = Icons.Default.Apps
-                )
-            }
-
-            item {
-                val reorderableKeys = remember(settings.featurePriorities) {
-                    val valid = DEFAULT_FEATURE_PRIORITIES
-                    val list = settings.featurePriorities.filter { it in valid }.toMutableList()
-                    for (v in valid) {
-                        if (v !in list) list.add(v)
-                    }
-                    list.toMutableStateList()
-                }
-                var draggingKey by remember { mutableStateOf<String?>(null) }
-                var dragOffset by remember { mutableStateOf(0f) }
-                var itemHeightPx by remember { mutableStateOf(0f) }
-
-                LaunchedEffect(settings.featurePriorities) {
-                    if (draggingKey == null) {
-                        val valid = DEFAULT_FEATURE_PRIORITIES
-                        val list = settings.featurePriorities.filter { it in valid }.toMutableList()
-                        for (v in valid) {
-                            if (v !in list) list.add(v)
-                        }
-                        if (reorderableKeys.toList() != list) {
-                            reorderableKeys.clear()
-                            reorderableKeys.addAll(list)
-                        }
-                    }
-                }
-
-                val density = LocalDensity.current
-                val cardGapPx = with(density) { 4.dp.toPx() }
-                val effectiveCardHeight = if (itemHeightPx > 0f) itemHeightPx else with(density) { 64.dp.toPx() }
-
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    reorderableKeys.forEachIndexed { index, featureKey ->
-                        key(featureKey) {
-                            val currentKey = featureKey
-                            val isBeingDragged = draggingKey == currentKey
-                            val zIdx = if (isBeingDragged) 10f else 1f
-
-                            val itemPosition = when {
-                                index == 0 -> GroupPosition.TOP
-                                index == reorderableKeys.size - 1 -> GroupPosition.BOTTOM
-                                else -> GroupPosition.MIDDLE
-                            }
-
-                            val isFeatureChecked = when (currentKey) {
-                                "CALL" -> settings.showCalls
-                                "MEDIA" -> settings.showMedia
-                                "NOTIFICATION" -> settings.showNotifications
-                                "PROGRESS" -> settings.showLiveProgress
-                                "RECORDING" -> settings.showScreenRecording
-                                "FLASHLIGHT" -> settings.showFlashlight
-                                "PERSISTENT_CHARGING" -> settings.persistentCharging
-                                "ALARM" -> settings.showAlarm
-                                "FPS" -> settings.showFps
-                                "WEATHER" -> settings.showWeather
-                                "NETWORK_SPEED" -> settings.showNetworkSpeed
-                                else -> false
-                            }
-
-                            val featureTitle = when (currentKey) {
-                                "CALL" -> "Cuộc gọi điện thoại"
-                                "MEDIA" -> "Trình phát nhạc"
-                                "NOTIFICATION" -> "Thông báo đến"
-                                "PROGRESS" -> "Tiến trình trực tiếp & Hoạt động"
-                                "RECORDING" -> "Chỉ báo quay màn hình"
-                                "FLASHLIGHT" -> "Chỉ báo đèn pin"
-                                "PERSISTENT_CHARGING" -> "Hiển thị sạc liên tục"
-                                "ALARM" -> "Báo thức sắp tới"
-                                "FPS" -> "Bộ đếm FPS"
-                                "WEATHER" -> "Thời tiết & Nhiệt độ"
-                                "NETWORK_SPEED" -> "Wi-Fi & Tốc độ mạng"
-                                else -> currentKey
-                            }
-
-                            val featureIcon = when (currentKey) {
-                                "CALL" -> Icons.Default.Call
-                                "MEDIA" -> Icons.Default.MusicNote
-                                "NOTIFICATION" -> Icons.Default.Notifications
-                                "PROGRESS" -> Icons.Default.Animation
-                                "RECORDING" -> Icons.Default.Videocam
-                                "FLASHLIGHT" -> Icons.Default.FlashlightOn
-                                "PERSISTENT_CHARGING" -> Icons.Default.Bolt
-                                "ALARM" -> Icons.Default.Alarm
-                                "FPS" -> Icons.Default.Speed
-                                "WEATHER" -> Icons.Default.WbSunny
-                                "NETWORK_SPEED" -> Icons.Default.Wifi
-                                else -> Icons.Default.Apps
-                            }
-
-                            val cardModifier = Modifier
-                                .fillMaxWidth()
-                                .zIndex(zIdx)
-                                .onGloballyPositioned { coords ->
-                                    if (!isBeingDragged && coords.size.height > 0) {
-                                        itemHeightPx = coords.size.height.toFloat() + cardGapPx
-                                    }
-                                }
-                                .graphicsLayer {
-                                    if (isBeingDragged) {
-                                        translationY = dragOffset
-                                        scaleX = 1.02f
-                                        scaleY = 1.02f
-                                        shadowElevation = 14.dp.toPx()
-                                    }
-                                }
-
-                            SettingsCardItem(
-                                position = if (isBeingDragged) GroupPosition.SINGLE else itemPosition,
-                                modifier = cardModifier,
-                                isActive = isFeatureChecked
-                            ) {
-                                ListItem(
-                                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                                    headlineContent = { Text(featureTitle, fontWeight = FontWeight.SemiBold) },
-                                    leadingContent = {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(36.dp)
-                                                    .pointerInput(currentKey) {
-                                                        detectVerticalDragGestures(
-                                                            onDragStart = {
-                                                                isDraggingIslandActivity = true
-                                                                draggingKey = currentKey
-                                                                dragOffset = 0f
-                                                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                                            },
-                                                            onDragEnd = {
-                                                                if (draggingKey == currentKey) {
-                                                                    val updatedList = reorderableKeys.toList()
-                                                                    viewModel.updateSettings { it.copy(featurePriorities = updatedList) }
-                                                                    view.performHapticFeedback(HapticFeedbackConstants.CONFIRM)
-                                                                }
-                                                                draggingKey = null
-                                                                isDraggingIslandActivity = false
-                                                                dragOffset = 0f
-                                                            },
-                                                            onDragCancel = {
-                                                                draggingKey = null
-                                                                isDraggingIslandActivity = false
-                                                                dragOffset = 0f
-                                                            },
-                                                            onVerticalDrag = { change, dragAmount ->
-                                                                change.consume()
-                                                                if (draggingKey != currentKey) return@detectVerticalDragGestures
-                                                                dragOffset += dragAmount
-                                                                val currentIndex = reorderableKeys.indexOf(currentKey)
-                                                                if (currentIndex == -1) return@detectVerticalDragGestures
-                                                                val step = if (itemHeightPx > 0f) itemHeightPx else effectiveCardHeight
-                                                                val threshold = step * 0.5f
-                                                                if (dragOffset > threshold && currentIndex < reorderableKeys.lastIndex) {
-                                                                    val item = reorderableKeys.removeAt(currentIndex)
-                                                                    reorderableKeys.add(currentIndex + 1, item)
-                                                                    dragOffset -= step
-                                                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                                                } else if (dragOffset < -threshold && currentIndex > 0) {
-                                                                    val item = reorderableKeys.removeAt(currentIndex)
-                                                                    reorderableKeys.add(currentIndex - 1, item)
-                                                                    dragOffset += step
-                                                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
-                                                                }
-                                                            }
-                                                        )
-                                                    },
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Menu,
-                                                    contentDescription = "Kéo để sắp xếp",
-                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
-                                                    modifier = Modifier.size(20.dp)
-                                                )
-                                            }
+                                    Surface(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .clickable { showFeedbackSheet = true },
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
                                             Icon(
-                                                imageVector = featureIcon,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                imageVector = Icons.Default.Send,
+                                                contentDescription = "Feedback",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(18.dp)
                                             )
                                         }
-                                    },
-                                    trailingContent = {
-                                        Switch(
-                                            checked = isFeatureChecked,
-                                            onCheckedChange = { checked ->
-                                                viewModel.updateSettings { s ->
-                                                    when (currentKey) {
-                                                        "CALL" -> s.copy(showCalls = checked)
-                                                        "MEDIA" -> s.copy(showMedia = checked)
-                                                        "NOTIFICATION" -> s.copy(showNotifications = checked)
-                                                        "PROGRESS" -> s.copy(showLiveProgress = checked)
-                                                        "RECORDING" -> s.copy(showScreenRecording = checked)
-                                                        "FLASHLIGHT" -> s.copy(showFlashlight = checked)
-                                                        "FPS" -> s.copy(showFps = checked)
-                                                        "WEATHER" -> s.copy(showWeather = checked)
-                                                        "NETWORK_SPEED" -> s.copy(showNetworkSpeed = checked)
-                                                        "PERSISTENT_CHARGING" -> s.copy(persistentCharging = checked)
-                                                        "ALARM" -> s.copy(showAlarm = checked)
-                                                        else -> s
-                                                    }
-                                                }
-                                            }
+                                    }
+                                    Surface(
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(CircleShape)
+                                            .clickable { showQuickSearchDialog = true },
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                    ) {
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Icon(
+                                                imageVector = Icons.Default.Search,
+                                                contentDescription = "Search",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(20.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            } else {
+                                val tabTitle = when (selectedBottomTab) {
+                                    1 -> s.tabActivities
+                                    2 -> s.tabShortcuts
+                                    3 -> s.tabSettings
+                                    4 -> s.tabAppearance
+                                    else -> s.appTitle
+                                }
+                                Text(
+                                    text = tabTitle,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    fontSize = 26.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                                Surface(
+                                    modifier = Modifier
+                                        .size(40.dp)
+                                        .clip(CircleShape)
+                                        .clickable { showQuickSearchDialog = true },
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.surfaceContainerHigh
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = Icons.Default.Search,
+                                            contentDescription = "Search",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp)
                                         )
                                     }
-                                )
+                                }
+                            }
+                        }
+
+                        // Tab Body
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        ) {
+                            AnimatedContent(
+                                targetState = selectedBottomTab,
+                                transitionSpec = {
+                                    fadeIn(animationSpec = tween(200)) togetherWith fadeOut(animationSpec = tween(160))
+                                },
+                                label = "liquidTabContent"
+                            ) { tabIndex ->
+                                when (tabIndex) {
+                                    0 -> LiquidHomeTab(
+                                        settings = settings,
+                                        s = s,
+                                        pendingPermissions = pendingPermissions,
+                                        updateState = updateState,
+                                        onToggleIsland = { enabled ->
+                                            viewModel.toggleEnabled(context, enabled)
+                                        },
+                                        onUpdateSettings = { viewModel.updateSettings(it) },
+                                        onCheckPermissions = { viewModel.checkPermissions(context) },
+                                        onCheckUpdates = { viewModel.checkForUpdates(context) },
+                                        onOpenUpdateSheet = { viewModel.openUpdateSheet() },
+                                        onShowVideoAnnouncement = { showVideoAnnouncementDialog = true },
+                                        onNavigateDroidbar = { showDroidbarPage = true },
+                                        onNavigateTasks = { showTasksPage = true },
+                                        onNavigateMediaPlayer = { showMediaPlayerPage = true },
+                                        onOpenAppFilter = {
+                                            viewModel.loadInstalledApps(context)
+                                            showAppFilterSheet = true
+                                        },
+                                        onDeactivateLicense = onDeactivateLicense
+                                    )
+                                    1 -> LiquidActivitiesTab(
+                                        settings = settings,
+                                        s = s,
+                                        onUpdateSettings = { viewModel.updateSettings(it) },
+                                        onOpenAppFilter = {
+                                            viewModel.loadInstalledApps(context)
+                                            showAppFilterSheet = true
+                                        },
+                                        onNavigateMediaPlayer = { showMediaPlayerPage = true }
+                                    )
+                                    2 -> LiquidShortcutsTab(
+                                        settings = settings,
+                                        s = s,
+                                        onUpdateSettings = { viewModel.updateSettings(it) },
+                                        onNavigateDroidbar = { showDroidbarPage = true },
+                                        onNavigateTasks = { showTasksPage = true }
+                                    )
+                                    3 -> LiquidSettingsTab(
+                                        settings = settings,
+                                        s = s,
+                                        onUpdateSettings = { viewModel.updateSettings(it) },
+                                        onOpenConfigManager = {
+                                            viewModel.exportConfig { json ->
+                                                configJsonText = json
+                                                showConfigManagerDialog = true
+                                            }
+                                        },
+                                        onCheckUpdates = { viewModel.checkForUpdates(context) },
+                                        onShowVideoAnnouncement = { showVideoAnnouncementDialog = true }
+                                    )
+                                    4 -> LiquidAppearanceTab(
+                                        settings = settings,
+                                        s = s,
+                                        onUpdateSettings = { viewModel.updateSettings(it) },
+                                        onOpenAnimationSettings = { showAnimationSettingsPage = true },
+                                        onOpenMediaPlayer = { showMediaPlayerPage = true },
+                                        onOpenDimensionsPage = { showDimensionsPage = true }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Floating Liquid Glass Navigation Bar at Bottom
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                    ) {
+                        LiquidGlassNavigationBar(
+                            tabs = navTabs,
+                            selectedIndex = selectedBottomTab,
+                            onTabSelected = { idx ->
+                                view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                                selectedBottomTab = idx
+                            },
+                            accentColor = MaterialTheme.colorScheme.primary,
+                            isLightTheme = isLightTheme
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // Config Manager Dialog (Export / Import JSON)
+    if (showConfigManagerDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfigManagerDialog = false },
+            title = {
+                Text(
+                    text = s.configManager,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = s.configManagerDesc,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = configJsonText,
+                        onValueChange = { configJsonText = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        shape = RoundedCornerShape(14.dp),
+                        textStyle = MaterialTheme.typography.bodySmall
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                clipboard?.setPrimaryClip(ClipData.newPlainText("Androidisland Config", configJsonText))
+                                Toast.makeText(context, "Đã sao chép JSON vào bộ nhớ tạm!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(s.exportConfig, fontSize = 12.sp)
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, configJsonText)
+                                }
+                                context.startActivity(Intent.createChooser(shareIntent, s.exportConfig))
+                            },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        viewModel.importConfig(configJsonText) { ok ->
+                            val msg = if (ok) "Đã nhập cấu hình thành công!" else "JSON không hợp lệ!"
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            if (ok) showConfigManagerDialog = false
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(s.importConfig)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showConfigManagerDialog = false }) {
+                    Text("Đóng")
+                }
+            }
+        )
+    }
+
+    // Quick Search Dialog
+    if (showQuickSearchDialog) {
+        val searchItems = remember(s) {
+            listOf(
+                Triple(s.tabHome, s.islandScalePosition, 0),
+                Triple(s.tabActivities, s.charging, 1),
+                Triple(s.tabActivities, s.musicPlayer, 1),
+                Triple(s.tabActivities, s.notifications, 1),
+                Triple(s.tabActivities, s.voiceMemo, 1),
+                Triple(s.tabActivities, s.navigationTurn, 1),
+                Triple(s.tabShortcuts, s.gestureControl, 2),
+                Triple(s.tabShortcuts, s.audioEqualizer, 2),
+                Triple(s.tabSettings, s.powerSaver, 3),
+                Triple(s.tabSettings, s.smartBehavior, 3),
+                Triple(s.tabSettings, s.languageTitle, 3),
+                Triple(s.tabSettings, s.configManager, 3),
+                Triple(s.tabAppearance, s.multitasking, 4),
+                Triple(s.tabAppearance, s.themeTitle, 4),
+                Triple(s.tabAppearance, s.accentColor, 4),
+                Triple(s.tabAppearance, s.visualEffects, 4),
+                Triple(s.tabAppearance, s.animationSettings, 4)
+            )
+        }
+        val filtered = remember(quickSearchQuery, searchItems) {
+            if (quickSearchQuery.isBlank()) searchItems
+            else searchItems.filter {
+                it.first.contains(quickSearchQuery, ignoreCase = true) ||
+                    it.second.contains(quickSearchQuery, ignoreCase = true)
+            }
+        }
+        AlertDialog(
+            onDismissRequest = { showQuickSearchDialog = false },
+            title = { Text("Tìm kiếm cài đặt", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = quickSearchQuery,
+                        onValueChange = { quickSearchQuery = it },
+                        placeholder = { Text("Nhập tên tính năng...") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(240.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        items(filtered) { item ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable {
+                                        selectedBottomTab = item.third
+                                        showQuickSearchDialog = false
+                                    },
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceContainerHigh
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Column {
+                                        Text(item.second, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                                        Text(item.first, fontSize = 11.sp, color = MaterialTheme.colorScheme.primary)
+                                    }
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Filled.ArrowForwardIos,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
-
-            // SECTION 5B: SYSTEM ALERTS & INDICATORS (ALWAYS TOP PRIORITY)
-            item {
-                SectionHeader(
-                    title = "Cảnh báo hệ thống",
-                    icon = Icons.Default.NotificationsActive
-                )
-            }
-
-            item {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    SettingsCardItem(position = GroupPosition.TOP, isActive = settings.showBluetooth) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Kết nối Bluetooth", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.Bluetooth, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.showBluetooth,
-                                    onCheckedChange = { show ->
-                                        viewModel.updateSettings { it.copy(showBluetooth = show) }
-                                    }
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.showCharging) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Chỉ báo sạc pin", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.showCharging,
-                                    onCheckedChange = { show ->
-                                        viewModel.updateSettings { it.copy(showCharging = show) }
-                                    }
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.MIDDLE, isActive = settings.showRingerMode) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Chế độ chuông", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.showRingerMode,
-                                    onCheckedChange = { show ->
-                                        viewModel.updateSettings { it.copy(showRingerMode = show) }
-                                    }
-                                )
-                            }
-                        )
-                    }
-
-                    SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.showAirplaneMode) {
-                        ListItem(
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Chế độ máy bay", fontWeight = FontWeight.SemiBold) },
-                            leadingContent = {
-                                Icon(Icons.Default.AirplanemodeActive, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            },
-                            trailingContent = {
-                                Switch(
-                                    checked = settings.showAirplaneMode,
-                                    onCheckedChange = { show ->
-                                        viewModel.updateSettings { it.copy(showAirplaneMode = show) }
-                                    }
-                                )
-                            }
-                        )
-                    }
+            },
+            confirmButton = {
+                TextButton(onClick = { showQuickSearchDialog = false }) {
+                    Text("Đóng")
                 }
             }
-
-            item {
-                Spacer(modifier = Modifier.height(32.dp))
-            }
-        }
+        )
     }
-        }
-    }
-}
-
     // App Filter Modal Bottom Sheet
     if (showAppFilterSheet) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -1544,6 +1194,16 @@ fun MainScreen(
                 }
             }
         }
+    }
+
+    // Video & Changelog Announcement Dialog
+    if (showVideoAnnouncementDialog) {
+        VideoAnnouncementDialog(
+            onDismiss = {
+                AnnouncementManager.markDismissed(context)
+                showVideoAnnouncementDialog = false
+            }
+        )
     }
 
     // Feedback Bottom Sheet Dialog
@@ -2707,7 +2367,8 @@ fun AppearancePage(
                     SettingsCardItem(position = GroupPosition.BOTTOM, isActive = settings.alwaysShowPill) {
                         ListItem(
                             colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                            headlineContent = { Text("Luôn hiển thị viên thuốc", fontWeight = FontWeight.SemiBold) },
+                            headlineContent = { Text("Đảo động đen mặc định (Luôn hiện)", fontWeight = FontWeight.SemiBold) },
+                            supportingContent = { Text("Giữ viên thuốc màu đen thuần khiết trên vùng khuyết camera khi ở trạng thái chờ", style = MaterialTheme.typography.bodySmall) },
                             leadingContent = {
                                 Icon(Icons.Default.FitScreen, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
