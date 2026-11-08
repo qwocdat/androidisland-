@@ -5629,8 +5629,6 @@ fun ExpandedRecordingView(
 }
 
 @Composable
-
-@Composable
 fun ExpandedVoiceMemoView(
     voiceMemo: VoiceMemoState,
     onCollapse: () -> Unit,

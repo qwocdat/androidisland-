@@ -241,10 +241,11 @@ import com.droidbubble.app.ui.liquid.LiquidAnimationSettingsScreen
 import com.droidbubble.app.ui.liquid.LiquidAppearanceTab
 import com.droidbubble.app.ui.liquid.LiquidGlassNavigationBar
 import com.droidbubble.app.ui.liquid.LiquidHomeTab
-import com.droidbubble.app.ui.liquid.LiquidNavTabItem
+import com.droidbubble.app.ui.liquid.LiquidNavItem
 import com.droidbubble.app.ui.liquid.LiquidSettingsTab
 import com.droidbubble.app.ui.liquid.LiquidShortcutsTab
-import com.droidbubble.app.ui.liquid.LiquidStrings
+import com.droidbubble.app.ui.liquid.getStringsForLanguage
+import com.droidbubble.app.ui.liquid.AppStrings
 
 enum class MainScreenPage {
     TOOLS_ROOT,
@@ -387,7 +388,7 @@ fun MainScreen(
     val updateState by viewModel.updateState.collectAsState()
     val showUpdateSheet by viewModel.showUpdateSheet.collectAsState()
 
-    val s = remember(settings.appLanguage) { LiquidStrings.forLang(settings.appLanguage) }
+    val s = remember(settings.appLanguage) { getStringsForLanguage(settings.appLanguage) }
     var selectedBottomTab by remember { mutableIntStateOf(0) }
 
     var showAppFilterSheet by remember { mutableStateOf(false) }
@@ -491,7 +492,6 @@ fun MainScreen(
                 BackHandler(onBack = { showAnimationSettingsPage = false })
                 LiquidAnimationSettingsScreen(
                     settings = settings,
-                    s = s,
                     onUpdateSettings = { viewModel.updateSettings(it) },
                     onBack = { showAnimationSettingsPage = false }
                 )
@@ -568,11 +568,11 @@ fun MainScreen(
                 val isLightTheme = settings.appThemeMode == "LIGHT"
                 val navTabs = remember(s) {
                     listOf(
-                        LiquidNavTabItem(s.tabHome, Icons.Default.Home),
-                        LiquidNavTabItem(s.tabActivities, Icons.Default.Explore),
-                        LiquidNavTabItem(s.tabShortcuts, Icons.Default.Apps),
-                        LiquidNavTabItem(s.tabSettings, Icons.Default.Settings),
-                        LiquidNavTabItem(s.tabAppearance, Icons.Default.Palette)
+                        LiquidNavItem(s.tabHome, Icons.Default.Home),
+                        LiquidNavItem(s.tabActivities, Icons.Default.Explore),
+                        LiquidNavItem(s.tabShortcuts, Icons.Default.Apps),
+                        LiquidNavItem(s.tabSettings, Icons.Default.Settings),
+                        LiquidNavItem(s.tabAppearance, Icons.Default.Palette)
                     )
                 }
 
@@ -713,63 +713,46 @@ fun MainScreen(
                                 when (tabIndex) {
                                     0 -> LiquidHomeTab(
                                         settings = settings,
-                                        s = s,
-                                        pendingPermissions = pendingPermissions,
-                                        updateState = updateState,
-                                        onToggleIsland = { enabled ->
-                                            viewModel.toggleEnabled(context, enabled)
-                                        },
-                                        onUpdateSettings = { viewModel.updateSettings(it) },
-                                        onCheckPermissions = { viewModel.checkPermissions(context) },
-                                        onCheckUpdates = { viewModel.checkForUpdates(context) },
-                                        onOpenUpdateSheet = { viewModel.openUpdateSheet() },
-                                        onShowVideoAnnouncement = { showVideoAnnouncementDialog = true },
-                                        onNavigateDroidbar = { showDroidbarPage = true },
-                                        onNavigateTasks = { showTasksPage = true },
-                                        onNavigateMediaPlayer = { showMediaPlayerPage = true },
-                                        onOpenAppFilter = {
-                                            viewModel.loadInstalledApps(context)
-                                            showAppFilterSheet = true
-                                        },
+                                        strings = s,
+                                        viewModel = viewModel,
+                                        onOpenDroidbar = { showDroidbarPage = true },
+                                        onOpenTasks = { showTasksPage = true },
+                                        onOpenVideoAnnouncement = { showVideoAnnouncementDialog = true },
                                         onDeactivateLicense = onDeactivateLicense
                                     )
                                     1 -> LiquidActivitiesTab(
                                         settings = settings,
-                                        s = s,
+                                        strings = s,
                                         onUpdateSettings = { viewModel.updateSettings(it) },
-                                        onOpenAppFilter = {
-                                            viewModel.loadInstalledApps(context)
-                                            showAppFilterSheet = true
-                                        },
-                                        onNavigateMediaPlayer = { showMediaPlayerPage = true }
+                                        onOpenMediaPlayerCustomization = { showMediaPlayerPage = true }
                                     )
                                     2 -> LiquidShortcutsTab(
                                         settings = settings,
-                                        s = s,
+                                        strings = s,
                                         onUpdateSettings = { viewModel.updateSettings(it) },
-                                        onNavigateDroidbar = { showDroidbarPage = true },
-                                        onNavigateTasks = { showTasksPage = true }
+                                        onOpenChainedTasks = { showTasksPage = true }
                                     )
                                     3 -> LiquidSettingsTab(
                                         settings = settings,
-                                        s = s,
+                                        strings = s,
+                                        onToggleEnabled = { enabled -> viewModel.toggleEnabled(context, enabled) },
                                         onUpdateSettings = { viewModel.updateSettings(it) },
+                                        onOpenAppFilterSheet = {
+                                            viewModel.loadInstalledApps(context)
+                                            showAppFilterSheet = true
+                                        },
+                                        onOpenAnimationSettings = { showAnimationSettingsPage = true },
                                         onOpenConfigManager = {
                                             viewModel.exportConfig { json ->
                                                 configJsonText = json
                                                 showConfigManagerDialog = true
                                             }
-                                        },
-                                        onCheckUpdates = { viewModel.checkForUpdates(context) },
-                                        onShowVideoAnnouncement = { showVideoAnnouncementDialog = true }
+                                        }
                                     )
                                     4 -> LiquidAppearanceTab(
                                         settings = settings,
-                                        s = s,
-                                        onUpdateSettings = { viewModel.updateSettings(it) },
-                                        onOpenAnimationSettings = { showAnimationSettingsPage = true },
-                                        onOpenMediaPlayer = { showMediaPlayerPage = true },
-                                        onOpenDimensionsPage = { showDimensionsPage = true }
+                                        strings = s,
+                                        onUpdateSettings = { viewModel.updateSettings(it) }
                                     )
                                 }
                             }
@@ -784,14 +767,14 @@ fun MainScreen(
                             .navigationBarsPadding()
                     ) {
                         LiquidGlassNavigationBar(
-                            tabs = navTabs,
+                            items = navTabs,
                             selectedIndex = selectedBottomTab,
-                            onTabSelected = { idx ->
+                            onItemClick = { idx ->
                                 view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 selectedBottomTab = idx
                             },
                             accentColor = MaterialTheme.colorScheme.primary,
-                            isLightTheme = isLightTheme
+                            isDark = !isLightTheme
                         )
                     }
                 }
@@ -812,7 +795,7 @@ fun MainScreen(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = s.configManagerDesc,
+                        text = s.configManagerSub,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -840,7 +823,7 @@ fun MainScreen(
                         ) {
                             Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(s.exportConfig, fontSize = 12.sp)
+                            Text("Xuất JSON", fontSize = 12.sp)
                         }
                         OutlinedButton(
                             onClick = {
@@ -848,7 +831,7 @@ fun MainScreen(
                                     type = "text/plain"
                                     putExtra(Intent.EXTRA_TEXT, configJsonText)
                                 }
-                                context.startActivity(Intent.createChooser(shareIntent, s.exportConfig))
+                                context.startActivity(Intent.createChooser(shareIntent, "Chia sẻ cấu hình"))
                             },
                             shape = RoundedCornerShape(12.dp)
                         ) {
@@ -868,7 +851,7 @@ fun MainScreen(
                     },
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(s.importConfig)
+                    Text("Nhập JSON")
                 }
             },
             dismissButton = {
@@ -882,23 +865,23 @@ fun MainScreen(
     // Quick Search Dialog
     if (showQuickSearchDialog) {
         val searchItems = remember(s) {
-            listOf(
-                Triple(s.tabHome, s.islandScalePosition, 0),
-                Triple(s.tabActivities, s.charging, 1),
-                Triple(s.tabActivities, s.musicPlayer, 1),
-                Triple(s.tabActivities, s.notifications, 1),
-                Triple(s.tabActivities, s.voiceMemo, 1),
-                Triple(s.tabActivities, s.navigationTurn, 1),
+            listOf<Triple<String, String, Int>>(
+                Triple(s.tabHome, s.geometryAndSizes, 0),
+                Triple(s.tabActivities, s.actCharging, 1),
+                Triple(s.tabActivities, s.actPlayer, 1),
+                Triple(s.tabActivities, s.actNotifications, 1),
+                Triple(s.tabActivities, s.actVoiceMemo, 1),
+                Triple(s.tabActivities, s.actFlashlight, 1),
                 Triple(s.tabShortcuts, s.gestureControl, 2),
                 Triple(s.tabShortcuts, s.audioEqualizer, 2),
                 Triple(s.tabSettings, s.powerSaver, 3),
-                Triple(s.tabSettings, s.smartBehavior, 3),
-                Triple(s.tabSettings, s.languageTitle, 3),
+                Triple(s.tabSettings, s.liquidMaterial, 3),
+                Triple(s.tabSettings, s.languageLabel, 3),
                 Triple(s.tabSettings, s.configManager, 3),
                 Triple(s.tabAppearance, s.multitasking, 4),
-                Triple(s.tabAppearance, s.themeTitle, 4),
-                Triple(s.tabAppearance, s.accentColor, 4),
-                Triple(s.tabAppearance, s.visualEffects, 4),
+                Triple(s.tabAppearance, s.themeLabel, 4),
+                Triple(s.tabAppearance, s.accentColorLabel, 4),
+                Triple(s.tabAppearance, s.dynamicLight, 4),
                 Triple(s.tabAppearance, s.animationSettings, 4)
             )
         }
