@@ -1,12 +1,16 @@
 package com.droidbubble.app.util
 
 import android.content.Context
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import android.util.Base64
+import com.droidbubble.app.service.IslandAccessibilityService
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
@@ -17,29 +21,28 @@ import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.MessageDigest
 import java.util.Locale
-import java.util.UUID
 import java.util.concurrent.Executors
 import javax.crypto.KeyGenerator
 import javax.crypto.Mac
 import javax.crypto.SecretKey
 
 /**
- * KeyGate & Lifetime License Manager ported 1:1 from DigitalVolume:
- *  - Firebase Firestore REST activation sync (digitalvolume-keygate)
- *  - Cloudflare Worker backend verification (https://getkey.digitalsmod.site/api)
- *  - Hardware-backed Android Keystore HMAC-SHA256 signature seal
- *  - Single-use, UID-bound & global cryptographic signed keys (format: DXIAO-XXXX-XXXX-XXXX)
- *  - Support for legacy Master Keys
+ * UID-based Device Authorization, Real-Time Accessibility Telemetry & Bug Report Manager:
+ *  - Deterministic hardware-anchored UID (`uid_...`).
+ *  - Supports "Don't show again" (`isSkipActivationPrompt` / `setSkipActivationPrompt`) so verified users
+ *    can bypass the activation/social prompt on future app launches.
+ *  - Tracks activation status (`approved`), live Accessibility Service status (`accessibilityActive`),
+ *    overlay status (`overlayActive`), app version, and `lastActiveAt` timestamp on Firebase Firestore (`uid_devices/{uid}`).
+ *  - Collects & manages user Bug Reports and Feature Suggestions on Firebase Firestore (`bug_reports/{reportId}`).
  */
 object LicenseManager {
     private const val PREF_FILE = "digital_volume_keygate_secure"
     private const val KEY_UID = "user_uid"
     private const val KEY_ACTIVATED_PAYLOAD = "activated_payload"
     private const val KEY_ACTIVATED_HMAC = "activated_hmac"
-    private const val KEY_USED_HASHES = "used_key_hashes_registry"
+    private const val KEY_SKIP_ACTIVATION_PROMPT = "skip_activation_prompt_v2"
     private const val KEYSTORE_ALIAS = "DigitalVolumeKeyGateHmacKey"
 
-    const val DEFAULT_GETKEY_URL = "https://getkey.digitalsmod.site/app/digitalvolume/"
     const val DEFAULT_API_BASE = "https://getkey.digitalsmod.site/api"
     const val FIREBASE_PROJECT_ID = "digitalvolume-keygate"
     const val FIREBASE_API_KEY = "AIzaSyDigitalXiaoKeyGatePublicConfigKey"
@@ -47,28 +50,59 @@ object LicenseManager {
     private val executor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    private val MASTER_KEY_HASHES = setOf(
-        "ad355610e8d142d7f9d0f35de17ab31f8ae44c978374d4aed69cc3cf6a58cf4f", // DIGITALXIAO-VIP
-        "57abc24acc5b0e190ee193affc8c5f3a64c1a15a14049dbbb9e300f7604fdacf", // DIGITALXIAO-2026
-        "7aa7f46f75e3fbf81b05e82daa889064efc03b1ffd458c194735380d2854cc45", // ANDROIDISLAND-VIP
-        "872689f97ed9c92c1395f8cf238270fa14bdc525c533f04ff707ea96cf809040"  // DIGITALVOLUME-VIP
-    )
-
     data class VerifyResult(
         val success: Boolean,
         val message: String,
-        val keyId: String? = null,
-        val activatedAt: Long = 0L
+        val uid: String = "",
+        val status: String = "pending" // "approved", "pending", "blocked"
+    )
+
+    data class DeviceUidRecord(
+        val uid: String,
+        val deviceName: String,
+        val approved: Boolean,
+        val status: String,
+        val accessibilityActive: Boolean = false,
+        val overlayActive: Boolean = false,
+        val appVersion: String = "2.0.0",
+        val requestedAt: Long = 0L,
+        val lastActiveAt: Long = 0L
+    )
+
+    data class BugReportRecord(
+        val reportId: String,
+        val uid: String,
+        val deviceName: String,
+        val androidVersion: String = Build.VERSION.RELEASE ?: "14",
+        val appVersion: String,
+        val type: String, // "BUG" or "FEATURE"
+        val title: String,
+        val description: String,
+        val accessibilityActive: Boolean,
+        val status: String, // "open" or "resolved"
+        val createdAt: Long
     )
 
     private fun securePrefs(context: Context) =
         context.getSharedPreferences(PREF_FILE, Context.MODE_PRIVATE)
 
+    fun isSkipActivationPrompt(context: Context): Boolean {
+        return securePrefs(context).getBoolean(KEY_SKIP_ACTIVATION_PROMPT, true)
+    }
+
+    fun setSkipActivationPrompt(context: Context, skip: Boolean) {
+        securePrefs(context).edit()
+            .putBoolean(KEY_SKIP_ACTIVATION_PROMPT, skip)
+            .apply()
+    }
+
     /**
-     * Checks whether the current device UID has a valid hardware-HMAC-signed lifetime license.
+     * Returns true when the device has a valid local cryptographic UID seal AND the user has checked
+     * "Không hiển thị lại" (default true once verified). If the user unchecked "Không hiển thị lại",
+     * opening the app will show the verification/social screen again.
      */
     fun isActivated(context: Context): Boolean {
-        return hasValidLocalSeal(context)
+        return hasValidLocalSeal(context) && isSkipActivationPrompt(context)
     }
 
     fun hasValidLocalSeal(context: Context): Boolean {
@@ -84,17 +118,12 @@ object LicenseManager {
             val json = JSONObject(payload)
             val uid = json.optString("uid", "")
             val activated = json.optBoolean("activated", false)
-            val licenseType = json.optString("licenseType", "")
-            val keyId = json.optString("keyId", "")
-            activated && licenseType == "lifetime" && uid == getUserUid(context) && keyId.isNotBlank()
+            activated && uid == getUserUid(context)
         } catch (_: Exception) {
             false
         }
     }
 
-    /**
-     * Returns a deterministic hardware-anchored UID for this device (same algorithm as DigitalVolume).
-     */
     fun getUserUid(context: Context): String {
         val prefs = securePrefs(context)
         val androidId = try {
@@ -102,35 +131,40 @@ object LicenseManager {
         } catch (_: Exception) {
             "unknown"
         }
+        val cleanAndroidId = androidId.lowercase(Locale.ROOT).trim()
+        val deterministicUid = "uid_" + sha256Hex("dxiao_device_$cleanAndroidId").take(16)
         val existing = prefs.getString(KEY_UID, null)
-        if (!existing.isNullOrBlank()) return existing
-        val raw = "dxiao_${androidId}_${UUID.randomUUID().toString().take(8)}"
-        val uid = "uid_" + sha256Hex(raw).take(20)
-        prefs.edit().putString(KEY_UID, uid).apply()
-        return uid
+        if (!existing.isNullOrBlank() && existing.startsWith("uid_")) {
+            return existing
+        }
+        prefs.edit().putString(KEY_UID, deterministicUid).apply()
+        return deterministicUid
     }
 
-    fun getDeviceId(context: Context): String {
-        return getUserUid(context)
+    fun getDeviceId(context: Context): String = getUserUid(context)
+
+    fun getDeviceModelName(): String {
+        val manufacturer = Build.MANUFACTURER?.replaceFirstChar { it.uppercase() } ?: "Android"
+        val model = Build.MODEL ?: "Device"
+        val modelClean = if (model.startsWith(manufacturer, ignoreCase = true)) model else "$manufacturer $model"
+        return "$modelClean (Android ${Build.VERSION.RELEASE})"
     }
 
-    fun getActivatedKeyId(context: Context): String? {
-        if (!hasValidLocalSeal(context)) return null
-        val payload = securePrefs(context).getString(KEY_ACTIVATED_PAYLOAD, null) ?: return null
+    fun isAccessibilityEnabledOnDevice(context: Context): Boolean {
+        if (IslandAccessibilityService.instance != null) return true
         return try {
-            JSONObject(payload).optString("keyId", null)
+            val enabledServices = Settings.Secure.getString(
+                context.contentResolver,
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+            ) ?: ""
+            enabledServices.contains(context.packageName, ignoreCase = true)
         } catch (_: Exception) {
-            null
+            false
         }
     }
 
     fun getSavedKey(context: Context): String? {
-        return getActivatedKeyId(context)
-    }
-
-    fun getKeyPageUrl(context: Context): String {
-        val uid = getUserUid(context)
-        return "$DEFAULT_GETKEY_URL?uid=$uid"
+        return if (hasValidLocalSeal(context)) getUserUid(context) else null
     }
 
     fun clearLicense(context: Context) {
@@ -144,12 +178,12 @@ object LicenseManager {
         clearLicense(context)
     }
 
-    private fun saveVerifiedSeal(context: Context, uid: String, keyId: String, activatedAt: Long) {
+    fun saveVerifiedSeal(context: Context, uid: String, activatedAt: Long = System.currentTimeMillis()) {
         val payload = JSONObject().apply {
             put("uid", uid)
             put("activated", true)
             put("licenseType", "lifetime")
-            put("keyId", keyId)
+            put("keyId", "UID_APPROVED")
             put("activatedAt", activatedAt)
         }.toString()
         val hmac = computeKeystoreHmac(context, payload) ?: return
@@ -160,11 +194,150 @@ object LicenseManager {
     }
 
     /**
-     * Syncs activation to Firebase Firestore REST API (digitalvolume-keygate)
+     * Syncs live device usage & Accessibility Service status to Firebase Firestore (`uid_devices/{uid}`)
+     * so Admin can see how many activated users are actively using the app via Accessibility Service.
      */
-    private fun syncActivationToFirestoreRest(uid: String, keyId: String, codeHash: String, nowMs: Long) {
+    fun syncDeviceTelemetry(context: Context, accessibilityOverride: Boolean? = null, overlayOverride: Boolean? = null) {
+        if (!hasValidLocalSeal(context)) return
+        val uid = getUserUid(context)
+        val devName = getDeviceModelName()
+        val a11yActive = accessibilityOverride ?: isAccessibilityEnabledOnDevice(context)
+        val overlayActive = overlayOverride ?: Settings.canDrawOverlays(context)
+        val appVer = UpdateManager.getCurrentVersion(context)
+        executor.execute {
+            approveUidOnFirestoreInternal(
+                uid = uid,
+                deviceName = devName,
+                approved = true,
+                accessibilityActive = a11yActive,
+                overlayActive = overlayActive,
+                appVersion = appVer
+            )
+        }
+    }
+
+    fun checkAndActivateByUid(context: Context, callback: (VerifyResult) -> Unit) {
+        val uid = getUserUid(context)
+        val deviceName = getDeviceModelName()
+        val a11yActive = isAccessibilityEnabledOnDevice(context)
+        val overlayActive = Settings.canDrawOverlays(context)
+        val appVer = UpdateManager.getCurrentVersion(context)
+
+        executor.execute {
+            try {
+                // 1. Check OnlineConfigManager (online_update.json / Firebase app_config)
+                val onlineCfg = try {
+                    kotlinx.coroutines.runBlocking {
+                        val cfg = OnlineConfigManager.fetchOnlineConfig(context)
+                        DynamicFeatureEngine.applyDynamicFeatures(context, cfg)
+                        cfg
+                    }
+                } catch (_: Exception) {
+                    OnlineConfigManager.getCachedConfig(context)
+                }
+
+                if (onlineCfg.allowAllDevices || onlineCfg.allowedUids.any { it.equals(uid, ignoreCase = true) }) {
+                    saveVerifiedSeal(context, uid)
+                    approveUidOnFirestoreInternal(uid, deviceName, true, a11yActive, overlayActive, appVer)
+                    mainHandler.post {
+                        callback(VerifyResult(true, "Thiết bị ($uid) đã được cấp phép truy cập!", uid, "approved"))
+                    }
+                    return@execute
+                }
+
+                // 2. Check Firebase Firestore `uid_devices/{uid}`
+                val docUrl = URL("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/uid_devices/$uid?key=$FIREBASE_API_KEY")
+                val getConn = (docUrl.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 6000
+                    readTimeout = 6000
+                    setRequestProperty("Accept", "application/json")
+                }
+                val code = getConn.responseCode
+                if (code == 200) {
+                    val body = BufferedReader(InputStreamReader(getConn.inputStream)).use { it.readText() }
+                    val json = JSONObject(body)
+                    val fields = json.optJSONObject("fields")
+                    val approved = fields?.optJSONObject("approved")?.optBoolean("booleanValue", false) ?: false
+                    val status = fields?.optJSONObject("status")?.optString("stringValue", if (approved) "approved" else "pending") ?: "pending"
+
+                    if (approved || status == "approved") {
+                        saveVerifiedSeal(context, uid)
+                        approveUidOnFirestoreInternal(uid, deviceName, true, a11yActive, overlayActive, appVer)
+                        mainHandler.post {
+                            callback(VerifyResult(true, "Xác thực UID thành công! Thiết bị đã được cấp phép.", uid, "approved"))
+                        }
+                        return@execute
+                    } else if (status == "blocked") {
+                        clearLicense(context)
+                        mainHandler.post {
+                            callback(VerifyResult(false, "Thiết bị ($uid) đã bị từ chối hoặc khóa quyền truy cập.", uid, "blocked"))
+                        }
+                        return@execute
+                    } else {
+                        registerPendingDeviceOnFirestore(uid, deviceName, a11yActive, overlayActive, appVer)
+                    }
+                } else if (code == 404) {
+                    registerPendingDeviceOnFirestore(uid, deviceName, a11yActive, overlayActive, appVer)
+                }
+
+                // 3. Check legacy `users/{uid}` collection from DigitalVolume
+                val userDocUrl = URL("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/users/$uid?key=$FIREBASE_API_KEY")
+                val userConn = (userDocUrl.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "GET"
+                    connectTimeout = 5000
+                    readTimeout = 5000
+                    setRequestProperty("Accept", "application/json")
+                }
+                if (userConn.responseCode == 200) {
+                    val uBody = BufferedReader(InputStreamReader(userConn.inputStream)).use { it.readText() }
+                    val uFields = JSONObject(uBody).optJSONObject("fields")
+                    val uActivated = uFields?.optJSONObject("activated")?.optBoolean("booleanValue", false) ?: false
+                    if (uActivated) {
+                        saveVerifiedSeal(context, uid)
+                        approveUidOnFirestoreInternal(uid, deviceName, true, a11yActive, overlayActive, appVer)
+                        mainHandler.post {
+                            callback(VerifyResult(true, "Đã đồng bộ quyền truy cập UID từ hệ thống DigitalVolume!", uid, "approved"))
+                        }
+                        return@execute
+                    }
+                }
+
+                mainHandler.post {
+                    callback(
+                        VerifyResult(
+                            success = false,
+                            message = "UID của bạn đã được gửi lên hệ thống. Hãy gửi mã UID này cho Admin rồi bấm nút Xác minh!",
+                            uid = uid,
+                            status = "pending"
+                        )
+                    )
+                }
+            } catch (_: Exception) {
+                mainHandler.post {
+                    callback(
+                        VerifyResult(
+                            success = false,
+                            message = "Không thể kết nối máy chủ xác thực UID. Vui lòng kiểm tra mạng Internet.",
+                            uid = uid,
+                            status = "pending"
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    private fun registerPendingDeviceOnFirestore(
+        uid: String,
+        deviceName: String,
+        accessibilityActive: Boolean = false,
+        overlayActive: Boolean = false,
+        appVersion: String = "2.0.0"
+    ) {
         try {
-            val docUrl = URL("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/users/$uid?key=$FIREBASE_API_KEY")
+            val nowMs = System.currentTimeMillis()
+            val docUrl = URL("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/uid_devices/$uid?key=$FIREBASE_API_KEY")
             val conn = (docUrl.openConnection() as HttpURLConnection).apply {
                 requestMethod = "PATCH"
                 doOutput = true
@@ -174,11 +347,15 @@ object LicenseManager {
             }
             val payload = JSONObject().apply {
                 put("fields", JSONObject().apply {
-                    put("activated", JSONObject().put("booleanValue", true))
-                    put("licenseType", JSONObject().put("stringValue", "lifetime"))
-                    put("keyId", JSONObject().put("stringValue", keyId))
-                    put("codeHash", JSONObject().put("stringValue", codeHash))
-                    put("activatedAt", JSONObject().put("integerValue", nowMs.toString()))
+                    put("uid", JSONObject().put("stringValue", uid))
+                    put("deviceName", JSONObject().put("stringValue", deviceName))
+                    put("approved", JSONObject().put("booleanValue", false))
+                    put("status", JSONObject().put("stringValue", "pending"))
+                    put("accessibilityActive", JSONObject().put("booleanValue", accessibilityActive))
+                    put("overlayActive", JSONObject().put("booleanValue", overlayActive))
+                    put("appVersion", JSONObject().put("stringValue", appVersion))
+                    put("requestedAt", JSONObject().put("integerValue", nowMs.toString()))
+                    put("lastActiveAt", JSONObject().put("integerValue", nowMs.toString()))
                     put("appName", JSONObject().put("stringValue", "androidisland"))
                 })
             }
@@ -188,130 +365,246 @@ object LicenseManager {
         }
     }
 
-    /**
-     * Verifies and redeems a single-use KEY atomically using DigitalVolume's exact mechanism.
-     */
-    fun verifyAndActivateKey(context: Context, rawKeyInput: String, callback: (VerifyResult) -> Unit) {
-        val cleanedKey = rawKeyInput.trim().uppercase(Locale.ROOT)
-        if (cleanedKey.isEmpty()) {
-            callback(VerifyResult(false, "Vui lòng nhập mã KEY để xác thực."))
-            return
+    private fun approveUidOnFirestoreInternal(
+        uid: String,
+        deviceName: String,
+        approved: Boolean,
+        accessibilityActive: Boolean = false,
+        overlayActive: Boolean = false,
+        appVersion: String = "2.0.0"
+    ) {
+        try {
+            val nowMs = System.currentTimeMillis()
+            val statusStr = if (approved) "approved" else "blocked"
+            val docUrl = URL("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/uid_devices/$uid?key=$FIREBASE_API_KEY")
+            val conn = (docUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "PATCH"
+                doOutput = true
+                connectTimeout = 5000
+                readTimeout = 5000
+                setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+            }
+            val payload = JSONObject().apply {
+                put("fields", JSONObject().apply {
+                    put("uid", JSONObject().put("stringValue", uid))
+                    put("deviceName", JSONObject().put("stringValue", deviceName))
+                    put("approved", JSONObject().put("booleanValue", approved))
+                    put("status", JSONObject().put("stringValue", statusStr))
+                    put("accessibilityActive", JSONObject().put("booleanValue", accessibilityActive))
+                    put("overlayActive", JSONObject().put("booleanValue", overlayActive))
+                    put("appVersion", JSONObject().put("stringValue", appVersion))
+                    put("requestedAt", JSONObject().put("integerValue", nowMs.toString()))
+                    put("lastActiveAt", JSONObject().put("integerValue", nowMs.toString()))
+                    put("appName", JSONObject().put("stringValue", "androidisland"))
+                })
+            }
+            OutputStreamWriter(conn.outputStream, StandardCharsets.UTF_8).use { it.write(payload.toString()) }
+            conn.responseCode
+        } catch (_: Exception) {
         }
+    }
 
-        // Support legacy Master Key (e.g. DIGITALXIAO-VIP)
-        val inputHash = sha256Hex(cleanedKey)
-        if (MASTER_KEY_HASHES.contains(inputHash)) {
-            val uid = getUserUid(context)
-            val now = System.currentTimeMillis()
-            saveVerifiedSeal(context, uid, cleanedKey, now)
-            callback(VerifyResult(true, "Kích hoạt Master Key thành công!", cleanedKey, now))
-            return
-        }
-
-        if (!isWellFormedKey(cleanedKey)) {
-            callback(VerifyResult(false, "Định dạng KEY không hợp lệ (Chuẩn: DXIAO-XXXX-XXXX-XXXX)."))
-            return
-        }
-
-        val uid = getUserUid(context)
-        val apiBase = DEFAULT_API_BASE
-
-        executor.execute {
-            // 1. Live Cloudflare / Firebase Backend verification
-            try {
-                val url = URL("$apiBase/verify-key")
-                val conn = (url.openConnection() as HttpURLConnection).apply {
-                    requestMethod = "POST"
-                    doOutput = true
-                    connectTimeout = 8000
-                    readTimeout = 8000
-                    setRequestProperty("Content-Type", "application/json; charset=UTF-8")
-                    setRequestProperty("X-Device-Uid", uid)
-                }
-                val reqJson = JSONObject().apply {
-                    put("uid", uid)
-                    put("key", cleanedKey)
-                    put("clientTimestamp", System.currentTimeMillis())
-                    put("app", "androidisland")
-                }
-                OutputStreamWriter(conn.outputStream, StandardCharsets.UTF_8).use {
-                    it.write(reqJson.toString())
-                }
-                val status = conn.responseCode
-                val stream = if (status in 200..299) conn.inputStream else conn.errorStream
-                if (stream != null) {
-                    val respText = BufferedReader(InputStreamReader(stream)).use { it.readText() }
-                    val resp = JSONObject(respText)
-                    val ok = status == 200 && resp.optBoolean("success", false)
-                    if (ok) {
-                        val keyId = resp.optString("keyId", "KEY_" + sha256Hex(cleanedKey).take(10).uppercase(Locale.ROOT))
-                        val ts = resp.optLong("activatedAt", System.currentTimeMillis())
-                        saveVerifiedSeal(context, uid, keyId, ts)
-                        syncActivationToFirestoreRest(uid, keyId, sha256Hex(cleanedKey), ts)
-                        mainHandler.post {
-                            callback(VerifyResult(true, "Kích hoạt bản quyền Lifetime thành công!", keyId, ts))
-                        }
-                        return@execute
+    suspend fun fetchAllDeviceUidsFromFirestore(): List<DeviceUidRecord> = withContext(Dispatchers.IO) {
+        val result = mutableListOf<DeviceUidRecord>()
+        try {
+            val listUrl = URL("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/uid_devices?pageSize=200&key=$FIREBASE_API_KEY&_t=${System.currentTimeMillis()}")
+            val conn = (listUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("Accept", "application/json")
+            }
+            if (conn.responseCode == 200) {
+                val body = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                val json = JSONObject(body)
+                val docs = json.optJSONArray("documents")
+                if (docs != null) {
+                    for (i in 0 until docs.length()) {
+                        val doc = docs.getJSONObject(i)
+                        val namePath = doc.optString("name", "")
+                        val fallbackUid = namePath.substringAfterLast("/")
+                        val fields = doc.optJSONObject("fields") ?: continue
+                        val uid = fields.optJSONObject("uid")?.optString("stringValue", fallbackUid) ?: fallbackUid
+                        val devName = fields.optJSONObject("deviceName")?.optString("stringValue", "Thiết bị Android") ?: "Thiết bị Android"
+                        val approved = fields.optJSONObject("approved")?.optBoolean("booleanValue", false) ?: false
+                        val status = fields.optJSONObject("status")?.optString("stringValue", if (approved) "approved" else "pending") ?: "pending"
+                        val a11y = fields.optJSONObject("accessibilityActive")?.optBoolean("booleanValue", false) ?: false
+                        val ovl = fields.optJSONObject("overlayActive")?.optBoolean("booleanValue", false) ?: false
+                        val ver = fields.optJSONObject("appVersion")?.optString("stringValue", "2.0.0") ?: "2.0.0"
+                        val reqAt = fields.optJSONObject("requestedAt")?.optString("integerValue", "0")?.toLongOrNull() ?: 0L
+                        val lastAt = fields.optJSONObject("lastActiveAt")?.optString("integerValue", reqAt.toString())?.toLongOrNull() ?: reqAt
+                        result.add(
+                            DeviceUidRecord(
+                                uid = uid,
+                                deviceName = devName,
+                                approved = approved,
+                                status = status,
+                                accessibilityActive = a11y,
+                                overlayActive = ovl,
+                                appVersion = ver,
+                                requestedAt = reqAt,
+                                lastActiveAt = lastAt
+                            )
+                        )
                     }
                 }
-            } catch (_: Exception) {
-                // Fallback to cryptographic offline check
             }
+        } catch (_: Exception) {
+        }
+        result.sortedByDescending { maxOf(it.lastActiveAt, it.requestedAt) }
+    }
 
-            // 2. Cryptographic & atomic verification for keys issued by getkey system
-            val verification = verifyCryptographicKey(context, cleanedKey, uid)
-            mainHandler.post { callback(verification) }
+    suspend fun setDeviceUidApproval(uid: String, deviceName: String, approved: Boolean): Boolean = withContext(Dispatchers.IO) {
+        val cleanUid = uid.trim()
+        if (cleanUid.isEmpty()) return@withContext false
+        approveUidOnFirestoreInternal(cleanUid, deviceName.ifBlank { "Thiết bị được Admin cấp phép" }, approved)
+        true
+    }
+
+    /**
+     * Submits a Bug Report or Feature Suggestion directly to Firebase Firestore (`bug_reports/{reportId}`)
+     * so Admin can view and manage all bug reports on the Web Admin Dashboard & In-App Admin Panel.
+     */
+    suspend fun submitBugReportToFirestore(
+        context: Context,
+        type: String,
+        title: String,
+        description: String
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val uid = getUserUid(context)
+            val devName = getDeviceModelName()
+            val androidVer = Build.VERSION.RELEASE ?: "14"
+            val appVer = UpdateManager.getCurrentVersion(context)
+            val a11y = isAccessibilityEnabledOnDevice(context)
+            val nowMs = System.currentTimeMillis()
+            val reportId = "rep_${nowMs}_${uid.takeLast(6)}"
+
+            val docUrl = URL("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/bug_reports/$reportId?key=$FIREBASE_API_KEY")
+            val conn = (docUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "PATCH"
+                doOutput = true
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+            }
+            val payload = JSONObject().apply {
+                put("fields", JSONObject().apply {
+                    put("reportId", JSONObject().put("stringValue", reportId))
+                    put("uid", JSONObject().put("stringValue", uid))
+                    put("deviceName", JSONObject().put("stringValue", devName))
+                    put("androidVersion", JSONObject().put("stringValue", androidVer))
+                    put("appVersion", JSONObject().put("stringValue", appVer))
+                    put("type", JSONObject().put("stringValue", type))
+                    put("title", JSONObject().put("stringValue", title.ifBlank { if (type == "BUG") "Báo cáo lỗi" else "Đề xuất tính năng" }))
+                    put("description", JSONObject().put("stringValue", description.trim()))
+                    put("accessibilityActive", JSONObject().put("booleanValue", a11y))
+                    put("status", JSONObject().put("stringValue", "open"))
+                    put("createdAt", JSONObject().put("integerValue", nowMs.toString()))
+                })
+            }
+            OutputStreamWriter(conn.outputStream, StandardCharsets.UTF_8).use {
+                it.write(payload.toString())
+            }
+            conn.responseCode in 200..299
+        } catch (_: Exception) {
+            false
         }
     }
 
-    @Synchronized
-    private fun verifyCryptographicKey(context: Context, key: String, currentUid: String): VerifyResult {
-        val parts = key.split("-")
-        if (parts.size != 4 || parts[0] != "DXIAO") {
-            return VerifyResult(false, "Mã KEY không đúng cấu trúc DXIAO-XXXX-XXXX-XXXX.")
-        }
-        val seg1 = parts[1]
-        val seg2 = parts[2]
-        val seg3 = parts[3]
-
-        val expectedUidBound = sha256Hex("DXIAO_V1_${seg1}_${seg2}_${currentUid}").take(4).uppercase(Locale.ROOT)
-        val expectedGeneral = sha256Hex("DXIAO_V1_${seg1}_${seg2}_GLOBAL").take(4).uppercase(Locale.ROOT)
-        val expectedOtherUidCheck = sha256Hex("DXIAO_OTHER_${seg1}_${seg2}").take(4).uppercase(Locale.ROOT)
-
-        if (seg3 != expectedUidBound && seg3 != expectedGeneral) {
-            if (seg1.startsWith("UID") || seg3 == expectedOtherUidCheck) {
-                return VerifyResult(false, "KEY này đã được gắn với một tài khoản (UID) khác.")
+    /**
+     * Admin function: fetches all Bug Reports and Feature Suggestions from Firebase Firestore (`bug_reports`).
+     */
+    suspend fun fetchAllBugReportsFromFirestore(): List<BugReportRecord> = withContext(Dispatchers.IO) {
+        val result = mutableListOf<BugReportRecord>()
+        try {
+            val listUrl = URL("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/bug_reports?pageSize=100&key=$FIREBASE_API_KEY&_t=${System.currentTimeMillis()}")
+            val conn = (listUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("Accept", "application/json")
             }
-            return VerifyResult(false, "Mã KEY không tồn tại hoặc chữ ký bảo mật không hợp lệ.")
-        }
-
-        val codeHash = sha256Hex("KEY_SALT_DXIAO_$key")
-        val prefs = securePrefs(context)
-        val registryJsonStr = prefs.getString(KEY_USED_HASHES, "{}") ?: "{}"
-        val registry = try { JSONObject(registryJsonStr) } catch (_: Exception) { JSONObject() }
-
-        if (registry.has(codeHash)) {
-            val usedBy = registry.optString(codeHash, "")
-            return if (usedBy == currentUid) {
-                VerifyResult(false, "Mã KEY này đã được sử dụng trước đó (KEY chỉ dùng 1 lần).")
-            } else {
-                VerifyResult(false, "Mã KEY này đã được kích hoạt trên một thiết bị/tài khoản khác.")
+            if (conn.responseCode == 200) {
+                val body = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
+                val json = JSONObject(body)
+                val docs = json.optJSONArray("documents")
+                if (docs != null) {
+                    for (i in 0 until docs.length()) {
+                        val doc = docs.getJSONObject(i)
+                        val namePath = doc.optString("name", "")
+                        val fallbackId = namePath.substringAfterLast("/")
+                        val fields = doc.optJSONObject("fields") ?: continue
+                        val repId = fields.optJSONObject("reportId")?.optString("stringValue", fallbackId) ?: fallbackId
+                        val uid = fields.optJSONObject("uid")?.optString("stringValue", "") ?: ""
+                        val devName = fields.optJSONObject("deviceName")?.optString("stringValue", "Thiết bị Android") ?: "Thiết bị Android"
+                        val androidVer = fields.optJSONObject("androidVersion")?.optString("stringValue", "14") ?: "14"
+                        val ver = fields.optJSONObject("appVersion")?.optString("stringValue", "2.0.0") ?: "2.0.0"
+                        val type = fields.optJSONObject("type")?.optString("stringValue", "BUG") ?: "BUG"
+                        val title = fields.optJSONObject("title")?.optString("stringValue", "Báo lỗi") ?: "Báo lỗi"
+                        val desc = fields.optJSONObject("description")?.optString("stringValue", "") ?: ""
+                        val a11y = fields.optJSONObject("accessibilityActive")?.optBoolean("booleanValue", false) ?: false
+                        val status = fields.optJSONObject("status")?.optString("stringValue", "open") ?: "open"
+                        val createdAt = fields.optJSONObject("createdAt")?.optString("integerValue", "0")?.toLongOrNull() ?: 0L
+                        result.add(
+                            BugReportRecord(
+                                reportId = repId,
+                                uid = uid,
+                                deviceName = devName,
+                                androidVersion = androidVer,
+                                appVersion = ver,
+                                type = type,
+                                title = title,
+                                description = desc,
+                                accessibilityActive = a11y,
+                                status = status,
+                                createdAt = createdAt
+                            )
+                        )
+                    }
+                }
             }
+        } catch (_: Exception) {
         }
-
-        registry.put(codeHash, currentUid)
-        prefs.edit().putString(KEY_USED_HASHES, registry.toString()).apply()
-
-        val keyId = "KEY_" + codeHash.take(10).uppercase(Locale.ROOT)
-        val now = System.currentTimeMillis()
-        saveVerifiedSeal(context, currentUid, keyId, now)
-        syncActivationToFirestoreRest(currentUid, keyId, codeHash, now)
-        return VerifyResult(true, "Xác thực thành công! Đã mở khóa bản quyền Lifetime vĩnh viễn.", keyId, now)
+        result.sortedByDescending { it.createdAt }
     }
 
-    private fun isWellFormedKey(key: String): Boolean {
-        val regex = Regex("^DXIAO-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$")
-        return regex.matches(key)
+    /**
+     * Admin function: deletes a bug report from Firebase Firestore (`bug_reports/{reportId}`).
+     */
+    suspend fun deleteBugReportFromFirestore(reportId: String): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val docUrl = URL("https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/bug_reports/$reportId?key=$FIREBASE_API_KEY")
+            val conn = (docUrl.openConnection() as HttpURLConnection).apply {
+                requestMethod = "DELETE"
+                connectTimeout = 5000
+                readTimeout = 5000
+            }
+            conn.responseCode in 200..299
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    fun verifyAdminPasscodeAndSelfApprove(context: Context, passcode: String): Boolean {
+        val clean = passcode.trim()
+        if (clean.equals("digitalxiao", ignoreCase = true) ||
+            clean.equals("DIGITALXIAO-VIP", ignoreCase = true) ||
+            clean.equals("admin2026", ignoreCase = true)
+        ) {
+            val uid = getUserUid(context)
+            val devName = getDeviceModelName()
+            val a11y = isAccessibilityEnabledOnDevice(context)
+            val ovl = Settings.canDrawOverlays(context)
+            val ver = UpdateManager.getCurrentVersion(context)
+            saveVerifiedSeal(context, uid)
+            setSkipActivationPrompt(context, true)
+            executor.execute {
+                approveUidOnFirestoreInternal(uid, "$devName [Admin]", true, a11y, ovl, ver)
+            }
+            return true
+        }
+        return false
     }
 
     fun sha256Hex(input: String): String {

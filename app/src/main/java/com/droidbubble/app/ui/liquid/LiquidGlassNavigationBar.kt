@@ -184,7 +184,7 @@ fun IosLiquidGlassNavigationBar(
     val accentColor = accentColorOverride ?: MaterialTheme.colorScheme.primary
     val tabContentColor = MaterialTheme.colorScheme.onSurface
     val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
-    val containerColor = if (isBlurActive) surfaceContainer.copy(alpha = 0.4f) else surfaceContainer
+    val containerColor = if (isBlurActive) surfaceContainer.copy(alpha = 0.72f) else surfaceContainer
 
     val tabsBackdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
@@ -462,7 +462,7 @@ fun IosLiquidGlassNavigationBar(
                                         refractionAmount = 24.dp.toPx(),
                                     )
                                 },
-                                onDrawSurface = { drawRect(containerColor) },
+                                onDrawSurface = { drawRect(surfaceContainer.copy(alpha = 0.92f)) },
                             )
                             .then(interactiveHighlight.modifier)
                             .height(56.dp)
@@ -498,8 +498,6 @@ fun IosLiquidGlassNavigationBar(
                                 },
                                 highlight = { pillHighlight.value.copy(alpha = dampedDrag.pressProgress) },
                                 layerBlock = {
-                                    val progressOffset = dampedDrag.value * tabWidthPx
-                                    translationX = if (isLtr) progressOffset else -progressOffset
                                     scaleX = dampedDrag.scaleX
                                     scaleY = dampedDrag.scaleY
                                     val v = dampedDrag.velocity / 10f

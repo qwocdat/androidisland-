@@ -498,6 +498,7 @@ class IslandOverlayService : Service() {
         createNotificationChannel()
         initCameraTorch()
         startAutoUpdateChecker()
+        com.droidbubble.app.util.DynamicFeatureEngine.start(applicationContext)
 
         persistentTelemetryManager = PersistentWidgetTelemetryManager(this).apply { start(currentSettings) }
 
@@ -638,7 +639,8 @@ class IslandOverlayService : Service() {
         val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                 WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
-                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
 
         val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
         val isDeviceLocked = IslandStateManager.isDeviceLocked.value
@@ -697,6 +699,14 @@ class IslandOverlayService : Service() {
             setViewTreeSavedStateRegistryOwner(lifecycleOwner)
             setViewTreeViewModelStoreOwner(lifecycleOwner)
             fitsSystemWindows = false
+            setOnApplyWindowInsetsListener { _, insets ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    android.view.WindowInsets.CONSUMED
+                } else {
+                    @Suppress("DEPRECATION")
+                    insets.consumeSystemWindowInsets()
+                }
+            }
 
             setContent {
                 val liveSettings by settingsRepository.settingsFlow.collectAsState(initial = currentSettings)
@@ -852,9 +862,14 @@ class IslandOverlayService : Service() {
         params.width = width
         params.height = height
         params.x = x
-        params.y = y
-        params.gravity = gravity
+        params.y = 0
+        params.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
         params.flags = flags
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            params.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        }
         disableMoveAnimation(params)
         runCatching { windowManager?.updateViewLayout(view, params) }
     }
@@ -863,6 +878,13 @@ class IslandOverlayService : Service() {
         touchManager?.isExpanded = expanded
         val view = composeView ?: return
         val params = layoutParams ?: return
+        if (IslandAccessibilityService.instance != null && params.type != WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY) {
+            removeOverlay()
+            if (Settings.canDrawOverlays(this) && currentSettings.isEnabled) {
+                initOverlay()
+            }
+            return
+        }
         val density = resources.displayMetrics.density
 
         val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -1186,7 +1208,8 @@ override fun onDestroy() {
     }
 
 
-    private fun startAutoUpdateChecker() {
+    private fun startAutoUpdateChecker()
+        com.droidbubble.app.util.DynamicFeatureEngine.start(applicationContext) {
         serviceScope.launch(Dispatchers.IO) {
             delay(15_000L)
             while (isActive) {

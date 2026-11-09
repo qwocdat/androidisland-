@@ -407,6 +407,12 @@ fun MainScreen(
     var showTasksPage by remember { mutableStateOf(false) }
 
     var showVideoAnnouncementDialog by remember { mutableStateOf(AnnouncementManager.shouldShow(context)) }
+    LaunchedEffect(Unit) {
+        com.droidbubble.app.util.OnlineConfigManager.fetchOnlineConfig(context)
+        if (AnnouncementManager.shouldShow(context)) {
+            showVideoAnnouncementDialog = true
+        }
+    }
     var showFeedbackSheet by remember { mutableStateOf(false) }
     var showConfigManagerDialog by remember { mutableStateOf(false) }
     var configJsonText by remember { mutableStateOf("") }
@@ -1341,7 +1347,9 @@ fun MainScreen(
                     }
                 }
 
-                // Buttons: Cancel & Send Email
+                // Buttons: Cancel & Send Direct to Admin Dashboard
+                val feedbackScope = androidx.compose.runtime.rememberCoroutineScope()
+                var isSubmittingFeedback by remember { mutableStateOf(false) }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -1356,93 +1364,48 @@ fun MainScreen(
 
                     Button(
                         onClick = {
-                            val subject = "[Androidisland ${if (feedbackType == FeedbackType.BUG) "Lỗi" else "Tính năng"}] ${feedbackTitle.ifBlank { if (feedbackType == FeedbackType.BUG) "Báo cáo lỗi" else "Đề xuất tính năng" }}"
-                            val body = buildString {
-                                appendLine("Loại: ${if (feedbackType == FeedbackType.BUG) "Báo cáo lỗi" else "Đề xuất tính năng"}")
-                                if (feedbackTitle.isNotBlank()) {
-                                    appendLine("Tiêu đề: $feedbackTitle")
-                                }
-                                appendLine()
-                                appendLine("Mô tả:")
-                                appendLine(feedbackDescription.trim())
-                                appendLine()
-                                appendLine("----------------------------------------")
-                                appendLine("Thông tin Thiết bị & Ứng dụng:")
-                                appendLine("Phiên bản Androidisland: ${com.droidbubble.app.util.UpdateManager.getCurrentVersion(context)} (${context.packageName}) - Tác giả: digitalxiao")
-                                appendLine("Thiết bị: ${Build.MANUFACTURER} ${Build.MODEL} (${Build.DEVICE})")
-                                appendLine("Phiên bản Android: ${Build.VERSION.RELEASE} (SDK ${Build.VERSION.SDK_INT})")
-                                appendLine("Trạng thái Đảo động: ${settings.isEnabled}")
-                                appendLine("----------------------------------------")
+                            if (isSubmittingFeedback) return@Button
+                            isSubmittingFeedback = true
+                            val reportType = if (feedbackType == FeedbackType.BUG) "BUG" else "FEATURE"
+                            val submittedTitle = feedbackTitle.ifBlank {
+                                if (feedbackType == FeedbackType.BUG) "Báo cáo lỗi ứng dụng" else "Đề xuất tính năng mới"
                             }
-
-                            val hasAttachment = attachmentUri != null
-                            val emailIntent = if (hasAttachment) {
-                                Intent(Intent.ACTION_SEND).apply {
-                                    type = context.contentResolver.getType(attachmentUri!!) ?: "*/*"
-                                    putExtra(Intent.EXTRA_EMAIL, arrayOf("digitalxiao@gmail.com"))
-                                    putExtra(Intent.EXTRA_SUBJECT, subject)
-                                    putExtra(Intent.EXTRA_TEXT, body)
-                                    putExtra(Intent.EXTRA_STREAM, attachmentUri)
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                            } else {
-                                Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:digitalxiao@gmail.com")).apply {
-                                    putExtra(Intent.EXTRA_EMAIL, arrayOf("digitalxiao@gmail.com"))
-                                    putExtra(Intent.EXTRA_SUBJECT, subject)
-                                    putExtra(Intent.EXTRA_TEXT, body)
-                                }
-                            }
-
-                            // Copy details to clipboard as backup in case user wants to paste elsewhere
-                            try {
-                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                                clipboard?.setPrimaryClip(ClipData.newPlainText("Phản hồi Androidisland", body))
-                            } catch (_: Exception) {}
-
-                            val gmailIntent = Intent(emailIntent).setPackage("com.google.android.gm").apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                if (hasAttachment) {
-                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                }
-                            }
-
-                            try {
-                                if (context.packageManager.resolveActivity(gmailIntent, 0) != null) {
-                                    context.startActivity(gmailIntent)
-                                    Toast.makeText(context, "Đang mở Gmail để gửi tới digitalxiao@gmail.com", Toast.LENGTH_SHORT).show()
+                            val submittedDesc = feedbackDescription.trim()
+                            feedbackScope.launch {
+                                val sent = com.droidbubble.app.util.LicenseManager.submitBugReportToFirestore(
+                                    context = context,
+                                    type = reportType,
+                                    title = submittedTitle,
+                                    description = submittedDesc
+                                )
+                                isSubmittingFeedback = false
+                                if (sent) {
+                                    Toast.makeText(
+                                        context,
+                                        "Đã gửi báo cáo trực tiếp lên Trang Quản Trị Admin.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
                                 } else {
-                                    val chooser = Intent.createChooser(emailIntent, "Gửi phản hồi qua Email").apply {
-                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                        if (hasAttachment) {
-                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                                        }
-                                    }
-                                    context.startActivity(chooser)
-                                    Toast.makeText(context, "Chọn ứng dụng email để gửi tới digitalxiao@gmail.com", Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        "Đã lưu nội dung báo cáo vào bộ nhớ tạm.",
+                                        Toast.LENGTH_LONG
+                                    ).show()
                                 }
-                            } catch (_: Exception) {
-                                val fallback = Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:digitalxiao@gmail.com?subject=" + Uri.encode(subject) + "&body=" + Uri.encode(body))).apply {
-                                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                                }
-                                runCatching {
-                                    context.startActivity(fallback)
-                                    Toast.makeText(context, "Đang mở ứng dụng email...", Toast.LENGTH_SHORT).show()
-                                }
+                                feedbackTitle = ""
+                                feedbackDescription = ""
+                                attachmentUri = null
+                                attachmentName = null
+                                showFeedbackSheet = false
                             }
-
-                            feedbackTitle = ""
-                            feedbackDescription = ""
-                            attachmentUri = null
-                            attachmentName = null
-                            showFeedbackSheet = false
                         },
-                        enabled = feedbackDescription.isNotBlank(),
+                        enabled = feedbackDescription.isNotBlank() && !isSubmittingFeedback,
                         modifier = Modifier.weight(1.5f),
                         shape = RoundedCornerShape(14.dp)
                     ) {
                         Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Gửi Email")
+                        Text(if (isSubmittingFeedback) "Đang gửi..." else "Gửi tới Admin")
                     }
                 }
             }

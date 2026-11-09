@@ -32,8 +32,8 @@ sealed interface UpdateCheckResult {
 
 object UpdateManager {
 
-    private const val GITHUB_RELEASES_API = "https://api.github.com/repos/digitalxiao/androidisland/releases"
-    private const val GITHUB_RELEASES_ATOM = "https://github.com/digitalxiao/androidisland/releases.atom"
+    private const val GITHUB_RELEASES_API = "https://api.github.com/repos/qwocdat/androidisland-/releases"
+    private const val GITHUB_RELEASES_ATOM = "https://github.com/qwocdat/androidisland-/releases.atom"
     private const val DEFAULT_USER_AGENT = "Mozilla/5.0 (Linux; Android 14; Androidisland) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
 
     fun getCurrentVersion(context: Context): String {
@@ -46,7 +46,26 @@ object UpdateManager {
     }
 
     suspend fun checkGithubUpdates(context: Context): UpdateCheckResult = withContext(Dispatchers.IO) {
-        // Try the GitHub REST API first
+        // 0. Check OnlineConfigManager (Firebase Firestore / online_update.json / Web Server) first!
+        runCatching {
+            val onlineCfg = OnlineConfigManager.fetchOnlineConfig(context)
+            val currentVer = getCurrentVersion(context)
+            if (isNewerVersion(onlineCfg.latestVersion, currentVer) && onlineCfg.apkDownloadUrl.startsWith("http")) {
+                return@withContext UpdateCheckResult.UpdateAvailable(
+                    AppReleaseInfo(
+                        tagName = "v${onlineCfg.latestVersion}",
+                        version = onlineCfg.latestVersion,
+                        name = onlineCfg.announcementTitle,
+                        changelog = onlineCfg.updateNotes.ifBlank { onlineCfg.changelogItems.joinToString("\n• ", prefix = "• ") },
+                        isBeta = false,
+                        downloadUrl = onlineCfg.apkDownloadUrl,
+                        apkSize = 0L
+                    )
+                )
+            }
+        }
+
+        // Try the GitHub REST API next
         val apiResult = runCatching { fetchFromApi(context) }.getOrNull()
         if (apiResult != null && apiResult !is UpdateCheckResult.Error) {
             return@withContext apiResult

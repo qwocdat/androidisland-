@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
 import com.droidbubble.app.data.SettingsRepository
 import com.droidbubble.app.service.IslandOverlayService
 import com.droidbubble.app.theme.DroidbubbleTheme
@@ -24,7 +25,9 @@ import com.droidbubble.app.ui.main.LicenseActivationScreen
 import com.droidbubble.app.ui.main.MainScreen
 import com.droidbubble.app.ui.main.MainScreenViewModel
 import com.droidbubble.app.ui.main.PermissionHelper
+import com.droidbubble.app.util.DynamicFeatureEngine
 import com.droidbubble.app.util.LicenseManager
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
@@ -42,6 +45,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // Khởi chạy Engine cập nhật tính năng & vá lỗi trực tuyến (OTA Live Patch)
+        DynamicFeatureEngine.start(applicationContext)
 
         viewModel.checkPermissions(this)
         if (LicenseManager.isActivated(this) && PermissionHelper.isOverlayGranted(this)) {
@@ -69,8 +75,12 @@ class MainActivity : ComponentActivity() {
                         LicenseActivationScreen(
                             onActivated = {
                                 isLicenseActivated = true
+                                DynamicFeatureEngine.syncNow(applicationContext)
                                 if (PermissionHelper.isOverlayGranted(this@MainActivity)) {
                                     IslandOverlayService.start(this@MainActivity)
+                                }
+                                lifecycleScope.launch {
+                                    LicenseManager.syncDeviceTelemetry(this@MainActivity)
                                 }
                             }
                         )
@@ -100,9 +110,15 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.checkPermissions(this)
-        if (LicenseManager.isActivated(this) && PermissionHelper.isOverlayGranted(this)) {
-            IslandOverlayService.start(this)
-        } else if (!LicenseManager.isActivated(this)) {
+        DynamicFeatureEngine.syncNow(applicationContext)
+        if (LicenseManager.isActivated(this)) {
+            if (PermissionHelper.isOverlayGranted(this)) {
+                IslandOverlayService.start(this)
+            }
+            lifecycleScope.launch {
+                LicenseManager.syncDeviceTelemetry(this@MainActivity)
+            }
+        } else {
             IslandOverlayService.stop(this)
         }
     }

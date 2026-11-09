@@ -109,6 +109,8 @@ import com.droidbubble.app.service.VoiceMemoManager
 import com.droidbubble.app.theme.ISLAND_FONTS
 import com.droidbubble.app.ui.main.CutoutModeOption
 import com.droidbubble.app.ui.main.CutoutPositionSelectorCard
+import com.droidbubble.app.ui.main.OnlineAdminConfigDialog
+import com.droidbubble.app.util.OnlineConfigManager
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -132,6 +134,14 @@ fun LiquidSettingsTab(
     var expandCustomization by remember { mutableStateOf(false) }
     var expandEqualizer by remember { mutableStateOf(false) }
     var expandPowerSaver by remember { mutableStateOf(false) }
+    var showOnlineAdminDialog by remember { mutableStateOf(false) }
+    if (showOnlineAdminDialog) {
+        OnlineAdminConfigDialog(
+            initialConfig = OnlineConfigManager.getCachedConfig(context),
+            onDismiss = { showOnlineAdminDialog = false },
+            onSaved = { showOnlineAdminDialog = false }
+        )
+    }
 
     val batteryPct = remember {
         val intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
@@ -953,6 +963,45 @@ fun LiquidSettingsTab(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Default.Share, contentDescription = null, tint = Color(0xFF30D158))
+                        }
+                    },
+                    trailingContent = {
+                        Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, modifier = Modifier.size(15.dp))
+                    }
+                )
+            }
+        }
+
+        item {
+            Surface(
+                onClick = { showOnlineAdminDialog = true },
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                tonalElevation = 1.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                ListItem(
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                    headlineContent = {
+                        Text(
+                            text = if (isVi) "Quản lý Thông báo & Update Online" else "Online Announcement & Update Admin",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    supportingContent = {
+                        Text(
+                            text = if (isVi) "Chỉnh sửa bảng thông báo & phiên bản cập nhật trên Web / Firebase" else "Edit announcement popup & online APK update"
+                        )
+                    },
+                    leadingContent = {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                         }
                     },
                     trailingContent = {

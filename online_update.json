@@ -1,0 +1,44 @@
+{
+  "announcementId": "v2.5.0_liquid_release",
+  "showAnnouncement": true,
+  "announcementTitle": "Thông Báo Video & Cập Nhật Mới",
+  "announcementSubtitle": "Androidisland Liquid Edition • digitalxiao",
+  "announcementBannerTitle": "Đã ra mắt Video hướng dẫn & Bản cập nhật lớn",
+  "announcementBannerDesc": "Xem ngay video trên TikTok để biết cách cài đặt, xác minh UID và cập nhật tính năng trực tuyến mới nhất.",
+  "changelogItems": [
+    "Giao diện Liquid Island 5 Tab mới: Tích hợp thanh điều hướng Liquid Glass Tabbar chuẩn vật lý.",
+    "Đảo động đen nguyên bản: Mặc định hiển thị viên thuốc đen tuyền ôm khít camera trước, chống bị thanh trạng thái che khuất.",
+    "Ẩn HyperIsland hệ điều hành: Tắt và che phủ đảo gốc của Xiaomi HyperOS, ColorOS, OriginOS, MagicOS.",
+    "Xác thực thiết bị qua UID: Cấp phép trực tiếp theo mã UID thiết bị trên hệ thống Cloud và tích chọn Không hiển thị lại.",
+    "Cập nhật Tính năng & Fix lỗi Online (OTA): Đẩy tính năng mới, chỉnh sửa kích thước Đảo động và vá lỗi trực tiếp từ Web không cần cài lại APK."
+  ],
+  "tiktokVideoUrl": "https://vt.tiktok.com/ZSpBjvVcP/",
+  "tiktokButtonText": "Mở Video TikTok & Thả Tim",
+  "latestVersion": "2.0.0",
+  "latestVersionCode": 25,
+  "apkDownloadUrl": "https://github.com/qwocdat/androidisland-/releases/latest/download/Androidisland.apk",
+  "updateNotes": "Bản cập nhật Liquid Edition: Xác thực thiết bị trực tiếp qua UID, cập nhật tính năng & fix lỗi trực tuyến (OTA) và ẩn HyperIsland.",
+  "forceUpdate": false,
+  "allowAllDevices": false,
+  "allowedUids": [],
+  "patchVersion": 1,
+  "remoteToastMessage": "",
+  "onlineFeatureSwitches": {
+    "alwaysShowPill": true,
+    "hideNativeOsIsland": true,
+    "bubbleEffectEnabled": true,
+    "showCalls": true,
+    "showMedia": true,
+    "showNotifications": true,
+    "showCharging": true,
+    "showFlashlight": true,
+    "showFps": false,
+    "showNetworkSpeed": false
+  },
+  "onlineDimensionOverrides": {
+    "widthDp": 124,
+    "heightDp": 38,
+    "topOffsetDp": 12,
+    "cornerRadiusDp": 22
+  }
+}

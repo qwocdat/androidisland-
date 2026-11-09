@@ -1030,10 +1030,18 @@ fun IslandOverlayRoot(
     val teardropEarRadius = if (settings.isTeardropCutout) 11.dp else 0.dp
     var mainPillRect by remember { mutableStateOf<android.graphics.Rect?>(null) }
     var auxBubbleRect by remember { mutableStateOf<android.graphics.Rect?>(null) }
-    LaunchedEffect(isCompactDual) {
+    LaunchedEffect(isExpanded) {
+        if (isExpanded) {
+            mainPillRect = null
+            auxBubbleRect = null
+        }
+    }
+    LaunchedEffect(isCompactDual, isOccupied, hasPersistent, settings.alwaysShowPill, isExpanded) {
         if (!isCompactDual && auxBubbleRect != null) {
             auxBubbleRect = null
-            onCompactRectsChange(listOfNotNull(mainPillRect))
+        }
+        if (!isExpanded) {
+            onCompactRectsChange(listOfNotNull(mainPillRect, if (isCompactDual) auxBubbleRect else null))
         }
     }
     val isCallActive = isCall && primaryPriority == IslandPriority.CALL

@@ -36,16 +36,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.GraphicsLayerScope
 import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.RenderEffect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposeRenderEffect
-import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -206,8 +203,6 @@ interface Backdrop {
     )
 }
 
-internal val LocalBackdropTranslation = ThreadLocal<Offset>()
-
 @Stable
 class LayerBackdrop : Backdrop {
     internal var graphicsLayer: GraphicsLayer? = null
@@ -228,15 +223,11 @@ class LayerBackdrop : Backdrop {
         val dstCoords = coordinates
         var dx = 0f
         var dy = 0f
-        val extraTranslation = LocalBackdropTranslation.get() ?: Offset.Zero
         if (srcCoords != null && dstCoords != null && srcCoords.isAttached && dstCoords.isAttached) {
             val srcPos = srcCoords.positionInWindow()
             val dstPos = dstCoords.positionInWindow()
-            dx = srcPos.x - (dstPos.x + extraTranslation.x)
-            dy = srcPos.y - (dstPos.y + extraTranslation.y)
-        } else {
-            dx = -extraTranslation.x
-            dy = -extraTranslation.y
+            dx = srcPos.x - dstPos.x
+            dy = srcPos.y - dstPos.y
         }
         drawContext.canvas.save()
         drawContext.canvas.translate(dx, dy)
@@ -339,7 +330,8 @@ class BackdropEffectScope(
     private val shaderCache: MutableMap<String, Any>,
 ) : Density {
     var padding: Float = 0f
-    private val androidEffects = mutableListOf<AndroidRenderEffect>()
+    private val preEffects = mutableListOf<AndroidRenderEffect>()
+    private var shaderEffect: AndroidRenderEffect? = null
 
     fun isRuntimeShaderSupported(): Boolean =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
@@ -362,7 +354,7 @@ class BackdropEffectScope(
                 )
             )
             satMatrix.postConcat(contrastMatrix)
-            androidEffects.add(
+            preEffects.add(
                 AndroidRenderEffect.createColorFilterEffect(ColorMatrixColorFilter(satMatrix))
             )
         }
@@ -370,10 +362,13 @@ class BackdropEffectScope(
 
     fun blur(radiusX: Float, radiusY: Float) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && (radiusX > 0.1f || radiusY > 0.1f)) {
-            androidEffects.add(
+            // In miuix, blur(4.dp) runs on a 4x downscaled buffer (= 16.dp full-res Gaussian blur).
+            val fullResBlurX = (radiusX * 4.5f).coerceAtLeast(1f)
+            val fullResBlurY = (radiusY * 4.5f).coerceAtLeast(1f)
+            preEffects.add(
                 AndroidRenderEffect.createBlurEffect(
-                    radiusX.coerceAtLeast(0.1f),
-                    radiusY.coerceAtLeast(0.1f),
+                    fullResBlurX,
+                    fullResBlurY,
                     Shader.TileMode.CLAMP,
                 )
             )
@@ -391,19 +386,22 @@ class BackdropEffectScope(
                 RuntimeShader(shaderString)
             } as RuntimeShader)
             RuntimeShaderScope(runtimeShader).apply(block)
-            androidEffects.add(
-                AndroidRenderEffect.createRuntimeShaderEffect(runtimeShader, uniformShaderName)
-            )
+            shaderEffect = AndroidRenderEffect.createRuntimeShaderEffect(runtimeShader, uniformShaderName)
         }
     }
 
-    internal fun buildComposeRenderEffect(): RenderEffect? {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || androidEffects.isEmpty()) return null
-        var current = androidEffects.first()
-        for (i in 1 until androidEffects.size) {
-            current = AndroidRenderEffect.createChainEffect(androidEffects[i], current)
+    internal fun buildPreRenderEffect(): RenderEffect? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || preEffects.isEmpty()) return null
+        var current = preEffects.first()
+        for (i in 1 until preEffects.size) {
+            current = AndroidRenderEffect.createChainEffect(preEffects[i], current)
         }
         return current.asComposeRenderEffect()
+    }
+
+    internal fun buildShaderRenderEffect(): RenderEffect? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return null
+        return shaderEffect?.asComposeRenderEffect()
     }
 }
 
@@ -513,6 +511,13 @@ private class SimpleGraphicsLayerScope : GraphicsLayerScope {
     }
 }
 
+/**
+ * Two-stage GraphicsLayer backdrop pipeline:
+ *  Stage 1 (`preLayer`): records the backdrop and applies `colorControls` (vibrancy) + Gaussian `blur`.
+ *  Stage 2 (`shaderLayer`): records `preLayer` and applies the AGSL `RuntimeShader` (`lens` refraction & chromatic aberration).
+ * Using two separate GraphicsLayers ensures Android's Skia pipeline blurs the background *before* the RuntimeShader samples `"content"`,
+ * preventing unblurred background text from bleeding into the glass pill!
+ */
 private class DrawBackdropNode(
     var backdrop: Backdrop,
     var shape: () -> Shape,
@@ -522,23 +527,29 @@ private class DrawBackdropNode(
     var onDrawSurface: (DrawScope.() -> Unit)?,
 ) : Modifier.Node(), DrawModifierNode, GlobalPositionAwareModifierNode {
 
-    private var effectLayer: GraphicsLayer? = null
+    private var preLayer: GraphicsLayer? = null
+    private var shaderLayer: GraphicsLayer? = null
     private var nodeCoordinates: LayoutCoordinates? = null
     private val clipPath = Path()
     private val shaderCache = mutableMapOf<String, Any>()
     private val layerScope = SimpleGraphicsLayerScope()
 
     override fun onAttach() {
-        effectLayer = requireGraphicsContext().createGraphicsLayer().apply {
+        val gc = requireGraphicsContext()
+        preLayer = gc.createGraphicsLayer().apply {
+            compositingStrategy = CompositingStrategy.Offscreen
+        }
+        shaderLayer = gc.createGraphicsLayer().apply {
             compositingStrategy = CompositingStrategy.Offscreen
         }
     }
 
     override fun onDetach() {
-        effectLayer?.let {
-            requireGraphicsContext().releaseGraphicsLayer(it)
-        }
-        effectLayer = null
+        val gc = requireGraphicsContext()
+        preLayer?.let { gc.releaseGraphicsLayer(it) }
+        shaderLayer?.let { gc.releaseGraphicsLayer(it) }
+        preLayer = null
+        shaderLayer = null
     }
 
     override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
@@ -561,17 +572,10 @@ private class DrawBackdropNode(
         val sx = layerScope.scaleX
         val sy = layerScope.scaleY
 
-        drawContext.canvas.save()
-        if (sx != 1f || sy != 1f) {
-            val pivotX = size.width * 0.5f
-            val pivotY = size.height * 0.5f
-            drawContext.canvas.translate(pivotX, pivotY)
-            drawContext.canvas.scale(sx, sy)
-            drawContext.canvas.translate(-pivotX, -pivotY)
-        }
+        val pLayer = preLayer
+        val sLayer = shaderLayer
 
-        val layer = effectLayer
-        if (layer != null) {
+        if (pLayer != null && sLayer != null) {
             val scope = BackdropEffectScope(
                 density = density,
                 fontScale = fontScale,
@@ -583,39 +587,63 @@ private class DrawBackdropNode(
             )
             effects?.invoke(scope)
             val pad = scope.padding
-            layer.renderEffect = scope.buildComposeRenderEffect()
+            val preEffect = scope.buildPreRenderEffect()
+            val agslEffect = scope.buildShaderRenderEffect()
 
-            layer.record(
-                size = IntSize(
-                    (size.width + pad * 2f).toInt().coerceAtLeast(1),
-                    (size.height + pad * 2f).toInt().coerceAtLeast(1),
-                )
-            ) {
+            val recordSize = IntSize(
+                (size.width + pad * 2f).toInt().coerceAtLeast(1),
+                (size.height + pad * 2f).toInt().coerceAtLeast(1),
+            )
+
+            // Stage 1: Record backdrop and apply vibrancy + Gaussian blur
+            pLayer.renderEffect = preEffect
+            pLayer.record(size = recordSize) {
                 drawContext.canvas.save()
                 drawContext.canvas.translate(pad, pad)
-                val prevTrans = LocalBackdropTranslation.get()
-                LocalBackdropTranslation.set(
-                    Offset(layerScope.translationX, layerScope.translationY)
-                )
-                try {
-                    with(backdrop) {
-                        drawBackdrop(
-                            density = this@draw,
-                            coordinates = nodeCoordinates,
-                            layerBlock = layerBlock,
-                            downscaleFactor = 1,
-                        )
-                    }
-                } finally {
-                    LocalBackdropTranslation.set(prevTrans)
+                with(backdrop) {
+                    drawBackdrop(
+                        density = this@draw,
+                        coordinates = nodeCoordinates,
+                        layerBlock = layerBlock,
+                        downscaleFactor = 1,
+                    )
                 }
                 drawContext.canvas.restore()
             }
 
+            // Stage 2: Apply AGSL lens refraction shader over the blurred preLayer
+            sLayer.renderEffect = agslEffect
+            sLayer.record(size = recordSize) {
+                drawLayer(pLayer)
+            }
+        }
+
+        drawContext.canvas.save()
+        if (sx != 1f || sy != 1f) {
+            val pivotX = size.width * 0.5f
+            val pivotY = size.height * 0.5f
+            drawContext.canvas.translate(pivotX, pivotY)
+            drawContext.canvas.scale(sx, sy)
+            drawContext.canvas.translate(-pivotX, -pivotY)
+        }
+
+        if (sLayer != null) {
+            val scope = BackdropEffectScope(
+                density = density,
+                fontScale = fontScale,
+                size = size,
+                shape = currentShape,
+                layoutDirection = layoutDirection,
+                downscaleFactor = 1,
+                shaderCache = shaderCache,
+            )
+            effects?.invoke(scope)
+            val pad = scope.padding
+
             drawContext.canvas.save()
             drawContext.canvas.clipPath(clipPath)
             drawContext.canvas.translate(-pad, -pad)
-            drawLayer(layer)
+            drawLayer(sLayer)
             drawContext.canvas.translate(pad, pad)
             onDrawSurface?.invoke(this)
             drawContext.canvas.restore()

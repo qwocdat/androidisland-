@@ -607,7 +607,7 @@ fun LiquidHomeTab(
                     }
                 }
 
-                val savedKey = remember { LicenseManager.getSavedKey(context) ?: "VIP" }
+                val savedUid = remember { LicenseManager.getUserUid(context) }
                 Surface(
                     shape = RoundedCornerShape(22.dp),
                     color = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -615,8 +615,8 @@ fun LiquidHomeTab(
                 ) {
                     ListItem(
                         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
-                        headlineContent = { Text("Đã kích hoạt bản quyền", fontWeight = FontWeight.Bold) },
-                        supportingContent = { Text("Key: $savedKey • Tác giả: digitalxiao", style = MaterialTheme.typography.bodySmall) },
+                        headlineContent = { Text("Thiết bị đã cấp phép (UID)", fontWeight = FontWeight.Bold) },
+                        supportingContent = { Text("UID: $savedUid • Tác giả: digitalxiao", style = MaterialTheme.typography.bodySmall) },
                         leadingContent = {
                             Box(
                                 modifier = Modifier
@@ -630,7 +630,7 @@ fun LiquidHomeTab(
                         },
                         trailingContent = {
                             TextButton(onClick = onDeactivateLicense) {
-                                Text("Đổi Key", fontWeight = FontWeight.Bold)
+                                Text("Kiểm tra lại", fontWeight = FontWeight.Bold)
                             }
                         }
                     )

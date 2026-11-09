@@ -5,10 +5,17 @@ import android.app.KeyguardManager
 import android.content.Context
 import android.view.accessibility.AccessibilityEvent
 import com.droidbubble.app.island.IslandStateManager
+import com.droidbubble.app.util.LicenseManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class IslandAccessibilityService : AccessibilityService() {
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     companion object {
         private val _isConnected = MutableStateFlow(false)
@@ -39,6 +46,12 @@ class IslandAccessibilityService : AccessibilityService() {
             IslandStateManager.setDeviceLocked(km.isKeyguardLocked)
         }
         IslandOverlayService.onAccessibilityServiceChanged(this)
+        serviceScope.launch {
+            LicenseManager.syncDeviceTelemetry(
+                context = applicationContext,
+                accessibilityOverride = true
+            )
+        }
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -62,5 +75,11 @@ class IslandAccessibilityService : AccessibilityService() {
         instance = null
         _isConnected.value = false
         IslandOverlayService.onAccessibilityServiceChanged(null)
+        serviceScope.launch {
+            LicenseManager.syncDeviceTelemetry(
+                context = applicationContext,
+                accessibilityOverride = false
+            )
+        }
     }
 }

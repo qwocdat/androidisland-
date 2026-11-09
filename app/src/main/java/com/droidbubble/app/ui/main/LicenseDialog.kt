@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,20 +15,23 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Key
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,7 +40,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,23 +50,247 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.droidbubble.app.util.LicenseManager
+import com.droidbubble.app.util.OnlineConfigManager
+import kotlinx.coroutines.delay
 
 @Composable
 fun LicenseActivationScreen(
     onActivated: () -> Unit
 ) {
     val context = LocalContext.current
-    val deviceId = remember { LicenseManager.getUserUid(context) }
-    var keyInput by remember { mutableStateOf("") }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val deviceUid = remember { LicenseManager.getUserUid(context) }
+    val deviceModel = remember { LicenseManager.getDeviceModelName() }
+
+    var statusMessage by remember {
+        mutableStateOf("Đang kiểm tra trạng thái cấp phép UID trên hệ thống...")
+    }
+    var isPendingStatus by remember { mutableStateOf(true) }
     var isChecking by remember { mutableStateOf(false) }
+    var showAdminUnlockDialog by remember { mutableStateOf(false) }
+    var adminPinInput by remember { mutableStateOf("") }
+    var adminPinError by remember { mutableStateOf<String?>(null) }
+
+    // Checkbox không hiển thị lại màn xác minh ở các lần mở app sau
+    var dontShowAgain by remember { mutableStateOf(LicenseManager.isSkipActivationPrompt(context)) }
+
+    // Dialog thông báo Follow & Tim Video TikTok khi UID được xác minh thành công
+    var showSocialDialog by remember { mutableStateOf(false) }
+    var onlineConfig by remember { mutableStateOf(OnlineConfigManager.getCachedConfig(context)) }
+
+    fun triggerUidCheck(manualClick: Boolean = false) {
+        if (isChecking) return
+        isChecking = true
+        LicenseManager.checkAndActivateByUid(context) { res ->
+            isChecking = false
+            statusMessage = res.message
+            isPendingStatus = res.status != "blocked"
+            if (res.success) {
+                // Tải cấu hình mới nhất từ web/cloud
+                onlineConfig = OnlineConfigManager.getCachedConfig(context)
+                // Hiển thị hộp thoại Follow & Tim Video trước khi vào thẳng app
+                showSocialDialog = true
+            } else if (manualClick) {
+                Toast.makeText(context, res.message, Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // Auto-check on launch and poll every 6 seconds so approval from Web/Admin unlocks automatically
+    LaunchedEffect(Unit) {
+        val remote = OnlineConfigManager.fetchOnlineConfig(context)
+        onlineConfig = remote
+        while (true) {
+            triggerUidCheck(manualClick = false)
+            delay(6000L)
+        }
+    }
+
+    // Hộp thoại Follow & Tim Video TikTok sau khi xác minh thành công
+    if (showSocialDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showSocialDialog = false
+                onActivated()
+            },
+            icon = {
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            },
+            title = {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = onlineConfig.announcementTitle.ifBlank { "Xác minh thiết bị thành công" },
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = onlineConfig.announcementSubtitle.ifBlank { "Bản quyền phát triển bởi digitalxiao" },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(
+                                text = onlineConfig.announcementBannerTitle.ifBlank { "Ủng hộ tác giả digitalxiao" },
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = onlineConfig.announcementBannerDesc.ifBlank { "Hãy bấm Follow kênh TikTok và thả tim video hướng dẫn để cập nhật các bản mod mới nhất!" },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    // Tùy chọn không hỏi lại
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                dontShowAgain = !dontShowAgain
+                                LicenseManager.setSkipActivationPrompt(context, dontShowAgain)
+                            },
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Checkbox(
+                            checked = dontShowAgain,
+                            onCheckedChange = {
+                                dontShowAgain = it
+                                LicenseManager.setSkipActivationPrompt(context, it)
+                            },
+                            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text(
+                            text = "Không hiển thị lại màn hình xác minh này",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val videoUrl = onlineConfig.tiktokVideoUrl.ifBlank { "https://vt.tiktok.com/ZSpBjvVcP/" }
+                        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(videoUrl)).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        runCatching { context.startActivity(intent) }
+                        showSocialDialog = false
+                        onActivated()
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(onlineConfig.tiktokButtonText.ifBlank { "Mở TikTok & Thả tim" }, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showSocialDialog = false
+                        onActivated()
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Vào ứng dụng")
+                }
+            }
+        )
+    }
+
+    if (showAdminUnlockDialog) {
+        AlertDialog(
+            onDismissRequest = { showAdminUnlockDialog = false },
+            title = { Text("Mở khóa dành cho Admin", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "Nhập mã quản trị viên (digitalxiao) để tự động duyệt UID thiết bị này lên hệ thống:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedTextField(
+                        value = adminPinInput,
+                        onValueChange = {
+                            adminPinInput = it
+                            adminPinError = null
+                        },
+                        label = { Text("Mã Admin") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        isError = adminPinError != null,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    if (adminPinError != null) {
+                        Text(adminPinError!!, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (LicenseManager.verifyAdminPasscodeAndSelfApprove(context, adminPinInput)) {
+                            showAdminUnlockDialog = false
+                            Toast.makeText(context, "Đã duyệt thiết bị Admin thành công!", Toast.LENGTH_SHORT).show()
+                            onActivated()
+                        } else {
+                            adminPinError = "Mã Admin không chính xác!"
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Xác nhận")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAdminUnlockDialog = false }) {
+                    Text("Hủy")
+                }
+            }
+        )
+    }
 
     Box(
         modifier = Modifier
@@ -70,7 +300,7 @@ fun LicenseActivationScreen(
         contentAlignment = Alignment.Center
     ) {
         AlertDialog(
-            onDismissRequest = { /* Bắt buộc kích hoạt mới được vào ứng dụng */ },
+            onDismissRequest = { /* Bắt buộc UID được duyệt mới vào ứng dụng */ },
             properties = DialogProperties(
                 dismissOnBackPress = false,
                 dismissOnClickOutside = false
@@ -80,12 +310,13 @@ fun LicenseActivationScreen(
                     modifier = Modifier
                         .size(56.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .clickable { showAdminUnlockDialog = true },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Key,
-                        contentDescription = "Kích hoạt Key",
+                        imageVector = Icons.Default.Security,
+                        contentDescription = "Xác thực UID",
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(28.dp)
                     )
@@ -97,7 +328,7 @@ fun LicenseActivationScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "Kích hoạt Androidisland",
+                        text = "Xác thực Thiết bị (UID)",
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
                         textAlign = TextAlign.Center
@@ -115,101 +346,141 @@ fun LicenseActivationScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Vui lòng nhập mã License Key hợp lệ để mở khóa toàn bộ tính năng Đảo động và Thanh cạnh.",
+                        text = "Ứng dụng sử dụng cơ chế cấp phép trực tiếp qua UID thiết bị. Hãy sao chép mã UID bên dưới gửi cho Admin để được cho phép vào ứng dụng.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
                     )
 
-                    // Hộp hiển thị Mã thiết bị (Device ID / UID)
+                    // Hộp hiển thị Mã UID Thiết bị & Tên máy
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 14.dp, vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Mã định danh thiết bị (UID)",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = deviceUid,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        fontSize = 15.sp,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                                IconButton(
+                                    onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                                        clipboard?.setPrimaryClip(ClipData.newPlainText("Device UID", deviceUid))
+                                        Toast.makeText(context, "Đã sao chép UID: $deviceUid", Toast.LENGTH_SHORT).show()
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ContentCopy,
+                                        contentDescription = "Sao chép UID",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PhoneAndroid,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    text = deviceModel,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+
+                    // Hộp hiển thị trạng thái duyệt UID trực tiếp
                     Surface(
                         shape = RoundedCornerShape(14.dp),
-                        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        color = if (isPendingStatus) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+                        } else {
+                            MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Mã thiết bị (Device ID)",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                            if (isChecking) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
-                                Text(
-                                    text = deviceId,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 15.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                            IconButton(
-                                onClick = {
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                                    clipboard?.setPrimaryClip(ClipData.newPlainText("Device ID", deviceId))
-                                    Toast.makeText(context, "Đã sao chép: $deviceId", Toast.LENGTH_SHORT).show()
-                                }
-                            ) {
+                            } else {
                                 Icon(
-                                    imageVector = Icons.Default.ContentCopy,
-                                    contentDescription = "Sao chép mã thiết bị",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
+                                    imageVector = Icons.Default.VerifiedUser,
+                                    contentDescription = null,
+                                    tint = if (isPendingStatus) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
+                            Text(
+                                text = statusMessage,
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (isPendingStatus) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error
+                            )
                         }
                     }
 
-                    OutlinedTextField(
-                        value = keyInput,
-                        onValueChange = {
-                            keyInput = it
-                            errorMessage = null
-                        },
-                        label = { Text("Nhập License Key") },
-                        placeholder = { Text("VD: DXIAO-XXXX-XXXX-XXXX") },
-                        leadingIcon = {
-                            Icon(Icons.Default.Lock, contentDescription = null)
-                        },
-                        singleLine = true,
-                        isError = errorMessage != null,
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    if (errorMessage != null) {
-                        Text(
-                            text = errorMessage!!,
-                            color = MaterialTheme.colorScheme.error,
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    // Nút Lấy Key trực tiếp từ hệ thống getkey
+                    // Tùy chọn không hỏi lại ở màn xác minh
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        OutlinedButton(
-                            onClick = {
-                                val url = LicenseManager.getKeyPageUrl(context)
-                                runCatching {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                                }.onFailure {
-                                    Toast.makeText(context, "Không mở được trình duyệt: $url", Toast.LENGTH_SHORT).show()
-                                }
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                dontShowAgain = !dontShowAgain
+                                LicenseManager.setSkipActivationPrompt(context, dontShowAgain)
                             },
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Nhận mã Key (Get Key)", fontSize = 12.sp)
-                        }
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Checkbox(
+                            checked = dontShowAgain,
+                            onCheckedChange = {
+                                dontShowAgain = it
+                                LicenseManager.setSkipActivationPrompt(context, it)
+                            },
+                            colors = CheckboxDefaults.colors(checkedColor = MaterialTheme.colorScheme.primary)
+                        )
+                        Text(
+                            text = "Không hiển thị lại ở lần mở sau",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             },
@@ -221,54 +492,35 @@ fun LicenseActivationScreen(
                     OutlinedButton(
                         onClick = {
                             val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-                            val pasted = clipboard?.primaryClip?.getItemAt(0)?.text?.toString()?.trim()
-                            if (!pasted.isNullOrBlank()) {
-                                keyInput = pasted
-                                errorMessage = null
-                            } else {
-                                Toast.makeText(context, "Bộ nhớ tạm trống", Toast.LENGTH_SHORT).show()
-                            }
+                            clipboard?.setPrimaryClip(ClipData.newPlainText("Device UID", deviceUid))
+                            Toast.makeText(context, "Đã sao chép UID: $deviceUid", Toast.LENGTH_SHORT).show()
                         },
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Dán Key")
+                        Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Chép UID")
                     }
 
                     Button(
-                        onClick = {
-                            if (keyInput.isBlank()) {
-                                errorMessage = "Vui lòng nhập License Key"
-                                return@Button
-                            }
-                            isChecking = true
-                            errorMessage = null
-                            LicenseManager.verifyAndActivateKey(context, keyInput) { res ->
-                                isChecking = false
-                                if (res.success) {
-                                    Toast.makeText(context, res.message, Toast.LENGTH_SHORT).show()
-                                    onActivated()
-                                } else {
-                                    errorMessage = res.message
-                                }
-                            }
-                        },
+                        onClick = { triggerUidCheck(manualClick = true) },
                         enabled = !isChecking,
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.weight(1.3f)
+                        modifier = Modifier.weight(1.35f)
                     ) {
                         if (isChecking) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(16.dp),
                                 strokeWidth = 2.dp,
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Đang kiểm tra...", fontSize = 12.sp)
+                            Text("Đang xác minh...", fontSize = 12.sp)
                         } else {
-                            Icon(Icons.Default.VerifiedUser, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Kích hoạt", fontWeight = FontWeight.Bold)
+                            Text("Xác minh", fontWeight = FontWeight.Bold)
                         }
                     }
                 }

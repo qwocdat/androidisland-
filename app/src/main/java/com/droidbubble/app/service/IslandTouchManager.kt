@@ -8,11 +8,9 @@ import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Proxy
 
 /**
- * Manages touch pass-through for the full-width overlay window.
- * Uses ViewTreeObserver.OnComputeInternalInsetsListener to ensure that only
- * the dynamic island pill (and auxiliary bubble) intercepts touch events when compact,
- * allowing touches on the status bar (clock, battery, Wi-Fi) and underlying apps
- * to pass directly through without any window resize or repositioning glitches.
+ * Manages touch pass-through for the overlay window.
+ * Ensures the Dynamic Island pill (including the default black idle pill) is ALWAYS clickable
+ * and never blocked by stale/empty touch regions or status bar inset shifts.
  */
 class IslandTouchManager(private val overlayView: View) {
 
@@ -23,7 +21,7 @@ class IslandTouchManager(private val overlayView: View) {
     var isExpanded = false
 
     @Volatile
-    var isOccupied = false
+    var isOccupied = true
 
     private val compactRects = mutableListOf<Rect>()
 
@@ -39,16 +37,24 @@ class IslandTouchManager(private val overlayView: View) {
     fun updateCompactBounds(rects: List<Rect>, occupied: Boolean, expanded: Boolean) {
         synchronized(compactRects) {
             compactRects.clear()
-            compactRects.addAll(rects)
+            for (r in rects) {
+                if (r.width() > 0 && r.height() > 0) {
+                    // Add 12px touch slop around the pill so top/edge taps are never missed
+                    compactRects.add(
+                        Rect(
+                            (r.left - 12).coerceAtLeast(0),
+                            (r.top - 12).coerceAtLeast(0),
+                            r.right + 12,
+                            r.bottom + 12
+                        )
+                    )
+                }
+            }
             isOccupied = occupied
             isExpanded = expanded
         }
         overlayView.post {
-            overlayView.requestLayout()
             overlayView.invalidate()
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT_WATCH) {
-                overlayView.requestApplyInsets()
-            }
         }
     }
 
@@ -108,15 +114,20 @@ class IslandTouchManager(private val overlayView: View) {
                 if (isExpanded) {
                     // TOUCHABLE_INSETS_FRAME = 0: entire window captures touches so outside taps collapse island
                     setTouchableInsetsMethod.invoke(insetsInfo, 0)
-                } else if (isOccupied && compactRects.isNotEmpty()) {
-                    // TOUCHABLE_INSETS_REGION = 3: only exact island bounds capture touches
-                    setTouchableInsetsMethod.invoke(insetsInfo, 3)
-                    region.setEmpty()
-                    for (rect in compactRects) {
-                        region.op(rect, Region.Op.UNION)
+                } else if (isOccupied) {
+                    if (compactRects.isNotEmpty()) {
+                        // TOUCHABLE_INSETS_REGION = 3: exact island bounds (+12px slop) capture touches
+                        setTouchableInsetsMethod.invoke(insetsInfo, 3)
+                        region.setEmpty()
+                        for (rect in compactRects) {
+                            region.op(rect, Region.Op.UNION)
+                        }
+                    } else {
+                        // Fallback when compactRects haven't been measured yet: keep compact window frame touchable!
+                        setTouchableInsetsMethod.invoke(insetsInfo, 0)
                     }
                 } else {
-                    // Completely click-through when idle
+                    // Completely click-through only when pill is hidden
                     setTouchableInsetsMethod.invoke(insetsInfo, 3)
                     region.setEmpty()
                 }
