@@ -498,7 +498,6 @@ class IslandOverlayService : Service() {
         createNotificationChannel()
         initCameraTorch()
         startAutoUpdateChecker()
-        com.droidbubble.app.util.DynamicFeatureEngine.start(applicationContext)
 
         persistentTelemetryManager = PersistentWidgetTelemetryManager(this).apply { start(currentSettings) }
 
@@ -1208,8 +1207,8 @@ override fun onDestroy() {
     }
 
 
-    private fun startAutoUpdateChecker()
-        com.droidbubble.app.util.DynamicFeatureEngine.start(applicationContext) {
+    private fun startAutoUpdateChecker() {
+        com.droidbubble.app.util.DynamicFeatureEngine.start(applicationContext)
         serviceScope.launch(Dispatchers.IO) {
             delay(15_000L)
             while (isActive) {
