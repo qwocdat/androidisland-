@@ -1503,6 +1503,15 @@ fun IslandOverlayRoot(
                                                     )
                                                 )
                                             )
+                                        } else if (settings.designLanguage == DesignLanguage.GLASS) {
+                                            Modifier.background(
+                                                Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        Color.Black.copy(alpha = 0.92f),
+                                                        Color(0xFF141926).copy(alpha = 0.78f)
+                                                    )
+                                                )
+                                            )
                                         } else if (settings.designLanguage == DesignLanguage.MATERIAL3) {
                                             val m3CardBg = lerp(
                                                 Color.Black,
@@ -1511,7 +1520,13 @@ fun IslandOverlayRoot(
                                             )
                                             Modifier.background(m3CardBg)
                                         } else {
-                                            Modifier.background(Color.Black)
+                                            Modifier.background(
+                            if (settings.designLanguage == DesignLanguage.GLASS) {
+                                Color(0xFF0D1117).copy(alpha = 0.90f)
+                            } else {
+                                Color.Black
+                            }
+                        )
                                         }
                                     } else Modifier.background(Color.Transparent)
                                 )
@@ -1805,6 +1820,15 @@ fun IslandOverlayRoot(
                                                 )
                                             )
                                         )
+                                    } else if (settings.designLanguage == DesignLanguage.GLASS) {
+                                        Modifier.background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    Color.Black.copy(alpha = 0.92f),
+                                                    Color(0xFF141926).copy(alpha = 0.78f)
+                                                )
+                                            )
+                                        )
                                     } else if (settings.designLanguage == DesignLanguage.MATERIAL3) {
                                         val m3CardBg = lerp(
                                             Color.Black,
@@ -1813,7 +1837,13 @@ fun IslandOverlayRoot(
                                         )
                                         Modifier.background(m3CardBg)
                                     } else {
-                                        Modifier.background(Color.Black)
+                                        Modifier.background(
+                            if (settings.designLanguage == DesignLanguage.GLASS) {
+                                Color(0xFF0D1117).copy(alpha = 0.90f)
+                            } else {
+                                Color.Black
+                            }
+                        )
                                     }
                                 )
                                 .then(
@@ -2084,6 +2114,15 @@ fun IslandOverlayRoot(
                                                 )
                                             )
                                         )
+                                    } else if (settings.designLanguage == DesignLanguage.GLASS) {
+                                        Modifier.background(
+                                            Brush.verticalGradient(
+                                                colors = listOf(
+                                                    Color.Black.copy(alpha = 0.92f),
+                                                    Color(0xFF141926).copy(alpha = 0.78f)
+                                                )
+                                            )
+                                        )
                                     } else if (settings.designLanguage == DesignLanguage.MATERIAL3) {
                                         val m3CardBg = lerp(
                                             Color.Black,
@@ -2092,7 +2131,13 @@ fun IslandOverlayRoot(
                                         )
                                         Modifier.background(m3CardBg)
                                     } else {
-                                        Modifier.background(Color.Black)
+                                        Modifier.background(
+                            if (settings.designLanguage == DesignLanguage.GLASS) {
+                                Color(0xFF0D1117).copy(alpha = 0.90f)
+                            } else {
+                                Color.Black
+                            }
+                        )
                                     }
                                 )
                                 .then(
@@ -2432,7 +2477,13 @@ fun IslandOverlayRoot(
                             }
                             .then(swipeToSwapModifier)
                             .clip(CircleShape)
-                            .background(Color.Black)
+                            .background(
+                            if (settings.designLanguage == DesignLanguage.GLASS) {
+                                Color(0xFF0D1117).copy(alpha = 0.90f)
+                            } else {
+                                Color.Black
+                            }
+                        )
                             .then(
                                 if (settings.showOutline && settings.designLanguage != DesignLanguage.MATERIAL3 && animatedBubbleOffsetX > mainRightEdgeFromOrigin * 0.7f) {
                                     Modifier.border(
@@ -2546,7 +2597,15 @@ fun IslandOverlayRoot(
                         }
                         .then(swipeToSwapModifier)
                         .clip(compactPillShape)
-                        .background(if (animatedCompactWidth > 2.dp) Color.Black else Color.Transparent)
+                        .background(
+                            if (animatedCompactWidth > 2.dp) {
+                                if (settings.designLanguage == DesignLanguage.GLASS) {
+                                    Color(0xFF0D1117).copy(alpha = 0.90f)
+                                } else {
+                                    Color.Black
+                                }
+                            } else Color.Transparent
+                        )
                         .then(
                             if (settings.showOutline && (isOccupied || hasPersistent) && settings.designLanguage != DesignLanguage.MATERIAL3 && animatedCompactWidth > 8.dp) {
                                 val outlineAlpha = primaryOutlineColor.alpha * compactPillAlpha

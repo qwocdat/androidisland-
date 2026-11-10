@@ -726,6 +726,7 @@ fun MainScreen(
                                         settings = settings,
                                         strings = s,
                                         viewModel = viewModel,
+                                        onUpdateSettings = { viewModel.updateSettings(it) },
                                         onOpenDroidbar = { showDroidbarPage = true },
                                         onOpenTasks = { showTasksPage = true },
                                         onOpenVideoAnnouncement = { showVideoAnnouncementDialog = true },

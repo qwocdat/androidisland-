@@ -137,6 +137,7 @@ fun LiquidHomeTab(
     settings: IslandSettings,
     strings: AppStrings,
     viewModel: MainScreenViewModel,
+    onUpdateSettings: ((IslandSettings) -> IslandSettings) -> Unit = {},
     onOpenDroidbar: () -> Unit,
     onOpenTasks: () -> Unit,
     onOpenVideoAnnouncement: () -> Unit,
@@ -269,6 +270,163 @@ fun LiquidHomeTab(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             letterSpacing = 0.3.sp
                         )
+                    }
+                }
+            }
+        }
+
+        // Mode Selector: Droidbubble & LiquidIsland (2 chế độ giao diện Đảo động)
+        item {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                tonalElevation = 1.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Tune,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Chế độ giao diện Đảo",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Chọn kiểu dáng hiển thị của viên thuốc và thẻ mở rộng",
+                                fontSize = 11.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        // Chế độ 1: Droidbubble
+                        val isDroidbubble = settings.designLanguage == com.droidbubble.app.model.DesignLanguage.DROIDBUBBLE ||
+                                (!settings.glassEnabled && settings.designLanguage != com.droidbubble.app.model.DesignLanguage.GLASS)
+                        Surface(
+                            onClick = {
+                                onUpdateSettings {
+                                    it.copy(
+                                        designLanguage = com.droidbubble.app.model.DesignLanguage.DROIDBUBBLE,
+                                        glassEnabled = false
+                                    )
+                                }
+                            },
+                            shape = RoundedCornerShape(18.dp),
+                            color = if (isDroidbubble) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceContainerLowest,
+                            border = if (isDroidbubble) BorderStroke(1.8.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(88.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(36.dp)
+                                        .height(14.dp)
+                                        .clip(RoundedCornerShape(7.dp))
+                                        .background(Color.Black)
+                                        .border(1.dp, if (isDroidbubble) MaterialTheme.colorScheme.primary else Color(0x33FFFFFF), RoundedCornerShape(7.dp))
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Droidbubble",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.5.sp,
+                                    color = if (isDroidbubble) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Đảo đen nguyên bản",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // Chế độ 2: LiquidIsland
+                        val isLiquid = settings.designLanguage == com.droidbubble.app.model.DesignLanguage.GLASS || settings.glassEnabled
+                        Surface(
+                            onClick = {
+                                onUpdateSettings {
+                                    it.copy(
+                                        designLanguage = com.droidbubble.app.model.DesignLanguage.GLASS,
+                                        glassEnabled = true,
+                                        glassOpacity = 35
+                                    )
+                                }
+                            },
+                            shape = RoundedCornerShape(18.dp),
+                            color = if (isLiquid) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceContainerLowest,
+                            border = if (isLiquid) BorderStroke(1.8.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(88.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(36.dp)
+                                        .height(14.dp)
+                                        .clip(RoundedCornerShape(7.dp))
+                                        .background(
+                                            Brush.verticalGradient(
+                                                listOf(Color(0xFF0F172A), Color(0xFF1E293B).copy(alpha = 0.8f))
+                                            )
+                                        )
+                                        .border(1.dp, if (isLiquid) MaterialTheme.colorScheme.primary else Color(0x4438BDF8), RoundedCornerShape(7.dp))
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "Liquidisland",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.5.sp,
+                                    color = if (isLiquid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Thấu kính quang học",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }

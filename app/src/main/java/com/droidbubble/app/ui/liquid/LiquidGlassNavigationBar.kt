@@ -227,7 +227,7 @@ fun IosLiquidGlassNavigationBar(
             valueRange = 0f..(tabsCount - 1).toFloat(),
             visibilityThreshold = 0.001f,
             initialScale = 1f,
-            pressedScale = 78f / 56f,
+            pressedScale = 1f,
             canDrag = { position ->
                 position.x in 0f..totalWidthPx
             },
@@ -413,10 +413,8 @@ fun IosLiquidGlassNavigationBar(
                                     },
                                     highlight = { baseHighlight.value.copy(alpha = 0.75f) },
                                     layerBlock = {
-                                        val width = size.width.coerceAtLeast(1f)
-                                        val s = lerp(1f, 1f + 16.dp.toPx() / width, dampedDrag.pressProgress)
-                                        scaleX = s
-                                        scaleY = s
+                                        scaleX = 1f
+                                        scaleY = 1f
                                     },
                                     onDrawSurface = { drawRect(containerColor) },
                                 )
@@ -442,7 +440,7 @@ fun IosLiquidGlassNavigationBar(
 
             if (isBlurActive && backdrop != null) {
                 CompositionLocalProvider(
-                    LocalIosTabScale provides { lerp(1f, 1.2f, dampedDrag.pressProgress) },
+                    LocalIosTabScale provides { 1f },
                     LocalContentColor provides accentColor,
                 ) {
                     Row(
