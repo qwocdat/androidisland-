@@ -229,7 +229,22 @@ class LayerBackdrop : Backdrop {
             dx = srcPos.x - dstPos.x
             dy = srcPos.y - dstPos.y
         }
+        val scope = SimpleGraphicsLayerScope().apply {
+            reset(size, density.density, density.fontScale)
+        }
+        layerBlock?.invoke(scope)
+        val sx = scope.scaleX.coerceAtLeast(0.01f)
+        val sy = scope.scaleY.coerceAtLeast(0.01f)
+
         drawContext.canvas.save()
+        if (sx != 1f || sy != 1f) {
+            val dstSize = dstCoords?.size
+            val pivotX = if (dstSize != null) dstSize.width * 0.5f else size.width * 0.5f
+            val pivotY = if (dstSize != null) dstSize.height * 0.5f else size.height * 0.5f
+            drawContext.canvas.translate(pivotX, pivotY)
+            drawContext.canvas.scale(1f / sx, 1f / sy)
+            drawContext.canvas.translate(-pivotX, -pivotY)
+        }
         drawContext.canvas.translate(dx, dy)
         drawLayer(layer)
         drawContext.canvas.restore()
@@ -711,14 +726,14 @@ class InteractiveHighlight(
         val a = pressAlphaAnim.value
         if (a > 0.005f) {
             val center = position(size, lastTouchOffset)
-            val radius = size.maxDimension * 0.45f
+            val radius = size.maxDimension * 0.55f
             if (radius > 1f) {
                 drawCircle(
                     brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.16f * a),
-                            Color.Transparent,
-                        ),
+                        0.00f to Color.White.copy(alpha = 0.35f * a),
+                        0.30f to Color.White.copy(alpha = 0.18f * a),
+                        0.65f to Color.White.copy(alpha = 0.06f * a),
+                        1.00f to Color.Transparent,
                         center = center,
                         radius = radius,
                     ),
