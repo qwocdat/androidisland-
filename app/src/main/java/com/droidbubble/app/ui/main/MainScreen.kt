@@ -584,7 +584,6 @@ fun MainScreen(
                     )
                 }
 
-                val rootBackdrop = rememberLayerBackdrop()
                 Box(
                     modifier = modifier
                         .fillMaxSize()
@@ -594,7 +593,6 @@ fun MainScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .background(MaterialTheme.colorScheme.background)
-                            .layerBackdrop(rootBackdrop)
                             .statusBarsPadding()
                     ) {
                         // Top Header Bar matching video UI
@@ -787,7 +785,6 @@ fun MainScreen(
                             },
                             accentColor = MaterialTheme.colorScheme.primary,
                             isDark = !isLightTheme,
-                            backdrop = rootBackdrop,
                             isBlurActive = true
                         )
                     }

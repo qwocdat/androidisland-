@@ -771,6 +771,8 @@ class DampedDragAnimation(
     private val pressProgressAnim = Animatable(0f, visibilityThreshold)
     private val velocityAnim = Animatable(0f, visibilityThreshold)
 
+    var touchOffset by mutableStateOf(Offset.Zero)
+
     var targetValue by mutableFloatStateOf(initialValue)
         private set
 
@@ -823,6 +825,7 @@ class DampedDragAnimation(
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
             if (!canDrag(down.position)) return@awaitEachGesture
+            touchOffset = down.position
 
             val velocityTracker = VelocityTracker()
             velocityTracker.addPosition(down.uptimeMillis, down.position)
@@ -843,6 +846,7 @@ class DampedDragAnimation(
                     if (change == null || !change.pressed) {
                         break
                     }
+                    touchOffset = change.position
                     val delta = change.positionChange()
                     if (delta != Offset.Zero) {
                         velocityTracker.addPosition(change.uptimeMillis, change.position)
