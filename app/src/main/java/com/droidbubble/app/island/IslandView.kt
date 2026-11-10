@@ -2597,14 +2597,31 @@ fun IslandOverlayRoot(
                         }
                         .then(swipeToSwapModifier)
                         .clip(compactPillShape)
-                        .background(
+                        .then(
                             if (animatedCompactWidth > 2.dp) {
                                 if (settings.designLanguage == DesignLanguage.GLASS) {
-                                    Color(0xFF0D1117).copy(alpha = 0.90f)
+                                    Modifier
+                                        .background(
+                                            Brush.verticalGradient(
+                                                listOf(
+                                                    Color(0xE6111827),
+                                                    Color(0xCC050810)
+                                                )
+                                            )
+                                        )
+                                        .border(
+                                            width = 1.dp,
+                                            brush = Brush.verticalGradient(
+                                                0f to Color.White.copy(alpha = 0.40f),
+                                                0.5f to Color.White.copy(alpha = 0.12f),
+                                                1f to Color.Transparent,
+                                            ),
+                                            shape = compactPillShape
+                                        )
                                 } else {
-                                    Color.Black
+                                    Modifier.background(Color.Black)
                                 }
-                            } else Color.Transparent
+                            } else Modifier.background(Color.Transparent)
                         )
                         .then(
                             if (settings.showOutline && (isOccupied || hasPersistent) && settings.designLanguage != DesignLanguage.MATERIAL3 && animatedCompactWidth > 8.dp) {

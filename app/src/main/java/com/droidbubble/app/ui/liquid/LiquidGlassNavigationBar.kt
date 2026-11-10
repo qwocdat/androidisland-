@@ -190,6 +190,7 @@ fun IosLiquidGlassNavigationBar(
     val containerColor = if (isBlurActive) surfaceContainer.copy(alpha = 0.72f) else surfaceContainer
 
     val tabsBackdrop = rememberLayerBackdrop()
+    val indicatorBackdrop = if (backdrop != null) rememberCombinedBackdrop(backdrop, tabsBackdrop) else tabsBackdrop
     val density = LocalDensity.current
     val isLtr = LocalLayoutDirection.current == LayoutDirection.Ltr
     val animationScope = rememberCoroutineScope()
@@ -395,20 +396,54 @@ fun IosLiquidGlassNavigationBar(
                         .dropShadow(
                             shape = pillShape,
                             shadow = Shadow(
-                                radius = 10.dp,
+                                radius = 16.dp,
                                 color = Color.Black,
-                                alpha = if (isDark) 0.2f else 0.1f,
+                                alpha = if (isDark) 0.35f else 0.12f,
                             ),
                         )
-                        .background(containerColor, pillShape)
-                        .border(
-                            width = 1.dp,
-                            brush = Brush.verticalGradient(
-                                0f to Color.White.copy(alpha = if (isDark) 0.18f else 0.65f),
-                                1f to Color.White.copy(alpha = if (isDark) 0.04f else 0.15f),
-                            ),
-                            shape = pillShape,
+                        .then(
+                            if (isBlurActive && backdrop != null) {
+                                Modifier.drawBackdrop(
+                                    backdrop = backdrop,
+                                    shape = { pillShape },
+                                    effects = {
+                                        padding = maxOf(padding, 32.dp.toPx())
+                                        vibrancy()
+                                        blur(12.dp.toPx(), 12.dp.toPx())
+                                        lens(
+                                            refractionHeight = 20.dp.toPx(),
+                                            refractionAmount = 20.dp.toPx(),
+                                        )
+                                    },
+                                    highlight = { baseHighlight.value.copy(alpha = 0.85f) },
+                                    onDrawSurface = { drawRect(containerColor) },
+                                )
+                            } else {
+                                Modifier
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = if (isDark) listOf(
+                                                Color(0xD91E1F2A),
+                                                Color(0xB314151E),
+                                            ) else listOf(
+                                                Color(0xD9FFFFFF),
+                                                Color(0xB3E2E8F0),
+                                            )
+                                        ),
+                                        shape = pillShape,
+                                    )
+                                    .border(
+                                        width = 1.dp,
+                                        brush = Brush.verticalGradient(
+                                            0f to Color.White.copy(alpha = if (isDark) 0.40f else 0.90f),
+                                            0.4f to Color.White.copy(alpha = if (isDark) 0.15f else 0.35f),
+                                            1f to Color.White.copy(alpha = if (isDark) 0.05f else 0.10f),
+                                        ),
+                                        shape = pillShape,
+                                    )
+                            }
                         )
+                        .layerBackdrop(tabsBackdrop)
                         .drawWithContent {
                             drawContent()
                             val progress = dampedDrag.pressProgress
@@ -453,24 +488,49 @@ fun IosLiquidGlassNavigationBar(
                             scaleX /= 1f - (v * 0.75f).coerceIn(-0.2f, 0.2f)
                             scaleY *= 1f - (v * 0.25f).coerceIn(-0.2f, 0.2f)
                         }
-                        .clip(pillShape)
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = if (isDark) listOf(
-                                    Color.White.copy(alpha = lerp(0.14f, 0.28f, dampedDrag.pressProgress)),
-                                    Color.White.copy(alpha = lerp(0.04f, 0.08f, dampedDrag.pressProgress)),
-                                ) else listOf(
-                                    Color.White.copy(alpha = lerp(0.70f, 0.90f, dampedDrag.pressProgress)),
-                                    Color.White.copy(alpha = lerp(0.40f, 0.60f, dampedDrag.pressProgress)),
+                        .drawBackdrop(
+                            backdrop = indicatorBackdrop,
+                            shape = { pillShape },
+                            effects = {
+                                val progress = dampedDrag.pressProgress
+                                lens(
+                                    refractionHeight = lerp(10.dp.toPx(), 22.dp.toPx(), progress),
+                                    refractionAmount = lerp(12.dp.toPx(), 26.dp.toPx(), progress),
+                                    depthEffect = true,
+                                    chromaticAberration = 0.45f,
                                 )
-                            )
+                            },
+                            highlight = { pillHighlight.value.copy(alpha = lerp(0.80f, 1f, dampedDrag.pressProgress)) },
+                            layerBlock = {
+                                scaleX = 1f
+                                scaleY = 1f
+                            },
+                            onDrawSurface = {
+                                val progress = dampedDrag.pressProgress
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color.White.copy(alpha = lerp(0.22f, 0.38f, progress)),
+                                            Color.White.copy(alpha = lerp(0.04f, 0.12f, progress)),
+                                        )
+                                    )
+                                )
+                                drawRect(accentColor.copy(alpha = lerp(0.06f, 0.16f, progress)))
+                            },
                         )
+                        .innerShadow(shape = pillShape) {
+                            InnerShadow(
+                                radius = 10.dp * dampedDrag.pressProgress,
+                                color = Color.Black.copy(alpha = 0.22f),
+                                alpha = dampedDrag.pressProgress,
+                            )
+                        }
                         .border(
                             width = 1.dp,
                             brush = Brush.verticalGradient(
-                                0f to Color.White.copy(alpha = lerp(0.40f, 0.75f, dampedDrag.pressProgress)),
-                                0.5f to Color.White.copy(alpha = lerp(0.12f, 0.30f, dampedDrag.pressProgress)),
-                                1f to Color.White.copy(alpha = lerp(0.04f, 0.10f, dampedDrag.pressProgress)),
+                                0f to Color.White.copy(alpha = lerp(0.55f, 0.90f, dampedDrag.pressProgress)),
+                                0.5f to Color.White.copy(alpha = lerp(0.18f, 0.40f, dampedDrag.pressProgress)),
+                                1f to Color.White.copy(alpha = lerp(0.05f, 0.18f, dampedDrag.pressProgress)),
                             ),
                             shape = pillShape,
                         )
@@ -489,13 +549,13 @@ fun IosLiquidGlassNavigationBar(
                                     x = localTouchX.coerceIn(0f, canvasWidth),
                                     y = dampedDrag.touchOffset.y.coerceIn(0f, canvasHeight),
                                 )
-                                val pillGlowRadius = canvasWidth * 1.1f
+                                val pillGlowRadius = canvasWidth * 1.15f
                                 drawCircle(
                                     brush = Brush.radialGradient(
-                                        0.00f to Color.White.copy(alpha = 0.50f * progress),
-                                        0.25f to Color.White.copy(alpha = 0.28f * progress),
-                                        0.55f to accentColor.copy(alpha = 0.16f * progress),
-                                        0.80f to accentColor.copy(alpha = 0.04f * progress),
+                                        0.00f to Color.White.copy(alpha = 0.55f * progress),
+                                        0.25f to Color.White.copy(alpha = 0.30f * progress),
+                                        0.55f to accentColor.copy(alpha = 0.18f * progress),
+                                        0.80f to accentColor.copy(alpha = 0.05f * progress),
                                         1.00f to Color.Transparent,
                                         center = pillTouchCenter,
                                         radius = pillGlowRadius,
