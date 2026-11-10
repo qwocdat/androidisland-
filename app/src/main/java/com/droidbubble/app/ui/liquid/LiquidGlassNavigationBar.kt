@@ -55,6 +55,7 @@ import androidx.compose.ui.Alignment.Companion.CenterHorizontally
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Brush
@@ -413,7 +414,7 @@ fun IosLiquidGlassNavigationBar(
                             val progress = dampedDrag.pressProgress
                             if (progress > 0.005f) {
                                 val touchCenter = dampedDrag.touchOffset
-                                val glowRadius = (size.maxDimension * 0.70f).coerceAtLeast(140.dp.toPx())
+                                val glowRadius = (this.size.maxDimension * 0.70f).coerceAtLeast(140.dp.toPx())
                                 drawCircle(
                                     brush = Brush.radialGradient(
                                         0.00f to Color.White.copy(alpha = 0.40f * progress),
@@ -482,11 +483,13 @@ fun IosLiquidGlassNavigationBar(
                                 } else {
                                     dampedDrag.touchOffset.x - (totalWidthPx - (dampedDrag.value + 1f) * tabWidthPx)
                                 }
+                                val canvasWidth = this.size.width
+                                val canvasHeight = this.size.height
                                 val pillTouchCenter = Offset(
-                                    x = localTouchX.coerceIn(0f, size.width),
-                                    y = dampedDrag.touchOffset.y.coerceIn(0f, size.height),
+                                    x = localTouchX.coerceIn(0f, canvasWidth),
+                                    y = dampedDrag.touchOffset.y.coerceIn(0f, canvasHeight),
                                 )
-                                val pillGlowRadius = size.width * 1.1f
+                                val pillGlowRadius = canvasWidth * 1.1f
                                 drawCircle(
                                     brush = Brush.radialGradient(
                                         0.00f to Color.White.copy(alpha = 0.50f * progress),
