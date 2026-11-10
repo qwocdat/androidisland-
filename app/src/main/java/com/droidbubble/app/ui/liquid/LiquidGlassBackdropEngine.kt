@@ -229,22 +229,7 @@ class LayerBackdrop : Backdrop {
             dx = srcPos.x - dstPos.x
             dy = srcPos.y - dstPos.y
         }
-        val scope = SimpleGraphicsLayerScope().apply {
-            reset(size, density.density, density.fontScale)
-        }
-        layerBlock?.invoke(scope)
-        val sx = scope.scaleX.coerceAtLeast(0.01f)
-        val sy = scope.scaleY.coerceAtLeast(0.01f)
-
         drawContext.canvas.save()
-        if (sx != 1f || sy != 1f) {
-            val dstSize = dstCoords?.size
-            val pivotX = if (dstSize != null) dstSize.width * 0.5f else size.width * 0.5f
-            val pivotY = if (dstSize != null) dstSize.height * 0.5f else size.height * 0.5f
-            drawContext.canvas.translate(pivotX, pivotY)
-            drawContext.canvas.scale(1f / sx, 1f / sy)
-            drawContext.canvas.translate(-pivotX, -pivotY)
-        }
         drawContext.canvas.translate(dx, dy)
         drawLayer(layer)
         drawContext.canvas.restore()

@@ -382,7 +382,7 @@ fun IosLiquidGlassNavigationBar(
             contentAlignment = Alignment.CenterStart,
         ) {
             CompositionLocalProvider(
-                LocalIosTabScale provides { lerp(1f, 0.93f, dampedDrag.pressProgress) },
+                LocalIosTabScale provides { 1f },
                 LocalContentColor provides tabContentColor,
             ) {
                 Row(
@@ -393,12 +393,7 @@ fun IosLiquidGlassNavigationBar(
                             val contentWidthPx = totalWidthPx - with(density) { 8.dp.toPx() }
                             tabWidthPx = (contentWidthPx / tabsCount).coerceAtLeast(0f)
                         }
-                        .graphicsLayer {
-                            translationX = panelOffset
-                            val s = lerp(1f, 0.96f, dampedDrag.pressProgress)
-                            scaleX = s
-                            scaleY = s
-                        }
+                        .graphicsLayer { translationX = panelOffset }
                         .dropShadow(
                             shape = pillShape,
                             shadow = Shadow(
@@ -455,7 +450,7 @@ fun IosLiquidGlassNavigationBar(
 
             if (isBlurActive && backdrop != null) {
                 CompositionLocalProvider(
-                    LocalIosTabScale provides { lerp(1f, 0.93f, dampedDrag.pressProgress) },
+                    LocalIosTabScale provides { 1f },
                     LocalContentColor provides accentColor,
                 ) {
                     Row(
@@ -463,12 +458,7 @@ fun IosLiquidGlassNavigationBar(
                             .clearAndSetSemantics {}
                             .alpha(0f)
                             .layerBackdrop(tabsBackdrop)
-                            .graphicsLayer {
-                                translationX = panelOffset
-                                val s = lerp(1f, 0.96f, dampedDrag.pressProgress)
-                                scaleX = s
-                                scaleY = s
-                            }
+                            .graphicsLayer { translationX = panelOffset }
                             .drawBackdrop(
                                 backdrop = backdrop,
                                 shape = { pillShape },
