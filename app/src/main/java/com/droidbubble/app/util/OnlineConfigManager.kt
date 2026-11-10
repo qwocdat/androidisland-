@@ -55,12 +55,24 @@ object OnlineConfigManager {
     private const val KEY_CACHED_JSON = "cached_online_config_json"
     private const val KEY_CUSTOM_CONFIG_URL = "custom_online_config_url"
 
-    private const val FIREBASE_PROJECT_ID = "digitalvolume-keygate"
-    private const val FIREBASE_API_KEY = "AIzaSyDigitalXiaoKeyGatePublicConfigKey"
+    // Cấu hình Firebase chính thức của dự án (ideo-dd376)
+    const val FIREBASE_API_KEY = "AIzaSyAVuB8m14zkMPs-JTLAKB0Bp18QBKAMBt4"
+    const val FIREBASE_AUTH_DOMAIN = "ideo-dd376.firebaseapp.com"
+    const val FIREBASE_DATABASE_URL = "https://ideo-dd376-default-rtdb.asia-southeast1.firebasedatabase.app"
+    const val FIREBASE_PROJECT_ID = "ideo-dd376"
+    const val FIREBASE_STORAGE_BUCKET = "ideo-dd376.firebasestorage.app"
+    const val FIREBASE_MESSAGING_SENDER_ID = "689163185"
+    const val FIREBASE_APP_ID = "1:689163185:web:f4e11f000a5afc3a364b90"
+    const val FIREBASE_MEASUREMENT_ID = "G-6Z3NDBKPFH"
+
+    private const val RTDB_CONFIG_URL =
+        "$FIREBASE_DATABASE_URL/androidisland/app_config.json"
+
     private const val FIRESTORE_DOC_URL =
         "https://firestore.googleapis.com/v1/projects/$FIREBASE_PROJECT_ID/databases/(default)/documents/app_config/androidisland_update?key=$FIREBASE_API_KEY"
 
     private val DEFAULT_RAW_URLS = listOf(
+        "https://getkey.digitalsmod.site/online_update.json",
         "https://getkey.digitalsmod.site/api/app-config?app=androidisland",
         "https://raw.githubusercontent.com/qwocdat/androidisland-/main/online_update.json",
         "https://raw.githubusercontent.com/digitalxiao/androidisland/main/online_update.json"
@@ -126,12 +138,20 @@ object OnlineConfigManager {
 
     fun parseConfigJson(jsonStr: String): OnlineAppConfig? {
         return try {
-            val j = JSONObject(jsonStr)
+            val trimmed = jsonStr.trim()
+            if (trimmed.isEmpty() || trimmed == "null") return null
+            val j = JSONObject(trimmed)
             if (j.has("fields")) {
                 val fields = j.getJSONObject("fields")
                 val rawPayload = fields.optJSONObject("configJson")?.optString("stringValue", "") ?: ""
                 if (rawPayload.isNotBlank()) {
                     return parseConfigJson(rawPayload)
+                }
+            }
+            if (j.has("configJson") && j.opt("configJson") is String) {
+                val inner = j.optString("configJson", "")
+                if (inner.isNotBlank()) {
+                    return parseConfigJson(inner)
                 }
             }
             val defaults = OnlineAppConfig()
@@ -216,6 +236,7 @@ object OnlineConfigManager {
         val customUrl = getCustomConfigUrl(context)
         val urlsToTry = buildList {
             if (customUrl.startsWith("http")) add(customUrl)
+            add(RTDB_CONFIG_URL)
             add(FIRESTORE_DOC_URL)
             addAll(DEFAULT_RAW_URLS)
         }
@@ -248,6 +269,27 @@ object OnlineConfigManager {
 
     suspend fun publishConfigToFirebase(config: OnlineAppConfig): Boolean = withContext(Dispatchers.IO) {
         val configJsonStr = toConfigJsonString(config)
+        var successAny = false
+
+        // 1. Đồng bộ lên Firebase Realtime Database (ideo-dd376-default-rtdb)
+        try {
+            val rtdbConn = (URL(RTDB_CONFIG_URL).openConnection() as HttpURLConnection).apply {
+                requestMethod = "PUT"
+                doOutput = true
+                connectTimeout = 6000
+                readTimeout = 6000
+                setRequestProperty("Content-Type", "application/json; charset=UTF-8")
+            }
+            OutputStreamWriter(rtdbConn.outputStream, StandardCharsets.UTF_8).use {
+                it.write(configJsonStr)
+            }
+            if (rtdbConn.responseCode in 200..299) {
+                successAny = true
+            }
+        } catch (_: Exception) {
+        }
+
+        // 2. Đồng bộ lên Cloud Firestore (ideo-dd376)
         try {
             val conn = (URL(FIRESTORE_DOC_URL).openConnection() as HttpURLConnection).apply {
                 requestMethod = "PATCH"
@@ -268,10 +310,13 @@ object OnlineConfigManager {
             OutputStreamWriter(conn.outputStream, StandardCharsets.UTF_8).use {
                 it.write(payload.toString())
             }
-            conn.responseCode in 200..299
+            if (conn.responseCode in 200..299) {
+                successAny = true
+            }
         } catch (_: Exception) {
-            false
         }
+
+        successAny
     }
 
     suspend fun publishOnlineConfig(context: Context, config: OnlineAppConfig): Boolean = withContext(Dispatchers.IO) {
@@ -369,7 +414,6 @@ object DynamicFeatureEngine {
             var updated = current
             var hasChanges = false
 
-            // 1. Đồng bộ công tắc tính năng (OTA Feature Switches)
             val sw = config.onlineFeatureSwitches
             if (sw.isNotEmpty()) {
                 sw["alwaysShowPill"]?.let {
@@ -416,7 +460,6 @@ object DynamicFeatureEngine {
                 }
             }
 
-            // 2. Đồng bộ thông số Fix lỗi kích thước & vị trí Đảo động (OTA Dimension Overrides)
             val dims = config.onlineDimensionOverrides
             if (dims.isNotEmpty()) {
                 dims["widthDp"]?.let {
@@ -447,7 +490,6 @@ object DynamicFeatureEngine {
             prefs.edit().putString(KEY_LAST_PATCH_SIGNATURE, patchSignature).apply()
         }
 
-        // 3. Hiển thị thông báo trực tiếp trên viên thuốc Đảo động khi có bản vá hoặc thông điệp từ Admin
         if (config.remoteToastMessage.isNotBlank()) {
             val toastKey = "${config.patchVersion}_${config.remoteToastMessage}"
             val lastToast = prefs.getString(KEY_LAST_TOAST, "")

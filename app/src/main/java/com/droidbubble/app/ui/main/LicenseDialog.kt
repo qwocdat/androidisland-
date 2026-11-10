@@ -60,7 +60,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.droidbubble.app.util.LicenseManager
 import com.droidbubble.app.util.OnlineConfigManager
-import kotlinx.coroutines.delay
 
 @Composable
 fun LicenseActivationScreen(
@@ -71,7 +70,7 @@ fun LicenseActivationScreen(
     val deviceModel = remember { LicenseManager.getDeviceModelName() }
 
     var statusMessage by remember {
-        mutableStateOf("Đang kiểm tra trạng thái cấp phép UID trên hệ thống...")
+        mutableStateOf("UID của bạn đã được gửi lên hệ thống. Vui lòng bấm Xác minh để kiểm tra.")
     }
     var isPendingStatus by remember { mutableStateOf(true) }
     var isChecking by remember { mutableStateOf(false) }
@@ -86,7 +85,7 @@ fun LicenseActivationScreen(
     var showSocialDialog by remember { mutableStateOf(false) }
     var onlineConfig by remember { mutableStateOf(OnlineConfigManager.getCachedConfig(context)) }
 
-    fun triggerUidCheck(manualClick: Boolean = false) {
+    fun triggerUidCheck() {
         if (isChecking) return
         isChecking = true
         LicenseManager.checkAndActivateByUid(context) { res ->
@@ -94,24 +93,19 @@ fun LicenseActivationScreen(
             statusMessage = res.message
             isPendingStatus = res.status != "blocked"
             if (res.success) {
-                // Tải cấu hình mới nhất từ web/cloud
                 onlineConfig = OnlineConfigManager.getCachedConfig(context)
-                // Hiển thị hộp thoại Follow & Tim Video trước khi vào thẳng app
                 showSocialDialog = true
-            } else if (manualClick) {
+            } else {
                 Toast.makeText(context, res.message, Toast.LENGTH_SHORT).show()
             }
         }
     }
 
-    // Auto-check on launch and poll every 6 seconds so approval from Web/Admin unlocks automatically
+    // Chỉ kiểm tra và gửi UID lên hệ thống 1 lần duy nhất khi mở màn hình, KHÔNG chạy vòng lặp tự động bấm nút
     LaunchedEffect(Unit) {
         val remote = OnlineConfigManager.fetchOnlineConfig(context)
         onlineConfig = remote
-        while (true) {
-            triggerUidCheck(manualClick = false)
-            delay(6000L)
-        }
+        LicenseManager.registerDeviceOnCloud(context)
     }
 
     // Hộp thoại Follow & Tim Video TikTok sau khi xác minh thành công
@@ -346,7 +340,7 @@ fun LicenseActivationScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Ứng dụng sử dụng cơ chế cấp phép trực tiếp qua UID thiết bị. Hãy sao chép mã UID bên dưới gửi cho Admin để được cho phép vào ứng dụng.",
+                        text = "Ứng dụng sử dụng cơ chế cấp phép trực tiếp qua UID thiết bị. Hãy sao chép mã UID bên dưới gửi cho Admin rồi bấm nút Xác minh.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center
@@ -434,20 +428,12 @@ fun LicenseActivationScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            if (isChecking) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.VerifiedUser,
-                                    contentDescription = null,
-                                    tint = if (isPendingStatus) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.VerifiedUser,
+                                contentDescription = null,
+                                tint = if (isPendingStatus) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(18.dp)
+                            )
                             Text(
                                 text = statusMessage,
                                 fontSize = 12.5.sp,
@@ -504,7 +490,7 @@ fun LicenseActivationScreen(
                     }
 
                     Button(
-                        onClick = { triggerUidCheck(manualClick = true) },
+                        onClick = { triggerUidCheck() },
                         enabled = !isChecking,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.weight(1.35f)
@@ -516,7 +502,7 @@ fun LicenseActivationScreen(
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Đang xác minh...", fontSize = 12.sp)
+                            Text("Đang kiểm tra...", fontSize = 12.sp)
                         } else {
                             Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(6.dp))

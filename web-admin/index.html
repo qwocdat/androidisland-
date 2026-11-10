@@ -1,0 +1,1535 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Androidisland — Quản Trị Hệ Thống</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #eff2f7;
+      --card-bg: #f8fafd;
+      --card-surface: #f1f4f9;
+      --surface-container-high: #eaeff6;
+      --surface-container-highest: #e2e8f0;
+      --border: rgba(0, 0, 0, 0.08);
+      --border-subtle: rgba(0, 0, 0, 0.04);
+      --primary: #0a84ff;
+      --primary-container: rgba(10, 132, 255, 0.12);
+      --text: #14181f;
+      --text-sub: #5e6675;
+      --text-muted: #8c95a6;
+      --success: #28cd41;
+      --success-container: rgba(40, 205, 65, 0.12);
+      --danger: #ff3b30;
+      --danger-container: rgba(255, 59, 48, 0.12);
+      --warning: #ff9500;
+      --warning-container: rgba(255, 149, 0, 0.12);
+      --radius-sm: 12px;
+      --radius-md: 18px;
+      --radius-lg: 26px;
+      --radius-pill: 9999px;
+      --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.03);
+      --shadow-md: 0 8px 24px rgba(20, 24, 31, 0.05);
+      --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    [data-theme="dark"] {
+      --bg: #0f1116;
+      --card-bg: #171922;
+      --card-surface: #1d202a;
+      --surface-container-high: #252834;
+      --surface-container-highest: #2e3240;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-subtle: rgba(255, 255, 255, 0.04);
+      --text: #f2f4f8;
+      --text-sub: #9ba1b0;
+      --text-muted: #6a7182;
+      --primary-container: rgba(10, 132, 255, 0.2);
+      --success-container: rgba(40, 205, 65, 0.2);
+      --danger-container: rgba(255, 59, 48, 0.2);
+      --warning-container: rgba(255, 149, 0, 0.2);
+      --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.2);
+      --shadow-md: 0 12px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font-main);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 32px 18px 80px;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .app-viewport {
+      width: 100%;
+      max-width: 780px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    .icon {
+      width: 18px;
+      height: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .icon svg {
+      width: 100%;
+      height: 100%;
+      fill: currentColor;
+    }
+
+    .top-app-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 4px;
+    }
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-sm);
+      background: var(--primary-container);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .brand-title {
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.3px;
+      color: var(--text);
+    }
+    .brand-subtitle {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--primary);
+      letter-spacing: -0.1px;
+    }
+    .top-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-title-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: var(--card-surface);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.2px;
+    }
+    .card-description {
+      font-size: 13px;
+      color: var(--text-sub);
+      line-height: 1.5;
+    }
+
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    @media (max-width: 640px) {
+      .telemetry-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+    .telemetry-item {
+      background: var(--card-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .telemetry-val {
+      font-size: 24px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--text);
+    }
+    .telemetry-val.primary { color: var(--primary); }
+    .telemetry-val.success { color: var(--success); }
+    .telemetry-val.warning { color: var(--warning); }
+    .telemetry-label {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-sub);
+    }
+
+    .segmented-control {
+      background: var(--surface-container-high);
+      border-radius: var(--radius-pill);
+      padding: 4px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+    }
+    @media (max-width: 640px) {
+      .segmented-control {
+        grid-template-columns: repeat(2, 1fr);
+        border-radius: var(--radius-md);
+      }
+    }
+    .segment-tab {
+      padding: 10px 12px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-sub);
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+    }
+    .segment-tab.active {
+      background: var(--card-bg);
+      color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .btn {
+      font-family: var(--font-main);
+      font-size: 13px;
+      font-weight: 700;
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      border: 1px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.12s ease, background 0.15s ease, opacity 0.15s ease;
+    }
+    .btn:active {
+      transform: scale(0.98);
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: #ffffff;
+    }
+    .btn-tonal {
+      background: var(--primary-container);
+      color: var(--primary);
+    }
+    .btn-success {
+      background: var(--success);
+      color: #ffffff;
+    }
+    .btn-danger {
+      background: var(--danger-container);
+      color: var(--danger);
+      border-color: rgba(255, 59, 48, 0.25);
+    }
+    .btn-outlined {
+      background: transparent;
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .btn-outlined:hover {
+      background: var(--surface-container-high);
+    }
+    .btn-icon {
+      width: 38px;
+      height: 38px;
+      padding: 0;
+      border-radius: var(--radius-sm);
+    }
+
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field-grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+    @media (max-width: 560px) {
+      .field-grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+    .field-label {
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--text-sub);
+    }
+    .text-input, .textarea-input {
+      font-family: var(--font-main);
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--card-surface);
+      color: var(--text);
+      font-size: 13.5px;
+      outline: none;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .text-input:focus, .textarea-input:focus {
+      border-color: var(--primary);
+      background: var(--card-bg);
+    }
+    .textarea-input {
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .switch-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--card-surface);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      gap: 12px;
+    }
+    .switch-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .switch-sub {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--surface-container-highest);
+      transition: .2s ease;
+      border-radius: 34px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #ffffff;
+      transition: .2s ease;
+      border-radius: 50%;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      text-transform: uppercase;
+    }
+    .badge-approved { background: var(--success-container); color: var(--success); }
+    .badge-pending { background: var(--warning-container); color: var(--warning); }
+    .badge-blocked { background: var(--danger-container); color: var(--danger); }
+    .badge-a11y-on { background: var(--primary-container); color: var(--primary); }
+    .badge-a11y-off { background: var(--surface-container-highest); color: var(--text-muted); }
+    .badge-bug { background: var(--danger-container); color: var(--danger); }
+    .badge-feature { background: var(--primary-container); color: var(--primary); }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .item-surface {
+      background: var(--card-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: border-color 0.15s ease;
+    }
+    .item-surface:hover {
+      border-color: var(--border);
+    }
+    .item-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .item-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .item-code {
+      font-family: var(--font-mono);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--primary);
+      word-break: break-all;
+    }
+    .item-sub {
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+    .item-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .filter-pills {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+    .pill {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: var(--radius-pill);
+      background: var(--card-surface);
+      color: var(--text-sub);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+    .pill.active {
+      background: var(--primary-container);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .status-banner {
+      display: none;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .status-banner.success {
+      background: var(--success-container);
+      color: var(--success);
+      display: block;
+    }
+    .status-banner.error {
+      background: var(--danger-container);
+      color: var(--danger);
+      display: block;
+    }
+
+    pre.code-preview {
+      background: var(--surface-container-high);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      color: var(--text);
+      overflow-x: auto;
+      line-height: 1.45;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-viewport">
+    <!-- TOP APP BAR -->
+    <header class="top-app-bar">
+      <div class="brand-wrap">
+        <div class="brand-avatar">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+          </span>
+        </div>
+        <div>
+          <div class="brand-title">Androidisland Admin</div>
+          <div class="brand-subtitle">Firebase Cloud (ideo-dd376) • digitalxiao</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="btn btn-outlined btn-icon" id="themeToggle" title="Chuyển đổi giao diện Sáng / Tối">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><path d="M12 3c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9c0-.46-.04-.92-.1-1.36-.98 1.37-2.58 2.26-4.4 2.26-3.03 0-5.5-2.47-5.5-5.5 0-1.82.89-3.42 2.26-4.4-.44-.06-.9-.1-1.36-.1z"/></svg>
+          </span>
+        </button>
+        <button class="btn btn-outlined" onclick="refreshAllData()">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          </span>
+          Làm mới
+        </button>
+      </div>
+    </header>
+
+    <!-- LIVE TELEMETRY CARDS -->
+    <div class="telemetry-grid">
+      <div class="telemetry-item">
+        <div class="telemetry-val" id="statTotalDevices">0</div>
+        <div class="telemetry-label">Tổng thiết bị</div>
+      </div>
+      <div class="telemetry-item">
+        <div class="telemetry-val success" id="statActivatedDevices">0</div>
+        <div class="telemetry-label">Đã kích hoạt</div>
+      </div>
+      <div class="telemetry-item">
+        <div class="telemetry-val primary" id="statAccessibilityActive">0</div>
+        <div class="telemetry-label">Bật Trợ năng</div>
+      </div>
+      <div class="telemetry-item">
+        <div class="telemetry-val warning" id="statBugReports">0</div>
+        <div class="telemetry-label">Báo cáo lỗi</div>
+      </div>
+    </div>
+
+    <!-- MAIN SEGMENTED NAVIGATION -->
+    <div class="segmented-control">
+      <button class="segment-tab active" id="tab-btn-devices" onclick="switchTab('devices')">
+        <span class="icon">
+          <svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
+        </span>
+        Thiết bị & UID
+      </button>
+      <button class="segment-tab" id="tab-btn-bugs" onclick="switchTab('bugs')">
+        <span class="icon">
+          <svg viewBox="0 0 24 24"><path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"/></svg>
+        </span>
+        Báo cáo lỗi
+      </button>
+      <button class="segment-tab" id="tab-btn-ota" onclick="switchTab('ota')">
+        <span class="icon">
+          <svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
+        </span>
+        OTA Tính năng & Fix
+      </button>
+      <button class="segment-tab" id="tab-btn-announcement" onclick="switchTab('announcement')">
+        <span class="icon">
+          <svg viewBox="0 0 24 24"><path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm9.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+        </span>
+        Thông báo & APK
+      </button>
+    </div>
+
+    <!-- TAB 1: THIẾT BỊ & UID -->
+    <div id="tab-content-devices" class="card">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-title-icon">
+            <span class="icon">
+              <svg viewBox="0 0 24 24"><path d="M17 1.01L7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14z"/></svg>
+            </span>
+          </div>
+          <div>
+            <div class="card-title">Quản lý cấp phép UID</div>
+            <div class="card-description">Theo dõi trạng thái Quyền Trợ Năng và phê duyệt thiết bị truy cập trực tiếp qua Firebase (ideo-dd376)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="switch-row">
+        <div>
+          <div class="switch-title">Cho phép tất cả thiết bị vào thẳng</div>
+          <div class="switch-sub">Bỏ qua hàng chờ duyệt UID (thích hợp khi mở thử nghiệm công khai)</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="allowAllDevices" onchange="publishToFirebase()">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Thêm nhanh UID cần cấp phép</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="newUidInput" class="text-input" placeholder="Dán mã UID (ví dụ: uid_01c9dd72da71924c)" style="flex:1;">
+          <button class="btn btn-primary" onclick="approveManualUid()">Cho phép</button>
+        </div>
+      </div>
+
+      <div class="filter-pills">
+        <button class="pill active" id="filter-all" onclick="setDeviceFilter('all')">Tất cả (<span id="count-all">0</span>)</button>
+        <button class="pill" id="filter-a11y" onclick="setDeviceFilter('a11y')">Bật Trợ năng (<span id="count-a11y">0</span>)</button>
+        <button class="pill" id="filter-approved" onclick="setDeviceFilter('approved')">Đã kích hoạt (<span id="count-approved">0</span>)</button>
+        <button class="pill" id="filter-pending" onclick="setDeviceFilter('pending')">Chờ duyệt (<span id="count-pending">0</span>)</button>
+      </div>
+
+      <div id="deviceListContainer" style="display:flex;flex-direction:column;gap:10px;">
+        <div style="color:var(--text-sub);font-size:13px;padding:12px;text-align:center;">Đang tải danh sách thiết bị từ Firebase...</div>
+      </div>
+
+      <div class="field-group" style="margin-top:10px;">
+        <label class="field-label">Danh sách UID trong cấu hình (Mỗi dòng một UID)</label>
+        <textarea id="allowedUids" class="textarea-input" rows="3" placeholder="uid_..."></textarea>
+      </div>
+    </div>
+
+    <!-- TAB 2: BÁO CÁO LỖI & ĐỀ XUẤT TÍNH NĂNG -->
+    <div id="tab-content-bugs" class="card" style="display:none;">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-title-icon">
+            <span class="icon">
+              <svg viewBox="0 0 24 24"><path d="M20 8h-2.81c-.45-.78-1.07-1.45-1.82-1.96L17 4.41 15.59 3l-2.17 2.17C12.96 5.06 12.49 5 12 5c-.49 0-.96.06-1.41.17L8.41 3 7 4.41l1.62 1.63C7.88 6.55 7.26 7.22 6.81 8H4v2h2.09c-.05.33-.09.66-.09 1v1H4v2h2v1c0 .34.04.67.09 1H4v2h2.81c1.04 1.79 2.97 3 5.19 3s4.15-1.21 5.19-3H20v-2h-2.09c.05-.33.09-.66.09-1v-1h2v-2h-2v-1c0-.34-.04-.67-.09-1H20V8zm-6 8h-4v-2h4v2zm0-4h-4v-2h4v2z"/></svg>
+            </span>
+          </div>
+          <div>
+            <div class="card-title">Phản hồi từ người dùng</div>
+            <div class="card-description">Các báo cáo lỗi và đề xuất gửi trực tiếp từ ứng dụng</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="bugListContainer" style="display:flex;flex-direction:column;gap:10px;">
+        <div style="color:var(--text-sub);font-size:13px;padding:12px;text-align:center;">Đang tải danh sách báo cáo lỗi...</div>
+      </div>
+    </div>
+
+    <!-- TAB 3: CẬP NHẬT TÍNH NĂNG & FIX LỖI TRỰC TUYẾN (OTA LIVE PATCH) -->
+    <div id="tab-content-ota" class="card" style="display:none;">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-title-icon">
+            <span class="icon">
+              <svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
+            </span>
+          </div>
+          <div>
+            <div class="card-title">Cập nhật Tính năng & Sửa lỗi Trực tuyến (OTA)</div>
+            <div class="card-description">Đẩy tính năng mới, chỉnh sửa kích thước/vị trí Đảo động và thông báo trực tiếp xuống mọi thiết bị đang mở app mà không cần tải lại file APK</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-grid-2">
+        <div class="field-group">
+          <label class="field-label">Mã bản vá trực tuyến (Patch Version)</label>
+          <div style="display:flex;gap:8px;">
+            <input type="number" id="patchVersion" class="text-input" value="1" min="1">
+            <button class="btn btn-tonal" type="button" onclick="incrementPatchVersion()">+1 Bản vá</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Thông báo đẩy trực tiếp lên Đảo động (Remote Island Toast)</label>
+          <input type="text" id="remoteToastMessage" class="text-input" placeholder="Ví dụ: Đã cập nhật bản vá lỗi Đảo động #2">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Fix lỗi kích thước & vị trí Đảo động trực tuyến (Ghi đè thông số dp trên máy người dùng)</label>
+        <div class="field-grid-2">
+          <div class="field-group">
+            <label class="field-label">Chiều rộng Đảo thu gọn (widthDp)</label>
+            <input type="number" id="ota_widthDp" class="text-input" value="124">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Chiều cao Đảo thu gọn (heightDp)</label>
+            <input type="number" id="ota_heightDp" class="text-input" value="38">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Khoảng cách lề trên (topOffsetDp — Chống tụt dưới thanh trạng thái)</label>
+            <input type="number" id="ota_topOffsetDp" class="text-input" value="12">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Độ bo góc viên thuốc (cornerRadiusDp)</label>
+            <input type="number" id="ota_cornerRadiusDp" class="text-input" value="22">
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Công tắc bật/tắt tính năng từ xa (OTA Feature Switches)</label>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div class="switch-row">
+            <div>
+              <div class="switch-title">Luôn hiển thị viên thuốc đen nguyên bản (alwaysShowPill)</div>
+              <div class="switch-sub">Giữ viên thuốc Đảo động đen tuyền ôm khít camera trước ngay cả khi không có thông báo</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="sw_alwaysShowPill" checked><span class="slider"></span></label>
+          </div>
+          <div class="switch-row">
+            <div>
+              <div class="switch-title">Ẩn HyperIsland / Đảo mặc định hệ điều hành (hideNativeOsIsland)</div>
+              <div class="switch-sub">Tự động che phủ đảo gốc của Xiaomi HyperOS, ColorOS, OriginOS, MagicOS</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="sw_hideNativeOsIsland" checked><span class="slider"></span></label>
+          </div>
+          <div class="switch-row">
+            <div>
+              <div class="switch-title">Hiệu ứng giọt nước tách đôi (bubbleEffectEnabled)</div>
+              <div class="switch-sub">Kích hoạt chuyển động tách giọt nước đa nhiệm mượt mà</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="sw_bubbleEffectEnabled" checked><span class="slider"></span></label>
+          </div>
+          <div class="switch-row">
+            <div>
+              <div class="switch-title">Hiển thị Cuộc gọi đến & đang gọi (showCalls)</div>
+              <div class="switch-sub">Đồng bộ trạng thái cuộc gọi và bộ đếm thời gian lên Đảo động</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="sw_showCalls" checked><span class="slider"></span></label>
+          </div>
+          <div class="switch-row">
+            <div>
+              <div class="switch-title">Hiển thị Trình phát nhạc & Sóng nhạc (showMedia)</div>
+              <div class="switch-sub">Đồng bộ ảnh bìa bài hát, sóng âm và điều khiển nhạc</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="sw_showMedia" checked><span class="slider"></span></label>
+          </div>
+          <div class="switch-row">
+            <div>
+              <div class="switch-title">Hiển thị Thông báo nổi trên Đảo (showNotifications)</div>
+              <div class="switch-sub">Nhận và phản hồi nhanh tin nhắn trực tiếp trên Đảo động</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="sw_showNotifications" checked><span class="slider"></span></label>
+          </div>
+          <div class="switch-row">
+            <div>
+              <div class="switch-title">Hiển thị Trạng thái Sạc pin & Công suất W (showCharging)</div>
+              <div class="switch-sub">Báo hiệu phần trăm pin và tốc độ sạc nhanh khi cắm sạc</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="sw_showCharging" checked><span class="slider"></span></label>
+          </div>
+          <div class="switch-row">
+            <div>
+              <div class="switch-title">Điều khiển Đèn pin đa cấp độ (showFlashlight)</div>
+              <div class="switch-sub">Hiển thị thanh chỉnh độ sáng đèn pin trực tiếp trên Đảo</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="sw_showFlashlight" checked><span class="slider"></span></label>
+          </div>
+          <div class="switch-row">
+            <div>
+              <div class="switch-title">Widget đo FPS thời gian thực (showFps)</div>
+              <div class="switch-sub">Hiển thị tốc độ khung hình trực tiếp trên Đảo động</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="sw_showFps"><span class="slider"></span></label>
+          </div>
+          <div class="switch-row">
+            <div>
+              <div class="switch-title">Widget đo Tốc độ mạng thời gian thực (showNetworkSpeed)</div>
+              <div class="switch-sub">Hiển thị lưu lượng mạng tải xuống trên Đảo động</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="sw_showNetworkSpeed"><span class="slider"></span></label>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="publishToFirebase()">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+          </span>
+          Đẩy bản vá Tính năng & Fix lỗi lên Firebase
+        </button>
+        <button class="btn btn-outlined" onclick="copyJson()">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+          </span>
+          Sao chép JSON
+        </button>
+      </div>
+    </div>
+
+    <!-- TAB 4: THÔNG BÁO VIDEO & CẬP NHẬT APK -->
+    <div id="tab-content-announcement" class="card" style="display:none;">
+      <div class="card-header">
+        <div class="card-title-wrap">
+          <div class="card-title-icon">
+            <span class="icon">
+              <svg viewBox="0 0 24 24"><path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm9.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+            </span>
+          </div>
+          <div>
+            <div class="card-title">Cấu hình Thông báo Follow TikTok & Cập nhật APK</div>
+            <div class="card-description">Chỉnh sửa bảng thông báo sau khi xác minh UID và đẩy liên kết tải APK mới</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="switch-row">
+        <div>
+          <div class="switch-title">Hiển thị bảng thông báo khi mở ứng dụng</div>
+          <div class="switch-sub">Bật để hiện hộp thoại Follow TikTok, thả tim video và chi tiết cập nhật</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="showAnnouncement" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Mã đợt thông báo</label>
+        <input type="text" id="announcementId" class="text-input" value="v2.5.0_liquid_release">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Tiêu đề bảng thông báo (Hiện cả khi xác minh UID thành công)</label>
+        <input type="text" id="announcementTitle" class="text-input" value="Thông Báo Video & Cập Nhật Mới">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Phụ đề tác giả</label>
+        <input type="text" id="announcementSubtitle" class="text-input" value="Androidisland Liquid Edition • digitalxiao">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Tiêu đề khung nổi bật (Banner Follow & Tim Video)</label>
+        <input type="text" id="announcementBannerTitle" class="text-input" value="Đã ra mắt Video hướng dẫn & Bản cập nhật lớn">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Mô tả khung nổi bật</label>
+        <textarea id="announcementBannerDesc" class="textarea-input" rows="2">Xem ngay video trên TikTok để biết cách cài đặt, xác minh UID và cập nhật tính năng trực tuyến mới nhất.</textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Danh sách chi tiết cập nhật (Mỗi dòng một mục, dùng dấu hai chấm để tách tiêu đề và mô tả)</label>
+        <textarea id="changelogItems" class="textarea-input" rows="5">Giao diện Liquid Island 5 Tab mới: Tích hợp thanh điều hướng Liquid Glass Tabbar chuẩn vật lý.
+Đảo động đen nguyên bản: Mặc định hiển thị viên thuốc đen tuyền ôm khít camera trước, chống bị thanh trạng thái che khuất.
+Ẩn HyperIsland hệ điều hành: Tắt và che phủ đảo gốc của Xiaomi HyperOS, ColorOS, OriginOS, MagicOS.
+Xác thực thiết bị qua UID: Cấp phép trực tiếp theo mã UID thiết bị trên hệ thống Cloud và tích chọn Không hiển thị lại.
+Cập nhật Tính năng & Fix lỗi Online (OTA): Đẩy tính năng mới, chỉnh sửa kích thước Đảo động và vá lỗi trực tiếp từ Web không cần cài lại APK.</textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Liên kết Video TikTok</label>
+        <input type="text" id="tiktokVideoUrl" class="text-input" value="https://vt.tiktok.com/ZSpBjvVcP/">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Nhãn nút mở Video TikTok</label>
+        <input type="text" id="tiktokButtonText" class="text-input" value="Mở Video TikTok & Thả Tim">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Phiên bản APK mới nhất</label>
+        <input type="text" id="latestVersion" class="text-input" value="2.0.0">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Liên kết tải file APK trực tiếp (Hỗ trợ tải và cài đặt ngay trong ứng dụng)</label>
+        <input type="text" id="apkDownloadUrl" class="text-input" value="https://github.com/qwocdat/androidisland-/releases/latest/download/Androidisland.apk">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Ghi chú cập nhật APK</label>
+        <textarea id="updateNotes" class="textarea-input" rows="2">Bản cập nhật Liquid Edition: Xác thực thiết bị trực tiếp qua UID, cập nhật tính năng & fix lỗi trực tuyến (OTA) và ẩn HyperIsland.</textarea>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="publishToFirebase()">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+          </span>
+          Lưu và đẩy lên Firebase
+        </button>
+        <button class="btn btn-outlined" onclick="copyJson()">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+          </span>
+          Sao chép JSON
+        </button>
+      </div>
+    </div>
+
+    <!-- GLOBAL STATUS TOAST & JSON PREVIEW CARD -->
+    <div id="statusBox" class="status-banner"></div>
+
+    <div class="card">
+      <div class="field-group">
+        <label class="field-label">Xem trước cấu hình JSON đồng bộ trực tuyến (online_update.json)</label>
+        <pre id="jsonPreview" class="code-preview"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase Modular SDK (v10) Initialization with ideo-dd376 Config -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAVuB8m14zkMPs-JTLAKB0Bp18QBKAMBt4",
+      authDomain: "ideo-dd376.firebaseapp.com",
+      databaseURL: "https://ideo-dd376-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "ideo-dd376",
+      storageBucket: "ideo-dd376.firebasestorage.app",
+      messagingSenderId: "689163185",
+      appId: "1:689163185:web:f4e11f000a5afc3a364b90",
+      measurementId: "G-6Z3NDBKPFH"
+    };
+
+    try {
+      const app = initializeApp(firebaseConfig);
+      getAnalytics(app);
+      window.__firebaseApp = app;
+    } catch (err) {
+      console.warn("Firebase SDK init:", err);
+    }
+  </script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAVuB8m14zkMPs-JTLAKB0Bp18QBKAMBt4",
+      authDomain: "ideo-dd376.firebaseapp.com",
+      databaseURL: "https://ideo-dd376-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "ideo-dd376",
+      storageBucket: "ideo-dd376.firebasestorage.app",
+      messagingSenderId: "689163185",
+      appId: "1:689163185:web:f4e11f000a5afc3a364b90",
+      measurementId: "G-6Z3NDBKPFH"
+    };
+
+    const PROJECT_ID = firebaseConfig.projectId;
+    const API_KEY = firebaseConfig.apiKey;
+    const RTDB_BASE_URL = firebaseConfig.databaseURL;
+
+    // Endpoints cho cả Realtime Database (asia-southeast1) và Cloud Firestore
+    const RTDB_CONFIG_URL = `${RTDB_BASE_URL}/androidisland/app_config.json`;
+    const RTDB_DEVICES_URL = `${RTDB_BASE_URL}/androidisland/uid_devices`;
+    const RTDB_BUGS_URL = `${RTDB_BASE_URL}/androidisland/bug_reports`;
+
+    const FIREBASE_DOC_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/app_config/androidisland_update?key=${API_KEY}`;
+    const FIREBASE_DEVICES_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/uid_devices`;
+    const FIREBASE_BUGS_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/bug_reports`;
+
+    const OTA_SWITCH_KEYS = [
+      'alwaysShowPill',
+      'hideNativeOsIsland',
+      'bubbleEffectEnabled',
+      'showCalls',
+      'showMedia',
+      'showNotifications',
+      'showCharging',
+      'showFlashlight',
+      'showFps',
+      'showNetworkSpeed'
+    ];
+
+    let allDevicesCache = [];
+    let currentFilter = 'all';
+
+    // Theme Toggle
+    const themeToggleBtn = document.getElementById('themeToggle');
+    function initTheme() {
+      const saved = localStorage.getItem('theme') || 'dark';
+      document.documentElement.setAttribute('data-theme', saved);
+    }
+    themeToggleBtn.addEventListener('click', () => {
+      const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', cur);
+      localStorage.setItem('theme', cur);
+    });
+    initTheme();
+
+    // Tab Navigation
+    function switchTab(tabKey) {
+      ['devices', 'bugs', 'ota', 'announcement'].forEach(k => {
+        const btn = document.getElementById('tab-btn-' + k);
+        const content = document.getElementById('tab-content-' + k);
+        if (btn && content) {
+          if (k === tabKey) {
+            btn.classList.add('active');
+            content.style.display = 'flex';
+          } else {
+            btn.classList.remove('active');
+            content.style.display = 'none';
+          }
+        }
+      });
+    }
+
+    function incrementPatchVersion() {
+      const el = document.getElementById('patchVersion');
+      el.value = String(( parseInt(el.value, 10) || 1 ) + 1);
+      updatePreview();
+    }
+
+    function formatTime(ms) {
+      if (!ms || ms <= 0) return 'Chưa ghi nhận';
+      const d = new Date(Number(ms));
+      return d.toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+    }
+
+    function buildConfig() {
+      const items = document.getElementById('changelogItems').value
+        .split('\n').map(s => s.trim()).filter(Boolean);
+      const uids = document.getElementById('allowedUids').value
+        .split('\n').map(s => s.trim()).filter(Boolean);
+
+      const onlineFeatureSwitches = {};
+      OTA_SWITCH_KEYS.forEach(k => {
+        const el = document.getElementById('sw_' + k);
+        if (el) onlineFeatureSwitches[k] = el.checked;
+      });
+
+      const onlineDimensionOverrides = {
+        widthDp: parseInt(document.getElementById('ota_widthDp').value, 10) || 124,
+        heightDp: parseInt(document.getElementById('ota_heightDp').value, 10) || 38,
+        topOffsetDp: parseInt(document.getElementById('ota_topOffsetDp').value, 10) || 12,
+        cornerRadiusDp: parseInt(document.getElementById('ota_cornerRadiusDp').value, 10) || 22
+      };
+
+      return {
+        announcementId: document.getElementById('announcementId').value.trim(),
+        showAnnouncement: document.getElementById('showAnnouncement').checked,
+        announcementTitle: document.getElementById('announcementTitle').value.trim(),
+        announcementSubtitle: document.getElementById('announcementSubtitle').value.trim(),
+        announcementBannerTitle: document.getElementById('announcementBannerTitle').value.trim(),
+        announcementBannerDesc: document.getElementById('announcementBannerDesc').value.trim(),
+        changelogItems: items,
+        tiktokVideoUrl: document.getElementById('tiktokVideoUrl').value.trim(),
+        tiktokButtonText: document.getElementById('tiktokButtonText').value.trim(),
+        latestVersion: document.getElementById('latestVersion').value.trim(),
+        latestVersionCode: 25,
+        apkDownloadUrl: document.getElementById('apkDownloadUrl').value.trim(),
+        updateNotes: document.getElementById('updateNotes').value.trim(),
+        forceUpdate: false,
+        allowAllDevices: document.getElementById('allowAllDevices').checked,
+        allowedUids: uids,
+        patchVersion: parseInt(document.getElementById('patchVersion').value, 10) || 1,
+        remoteToastMessage: document.getElementById('remoteToastMessage').value.trim(),
+        onlineFeatureSwitches,
+        onlineDimensionOverrides
+      };
+    }
+
+    function updatePreview() {
+      document.getElementById('jsonPreview').textContent = JSON.stringify(buildConfig(), null, 2);
+    }
+
+    document.querySelectorAll('input, textarea').forEach(el => {
+      el.addEventListener('input', updatePreview);
+      el.addEventListener('change', updatePreview);
+    });
+    updatePreview();
+
+    function showStatus(msg, ok) {
+      const box = document.getElementById('statusBox');
+      box.className = 'status-banner ' + (ok ? 'success' : 'error');
+      box.textContent = msg;
+      setTimeout(() => {
+        box.className = 'status-banner';
+      }, 5000);
+    }
+
+    function applyConfigToForm(cfg) {
+      if (!cfg || typeof cfg !== 'object') return;
+      if (cfg.announcementId) document.getElementById('announcementId').value = cfg.announcementId;
+      if (typeof cfg.showAnnouncement === 'boolean') document.getElementById('showAnnouncement').checked = cfg.showAnnouncement;
+      if (cfg.announcementTitle) document.getElementById('announcementTitle').value = cfg.announcementTitle;
+      if (cfg.announcementSubtitle) document.getElementById('announcementSubtitle').value = cfg.announcementSubtitle;
+      if (cfg.announcementBannerTitle) document.getElementById('announcementBannerTitle').value = cfg.announcementBannerTitle;
+      if (cfg.announcementBannerDesc) document.getElementById('announcementBannerDesc').value = cfg.announcementBannerDesc;
+      if (Array.isArray(cfg.changelogItems)) document.getElementById('changelogItems').value = cfg.changelogItems.join('\n');
+      if (cfg.tiktokVideoUrl) document.getElementById('tiktokVideoUrl').value = cfg.tiktokVideoUrl;
+      if (cfg.tiktokButtonText) document.getElementById('tiktokButtonText').value = cfg.tiktokButtonText;
+      if (cfg.latestVersion) document.getElementById('latestVersion').value = cfg.latestVersion;
+      if (cfg.apkDownloadUrl) document.getElementById('apkDownloadUrl').value = cfg.apkDownloadUrl;
+      if (cfg.updateNotes) document.getElementById('updateNotes').value = cfg.updateNotes;
+      if (typeof cfg.allowAllDevices === 'boolean') document.getElementById('allowAllDevices').checked = cfg.allowAllDevices;
+      if (Array.isArray(cfg.allowedUids)) document.getElementById('allowedUids').value = cfg.allowedUids.join('\n');
+      if (cfg.patchVersion) document.getElementById('patchVersion').value = cfg.patchVersion;
+      if (typeof cfg.remoteToastMessage === 'string') document.getElementById('remoteToastMessage').value = cfg.remoteToastMessage;
+
+      if (cfg.onlineFeatureSwitches) {
+        OTA_SWITCH_KEYS.forEach(k => {
+          if (typeof cfg.onlineFeatureSwitches[k] === 'boolean') {
+            const el = document.getElementById('sw_' + k);
+            if (el) el.checked = cfg.onlineFeatureSwitches[k];
+          }
+        });
+      }
+      if (cfg.onlineDimensionOverrides) {
+        if (cfg.onlineDimensionOverrides.widthDp) document.getElementById('ota_widthDp').value = cfg.onlineDimensionOverrides.widthDp;
+        if (cfg.onlineDimensionOverrides.heightDp) document.getElementById('ota_heightDp').value = cfg.onlineDimensionOverrides.heightDp;
+        if (cfg.onlineDimensionOverrides.topOffsetDp !== undefined) document.getElementById('ota_topOffsetDp').value = cfg.onlineDimensionOverrides.topOffsetDp;
+        if (cfg.onlineDimensionOverrides.cornerRadiusDp) document.getElementById('ota_cornerRadiusDp').value = cfg.onlineDimensionOverrides.cornerRadiusDp;
+      }
+      updatePreview();
+    }
+
+    async function loadOnlineConfigFromFirebase() {
+      // 1. Ưu tiên đọc từ Firebase Realtime Database (ideo-dd376-default-rtdb)
+      try {
+        const rtdbRes = await fetch(`${RTDB_CONFIG_URL}?_t=${Date.now()}`);
+        if (rtdbRes.ok) {
+          const rtdbData = await rtdbRes.json();
+          if (rtdbData && typeof rtdbData === 'object') {
+            applyConfigToForm(rtdbData);
+            return;
+          }
+        }
+      } catch (e) {}
+
+      // 2. Dự phòng đọc từ Cloud Firestore
+      try {
+        const res = await fetch(`${FIREBASE_DOC_URL}&_t=${Date.now()}`);
+        if (!res.ok) return;
+        const doc = await res.json();
+        const rawJson = doc.fields && doc.fields.configJson && doc.fields.configJson.stringValue;
+        if (!rawJson) return;
+        applyConfigToForm(JSON.parse(rawJson));
+      } catch (e) {}
+    }
+
+    function setDeviceFilter(filter) {
+      currentFilter = filter;
+      ['all', 'a11y', 'approved', 'pending'].forEach(k => {
+        const el = document.getElementById('filter-' + k);
+        if (el) {
+          if (k === filter) el.classList.add('active');
+          else el.classList.remove('active');
+        }
+      });
+      renderDevices();
+    }
+
+    function renderDevices() {
+      const container = document.getElementById('deviceListContainer');
+      const filtered = allDevicesCache.filter(d => {
+        if (currentFilter === 'a11y') return d.accessibilityActive;
+        if (currentFilter === 'approved') return d.approved || d.status === 'approved';
+        if (currentFilter === 'pending') return !d.approved && d.status !== 'approved' && d.status !== 'blocked';
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-sub);font-size:13px;padding:16px;text-align:center;">Không có thiết bị nào trong danh mục này.</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      filtered.forEach(d => {
+        const badgeClass = d.approved ? 'badge-approved' : (d.status === 'blocked' ? 'badge-blocked' : 'badge-pending');
+        const badgeLabel = d.approved ? 'Đã kích hoạt' : (d.status === 'blocked' ? 'Đã khóa' : 'Chờ duyệt');
+        const a11yClass = d.accessibilityActive ? 'badge-a11y-on' : 'badge-a11y-off';
+        const a11yLabel = d.accessibilityActive ? 'Trợ năng: Bật' : 'Trợ năng: Tắt';
+
+        const div = document.createElement('div');
+        div.className = 'item-surface';
+        div.innerHTML = `
+          <div class="item-head">
+            <div>
+              <div class="item-title">${d.deviceName}</div>
+              <div class="item-code" style="margin-top:3px;">${d.uid}</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <span class="badge ${badgeClass}"><span class="dot"></span>${badgeLabel}</span>
+              <span class="badge ${a11yClass}"><span class="dot"></span>${a11yLabel}</span>
+            </div>
+          </div>
+          <div class="item-sub">
+            Phiên bản: <b>v${d.appVersion}</b> • Đảo nổi: <b>${d.overlayActive ? 'Bật' : 'Tắt'}</b> • Hoạt động: ${formatTime(d.lastActiveAt || d.requestedAt)}
+          </div>
+          <div class="item-actions">
+            <button class="btn btn-tonal" style="flex:1;" onclick="setUidStatus('${d.uid}', '${d.deviceName.replace(/'/g, "")}', true)">Cho phép</button>
+            <button class="btn btn-danger" style="flex:1;" onclick="setUidStatus('${d.uid}', '${d.deviceName.replace(/'/g, "")}', false)">Khóa</button>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function loadFirebaseDevices() {
+      const container = document.getElementById('deviceListContainer');
+      const mapByUid = new Map();
+
+      // 1. Tải từ Firebase Realtime Database (`ideo-dd376-default-rtdb`)
+      try {
+        const rtdbRes = await fetch(`${RTDB_DEVICES_URL}.json?_t=${Date.now()}`);
+        if (rtdbRes.ok) {
+          const rtdbObj = await rtdbRes.json();
+          if (rtdbObj && typeof rtdbObj === 'object') {
+            Object.keys(rtdbObj).forEach(key => {
+              const d = rtdbObj[key];
+              if (!d || typeof d !== 'object') return;
+              const uid = d.uid || key;
+              const approved = Boolean(d.approved) || d.status === 'approved';
+              mapByUid.set(uid, {
+                uid,
+                deviceName: d.deviceName || 'Thiết bị Android',
+                approved,
+                status: d.status || (approved ? 'approved' : 'pending'),
+                accessibilityActive: Boolean(d.accessibilityActive),
+                overlayActive: Boolean(d.overlayActive),
+                appVersion: d.appVersion || '2.0.0',
+                requestedAt: Number(d.requestedAt || 0),
+                lastActiveAt: Number(d.lastActiveAt || d.requestedAt || 0)
+              });
+            });
+          }
+        }
+      } catch (e) {}
+
+      // 2. Tải bổ sung từ Cloud Firestore (`ideo-dd376`)
+      try {
+        const res = await fetch(`${FIREBASE_DEVICES_URL}?pageSize=200&key=${API_KEY}&_t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          const docs = data.documents || [];
+          docs.forEach(doc => {
+            const f = doc.fields || {};
+            const uid = (f.uid && f.uid.stringValue) || doc.name.split('/').pop();
+            if (mapByUid.has(uid)) return;
+            const devName = (f.deviceName && f.deviceName.stringValue) || 'Thiết bị Android';
+            const approved = (f.approved && f.approved.booleanValue) || false;
+            const status = (f.status && f.status.stringValue) || (approved ? 'approved' : 'pending');
+            const accessibilityActive = (f.accessibilityActive && f.accessibilityActive.booleanValue) || false;
+            const overlayActive = (f.overlayActive && f.overlayActive.booleanValue) || false;
+            const appVersion = (f.appVersion && f.appVersion.stringValue) || '2.0.0';
+            const requestedAt = Number((f.requestedAt && f.requestedAt.integerValue) || 0);
+            const lastActiveAt = Number((f.lastActiveAt && f.lastActiveAt.integerValue) || requestedAt);
+            mapByUid.set(uid, {
+              uid,
+              deviceName: devName,
+              approved: approved || status === 'approved',
+              status,
+              accessibilityActive,
+              overlayActive,
+              appVersion,
+              requestedAt,
+              lastActiveAt
+            });
+          });
+        }
+      } catch (e) {}
+
+      allDevicesCache = Array.from(mapByUid.values())
+        .sort((a, b) => (b.lastActiveAt || b.requestedAt) - (a.lastActiveAt || a.requestedAt));
+
+      const total = allDevicesCache.length;
+      const activated = allDevicesCache.filter(d => d.approved).length;
+      const a11yCount = allDevicesCache.filter(d => d.accessibilityActive).length;
+      const pendingCount = allDevicesCache.filter(d => !d.approved && d.status !== 'approved' && d.status !== 'blocked').length;
+
+      document.getElementById('statTotalDevices').textContent = total;
+      document.getElementById('statActivatedDevices').textContent = activated;
+      document.getElementById('statAccessibilityActive').textContent = a11yCount;
+
+      document.getElementById('count-all').textContent = total;
+      document.getElementById('count-a11y').textContent = a11yCount;
+      document.getElementById('count-approved').textContent = activated;
+      document.getElementById('count-pending').textContent = pendingCount;
+
+      renderDevices();
+    }
+
+    async function loadBugReports() {
+      const container = document.getElementById('bugListContainer');
+      const mapById = new Map();
+
+      // 1. Đọc từ Firebase Realtime Database
+      try {
+        const rtdbRes = await fetch(`${RTDB_BUGS_URL}.json?_t=${Date.now()}`);
+        if (rtdbRes.ok) {
+          const rtdbObj = await rtdbRes.json();
+          if (rtdbObj && typeof rtdbObj === 'object') {
+            Object.keys(rtdbObj).forEach(key => {
+              const r = rtdbObj[key];
+              if (!r || typeof r !== 'object') return;
+              const repId = r.reportId || key;
+              mapById.set(repId, {
+                reportId: repId,
+                uid: r.uid || 'unknown',
+                deviceName: r.deviceName || 'Thiết bị Android',
+                androidVersion: r.androidVersion || '14',
+                appVersion: r.appVersion || '2.0.0',
+                type: r.type || 'BUG',
+                title: r.title || 'Báo cáo lỗi',
+                description: r.description || '',
+                accessibilityActive: Boolean(r.accessibilityActive),
+                createdAt: Number(r.createdAt || 0)
+              });
+            });
+          }
+        }
+      } catch (e) {}
+
+      // 2. Đọc từ Cloud Firestore
+      try {
+        const res = await fetch(`${FIREBASE_BUGS_URL}?pageSize=100&key=${API_KEY}&_t=${Date.now()}`);
+        if (res.ok) {
+          const data = await res.json();
+          const docs = data.documents || [];
+          docs.forEach(doc => {
+            const f = doc.fields || {};
+            const repId = (f.reportId && f.reportId.stringValue) || doc.name.split('/').pop();
+            if (mapById.has(repId)) return;
+            mapById.set(repId, {
+              reportId: repId,
+              uid: (f.uid && f.uid.stringValue) || 'unknown',
+              deviceName: (f.deviceName && f.deviceName.stringValue) || 'Thiết bị Android',
+              androidVersion: (f.androidVersion && f.androidVersion.stringValue) || '14',
+              appVersion: (f.appVersion && f.appVersion.stringValue) || '2.0.0',
+              type: (f.type && f.type.stringValue) || 'BUG',
+              title: (f.title && f.title.stringValue) || 'Báo cáo lỗi',
+              description: (f.description && f.description.stringValue) || '',
+              accessibilityActive: (f.accessibilityActive && f.accessibilityActive.booleanValue) || false,
+              createdAt: Number((f.createdAt && f.createdAt.integerValue) || 0)
+            });
+          });
+        }
+      } catch (e) {}
+
+      const reports = Array.from(mapById.values()).sort((a, b) => b.createdAt - a.createdAt);
+      document.getElementById('statBugReports').textContent = reports.length;
+
+      if (reports.length === 0) {
+        container.innerHTML = '<div style="color:var(--text-sub);font-size:13px;padding:16px;text-align:center;">Chưa có báo cáo lỗi nào từ người dùng.</div>';
+        return;
+      }
+
+      container.innerHTML = '';
+      reports.forEach(r => {
+        const isBug = r.type.toUpperCase() === 'BUG';
+        const badgeClass = isBug ? 'badge-bug' : 'badge-feature';
+        const badgeLabel = isBug ? 'Lỗi ứng dụng' : 'Đề xuất tính năng';
+
+        const div = document.createElement('div');
+        div.className = 'item-surface';
+        div.innerHTML = `
+          <div class="item-head">
+            <div>
+              <div class="item-title">${r.title}</div>
+              <div style="margin-top:4px;">
+                <span class="badge ${badgeClass}"><span class="dot"></span>${badgeLabel}</span>
+                <span class="badge ${r.accessibilityActive ? 'badge-a11y-on' : 'badge-a11y-off'}">
+                  <span class="dot"></span>${r.accessibilityActive ? 'Trợ năng: Bật' : 'Trợ năng: Tắt'}
+                </span>
+              </div>
+            </div>
+            <button class="btn btn-outlined" onclick="deleteBugReport('${r.reportId}')">Đã xử lý</button>
+          </div>
+          <div style="font-size:13px;color:var(--text);line-height:1.5;white-space:pre-wrap;background:var(--card-bg);padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);">${r.description}</div>
+          <div class="item-sub">
+            ${r.deviceName} (Android ${r.androidVersion} • v${r.appVersion}) • UID: <span class="item-code">${r.uid}</span> • ${formatTime(r.createdAt)}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function deleteBugReport(reportId) {
+      try {
+        await Promise.allSettled([
+          fetch(`${RTDB_BUGS_URL}/${encodeURIComponent(reportId)}.json`, { method: 'DELETE' }),
+          fetch(`${FIREBASE_BUGS_URL}/${encodeURIComponent(reportId)}?key=${API_KEY}`, { method: 'DELETE' })
+        ]);
+        loadBugReports();
+        showStatus('Đã đánh dấu xử lý và xóa phản hồi.', true);
+      } catch (e) {
+        showStatus('Không thể xóa phản hồi lúc này.', false);
+      }
+    }
+
+    async function setUidStatus(uid, devName, approved) {
+      const statusStr = approved ? 'approved' : 'blocked';
+      const existing = allDevicesCache.find(d => d.uid === uid);
+      const nowMs = Date.now();
+
+      const rtdbRecord = {
+        uid: uid,
+        deviceName: devName,
+        approved: approved,
+        status: statusStr,
+        accessibilityActive: existing ? existing.accessibilityActive : false,
+        overlayActive: existing ? existing.overlayActive : false,
+        appVersion: existing ? existing.appVersion : '2.0.0',
+        requestedAt: existing && existing.requestedAt ? existing.requestedAt : nowMs,
+        lastActiveAt: nowMs,
+        appName: 'androidisland'
+      };
+
+      const firestoreBody = {
+        fields: {
+          uid: { stringValue: uid },
+          deviceName: { stringValue: devName },
+          approved: { booleanValue: approved },
+          status: { stringValue: statusStr },
+          accessibilityActive: { booleanValue: rtdbRecord.accessibilityActive },
+          overlayActive: { booleanValue: rtdbRecord.overlayActive },
+          appVersion: { stringValue: rtdbRecord.appVersion },
+          requestedAt: { integerValue: String(rtdbRecord.requestedAt) },
+          lastActiveAt: { integerValue: String(nowMs) },
+          appName: { stringValue: 'androidisland' }
+        }
+      };
+
+      try {
+        const area = document.getElementById('allowedUids');
+        const list = area.value.split('\n').map(s => s.trim()).filter(Boolean);
+        if (approved) {
+          if (!list.includes(uid)) list.push(uid);
+        } else {
+          const idx = list.indexOf(uid);
+          if (idx !== -1) list.splice(idx, 1);
+        }
+        area.value = list.join('\n');
+        updatePreview();
+
+        await Promise.allSettled([
+          fetch(`${RTDB_DEVICES_URL}/${encodeURIComponent(uid)}.json`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(rtdbRecord)
+          }),
+          fetch(`${FIREBASE_DEVICES_URL}/${encodeURIComponent(uid)}?key=${API_KEY}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(firestoreBody)
+          })
+        ]);
+
+        await publishToFirebase();
+        await loadFirebaseDevices();
+        showStatus(`Đã ${approved ? 'cho phép' : 'khóa'} thiết bị: ${uid} trên Firebase!`, true);
+      } catch (e) {
+        showStatus('Không thể cập nhật trạng thái thiết bị.', false);
+      }
+    }
+
+    async function approveManualUid() {
+      const input = document.getElementById('newUidInput');
+      const uid = input.value.trim();
+      if (!uid) return;
+      input.value = '';
+      await setUidStatus(uid, 'Thiết bị thêm thủ công', true);
+    }
+
+    async function publishToFirebase() {
+      const cfg = buildConfig();
+      const jsonStr = JSON.stringify(cfg, null, 2);
+      showStatus("Đang đồng bộ cấu hình, tính năng OTA và danh sách UID lên Firebase (ideo-dd376)...", true);
+      try {
+        const [rtdbRes, fsRes] = await Promise.allSettled([
+          fetch(RTDB_CONFIG_URL, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: jsonStr
+          }),
+          fetch(FIREBASE_DOC_URL, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fields: {
+                configJson: { stringValue: jsonStr },
+                updatedAt: { integerValue: String(Date.now()) },
+                latestVersion: { stringValue: cfg.latestVersion },
+                announcementId: { stringValue: cfg.announcementId },
+                patchVersion: { integerValue: String(cfg.patchVersion) }
+              }
+            })
+          })
+        ]);
+
+        const rtdbOk = rtdbRes.status === 'fulfilled' && rtdbRes.value.ok;
+        const fsOk = fsRes.status === 'fulfilled' && fsRes.value.ok;
+
+        if (rtdbOk || fsOk) {
+          showStatus("Đã đồng bộ cấu hình, bản vá tính năng OTA và danh sách UID lên Firebase (ideo-dd376) thành công!", true);
+        } else {
+          showStatus("Vui lòng kiểm tra Rules trên Firebase (cho phép read/write trên Realtime Database hoặc Firestore).", false);
+        }
+      } catch (e) {
+        showStatus("Lỗi kết nối mạng tới Firebase.", false);
+      }
+    }
+
+    function copyJson() {
+      const jsonStr = JSON.stringify(buildConfig(), null, 2);
+      navigator.clipboard.writeText(jsonStr);
+      showStatus("Đã sao chép nội dung JSON vào bộ nhớ tạm.", true);
+    }
+
+    function refreshAllData() {
+      loadOnlineConfigFromFirebase();
+      loadFirebaseDevices();
+      loadBugReports();
+    }
+
+    refreshAllData();
+  </script>
+</body>
+</html>
