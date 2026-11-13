@@ -154,7 +154,7 @@ class SettingsRepository(private val context: Context) {
             fontKey = preferences[PreferencesKeys.FONT_KEY] ?: "DEFAULT",
             swapActivitiesOnSwipe = preferences[PreferencesKeys.SWAP_ACTIVITIES_ON_SWIPE] ?: true,
             blurredAlbumArtBackground = preferences[PreferencesKeys.BLURRED_ALBUM_ART_BACKGROUND] ?: false,
-            designLanguage = preferences[PreferencesKeys.DESIGN_LANGUAGE]?.let {
+            designLanguage = (preferences[PreferencesKeys.DESIGN_LANGUAGE]?.let {).also { com.xiao.androidisland.liquidisland.LiquidIslandDroidBubbleBridge.updateDesignLanguage(it) }
                 runCatching { DesignLanguage.valueOf(it) }.getOrNull()
             } ?: if (preferences[PreferencesKeys.GLASS_ENABLED] == true) DesignLanguage.GLASS else DesignLanguage.MATERIAL3,
             glassEnabled = preferences[PreferencesKeys.GLASS_ENABLED] ?: false,
