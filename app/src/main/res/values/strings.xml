@@ -1,6 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Androidisland</string>
-    <string name="author_name">digitalxiao</string>
-    <string name="accessibility_service_description">Cho phép Androidisland nhận thao tác chạm trực tiếp tại vùng khuyết camera và thanh trạng thái trên mọi ứng dụng.</string>
-    <string name="accessibility_service_title">Dịch vụ Đảo động Androidisland</string>
+    <string name="app_name">AndroidIsland</string>
+    <string name="tile_label">LiquidIsland</string>
+    <string name="accessibility_service_label">AndroidIsland – LiquidIsland Overlay</string>
+    <string name="accessibility_service_description">Hiển thị Dynamic Island, iOS Status Bar với hiệu ứng Liquid Absorption và iOS Control Center.</string>
 </resources>

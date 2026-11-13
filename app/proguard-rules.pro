@@ -1,0 +1,4 @@
+-keepattributes *Annotation*,SourceFile,LineNumberTable
+-keep class com.xiao.androidisland.** { *; }
+-keep class rikka.shizuku.** { *; }
+-dontwarn rikka.shizuku.**
