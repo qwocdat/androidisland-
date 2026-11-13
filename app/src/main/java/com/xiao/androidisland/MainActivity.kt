@@ -58,6 +58,8 @@ import com.xiao.androidisland.liquidisland.engine.CoupledIslandKinematicsState
 import com.xiao.androidisland.liquidisland.engine.DynamicIslandComposable
 import com.xiao.androidisland.liquidisland.renderer.LiquidBackdrop
 import com.xiao.androidisland.liquidisland.renderer.LiquidEffectController
+import com.xiao.androidisland.liquidisland.renderer.rememberLayerBackdrop
+import com.xiao.androidisland.liquidisland.renderer.rememberLiquidEffectController
 import com.xiao.androidisland.liquidisland.renderer.LiquidGlassNativeBridge
 import com.xiao.androidisland.liquidisland.settings.LiquidIslandSettingsSheet
 import com.xiao.androidisland.liquidisland.statusbar.DynamicIosStatusBar
@@ -86,8 +88,8 @@ class MainActivity : ComponentActivity() {
 
                 val screenWidthDp = LocalConfiguration.current.screenWidthDp.toFloat().coerceAtLeast(360f)
                 val kinematics = remember { CoupledIslandKinematicsState() }
-                val backdrop = remember { LiquidBackdrop() }
-                val effectController = remember { LiquidEffectController() }
+                val backdrop = rememberLayerBackdrop()
+                val effectController = rememberLiquidEffectController()
 
                 val currentW = kinematics.widthAnim.value
                 val islandCenterX = screenWidthDp * 0.5f + settings.islandHorizontalOffsetDp
@@ -223,7 +225,7 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.padding(top = 6.dp)
                                 )
                             } else {
-                                if (settings.enableIosStatusBarReplacement) {
+                                if (settings.isIosStatusBarEnabled) {
                                     DynamicIosStatusBar(
                                         status = status,
                                         settings = settings,

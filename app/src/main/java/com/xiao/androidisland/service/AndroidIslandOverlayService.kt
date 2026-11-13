@@ -49,8 +49,8 @@ import com.xiao.androidisland.droidbubble.DroidBubbleState
 import com.xiao.androidisland.liquidisland.controlcenter.IosControlCenterSheet
 import com.xiao.androidisland.liquidisland.engine.CoupledIslandKinematicsState
 import com.xiao.androidisland.liquidisland.engine.DynamicIslandComposable
-import com.xiao.androidisland.liquidisland.renderer.LiquidBackdrop
-import com.xiao.androidisland.liquidisland.renderer.LiquidEffectController
+import com.xiao.androidisland.liquidisland.renderer.rememberLayerBackdrop
+import com.xiao.androidisland.liquidisland.renderer.rememberLiquidEffectController
 import com.xiao.androidisland.liquidisland.statusbar.DynamicIosStatusBar
 
 class AndroidIslandOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
@@ -180,8 +180,8 @@ class AndroidIslandOverlayService : Service(), LifecycleOwner, SavedStateRegistr
                 val screenWidthDp = LocalConfiguration.current.screenWidthDp.toFloat().coerceAtLeast(360f)
 
                 val kinematics = remember { CoupledIslandKinematicsState() }
-                val backdrop = remember { LiquidBackdrop() }
-                val effectController = remember { LiquidEffectController() }
+                val backdrop = rememberLayerBackdrop()
+                val effectController = rememberLiquidEffectController()
 
                 val currentW = kinematics.widthAnim.value
                 val islandCenterX = screenWidthDp * 0.5f + settings.islandHorizontalOffsetDp
@@ -215,7 +215,7 @@ class AndroidIslandOverlayService : Service(), LifecycleOwner, SavedStateRegistr
                             modifier = Modifier.padding(top = 8.dp)
                         )
                     } else {
-                        if (settings.enableIosStatusBarReplacement) {
+                        if (settings.isIosStatusBarEnabled) {
                             DynamicIosStatusBar(
                                 status = status,
                                 settings = settings,
@@ -287,8 +287,8 @@ class AndroidIslandOverlayService : Service(), LifecycleOwner, SavedStateRegistr
                 val visible by systemRepo.isControlCenterVisible.collectAsState()
                 val status by systemRepo.statusSnapshot.collectAsState()
                 val track by systemRepo.currentTrack.collectAsState()
-                val backdrop = remember { LiquidBackdrop() }
-                val effectController = remember { LiquidEffectController() }
+                val backdrop = rememberLayerBackdrop()
+                val effectController = rememberLiquidEffectController()
 
                 AnimatedVisibility(
                     visible = visible,

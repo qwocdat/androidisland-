@@ -14,8 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.xiao.androidisland.liquidisland.controlcenter.IosControlCenterSheet
-import com.xiao.androidisland.liquidisland.renderer.LiquidBackdrop
-import com.xiao.androidisland.liquidisland.renderer.LiquidEffectController
+import com.xiao.androidisland.liquidisland.renderer.rememberLayerBackdrop
+import com.xiao.androidisland.liquidisland.renderer.rememberLiquidEffectController
 
 class LiquidControlCenterActivity : ComponentActivity() {
 
@@ -27,8 +27,8 @@ class LiquidControlCenterActivity : ComponentActivity() {
         setContent {
             val status by systemRepo.statusSnapshot.collectAsState()
             val track by systemRepo.currentTrack.collectAsState()
-            val backdrop = remember { LiquidBackdrop() }
-            val effectController = remember { LiquidEffectController() }
+            val backdrop = rememberLayerBackdrop()
+            val effectController = rememberLiquidEffectController()
 
             Surface(
                 modifier = Modifier.fillMaxSize(),

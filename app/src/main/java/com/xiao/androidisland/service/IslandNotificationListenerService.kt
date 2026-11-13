@@ -80,8 +80,7 @@ class IslandNotificationListenerService : NotificationListenerService() {
                 timeLabel = "Now",
                 title = title.ifEmpty { appLabel },
                 body = text,
-                isDownloadProgress = extras.containsKey(Notification.EXTRA_PROGRESS),
-                isCompactBannerStyle = isUpdateStyle
+                isCompactBanner = isUpdateStyle
             )
         )
     }
