@@ -5,10 +5,6 @@ import android.content.Intent
 import android.view.accessibility.AccessibilityEvent
 import com.xiao.androidisland.AndroidIslandApp
 
-/**
- * Accessibility interceptor that coordinates top-edge swipe gestures, collapsed status bar
- * enforcement, and biometric prompt detection for LiquidIsland.
- */
 class AndroidIslandAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
@@ -22,7 +18,6 @@ class AndroidIslandAccessibilityService : AccessibilityService() {
         val pkg = event.packageName?.toString().orEmpty()
         val cls = event.className?.toString().orEmpty()
 
-        // Detect system biometric prompt window to trigger LiquidIsland Face ID / Fingerprint morph
         if (pkg.contains("biometric", ignoreCase = true) ||
             cls.contains("BiometricPrompt", ignoreCase = true) ||
             cls.contains("AuthContainerView", ignoreCase = true)

@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.Settings
-import android.view.KeyEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -25,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -38,7 +36,6 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,33 +46,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.xiao.androidisland.core.model.IslandAppMode
-import com.xiao.androidisland.core.model.RingerModeState
-import com.xiao.androidisland.droidbubble.DroidBubbleOverlayBar
-import com.xiao.androidisland.liquidisland.absorption.AbsorptionEngine
-import com.xiao.androidisland.liquidisland.controlcenter.IosControlCenterScreen
-import com.xiao.androidisland.liquidisland.engine.LiquidIslandOverlayHost
+import com.xiao.androidisland.core.model.IslandMode
+import com.xiao.androidisland.droidbubble.DroidBubbleOverlayView
+import com.xiao.androidisland.droidbubble.DroidBubbleState
+import com.xiao.androidisland.liquidisland.controlcenter.IosControlCenterSheet
+import com.xiao.androidisland.liquidisland.engine.CoupledIslandKinematicsState
+import com.xiao.androidisland.liquidisland.engine.DynamicIslandComposable
+import com.xiao.androidisland.liquidisland.renderer.LiquidBackdrop
+import com.xiao.androidisland.liquidisland.renderer.LiquidEffectController
 import com.xiao.androidisland.liquidisland.renderer.LiquidGlassNativeBridge
-import com.xiao.androidisland.liquidisland.settings.LiquidIslandSettingsScreen
-import com.xiao.androidisland.liquidisland.statusbar.DynamicStatusBar
-import com.xiao.androidisland.liquidisland.widgets.HomeScreenWidgetsSection
+import com.xiao.androidisland.liquidisland.settings.LiquidIslandSettingsSheet
+import com.xiao.androidisland.liquidisland.statusbar.DynamicIosStatusBar
+import com.xiao.androidisland.liquidisland.widgets.DualMonthCalendarWidget
+import com.xiao.androidisland.liquidisland.widgets.HomeAppIconsAndAnalogClockRow
 import com.xiao.androidisland.service.AndroidIslandOverlayService
-import com.xiao.androidisland.service.IslandNotificationListenerService
 
-/**
- * Main interactive workspace and settings host for AndroidIsland – LiquidIsland.
- *
- * Mirrors the exact visual layout of `96942.mp4` ("Dynamic Motion 1.2 For Android"):
- * - Top iOS Dynamic Status Bar with real-time Edge-Based Liquid Absorption & Directional Motion Blur
- * - Coupled Spring-Physics Dynamic Island (`LiquidIslandOverlayHost` or preserved `DroidBubbleOverlayBar`)
- * - Home Screen Preview tab featuring the Dual-Month Calendar Widget, App Tiles (`Spotify`, `Threads`),
- *   and Live Analog Clock Widget (`00:00`–`00:48` in `96942.mp4`) + interactive state triggers for testing all 10 video timelines
- * - Full-screen iOS Control Center (`00:49`–`01:06` in `96942.mp4`)
- * - LiquidIsland Settings tab (`01:19`–`01:25` in `96942.mp4`: `LOCK SCREEN AUTH`, `MEDIA STYLE`, `LIQUID GLASS`, permissions)
- */
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -83,53 +72,42 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val systemRepo = AndroidIslandApp.system(this)
-        val shizukuBridge = (application as AndroidIslandApp).shizukuBridge
 
         setContent {
             MaterialTheme(colorScheme = darkColorScheme()) {
                 val settings by systemRepo.settings.collectAsState()
-                val statusBarState by systemRepo.statusBarState.collectAsState()
+                val status by systemRepo.statusSnapshot.collectAsState()
                 val islandState by systemRepo.islandState.collectAsState()
-                val mediaData by systemRepo.activeMedia.collectAsState()
-                val shizukuState by shizukuBridge.state.collectAsState()
+                val track by systemRepo.currentTrack.collectAsState()
                 val isControlCenterOpen by systemRepo.isControlCenterVisible.collectAsState()
 
-                var selectedBottomTab by remember { mutableIntStateOf(0) } // 0 = Home Preview, 1 = Control Center, 2 = Settings
-                var islandWidthDp by remember { mutableFloatStateOf(120f) }
-                var islandVelocity by remember { mutableFloatStateOf(0f) }
-                var splitOffsetDp by remember { mutableFloatStateOf(0f) }
+                var selectedBottomTab by remember { mutableIntStateOf(0) }
+                var overlayRunning by remember { mutableStateOf(Settings.canDrawOverlays(this@MainActivity)) }
 
-                var brightness by remember { mutableFloatStateOf(systemRepo.getBrightnessFraction()) }
-                var volume by remember { mutableFloatStateOf(systemRepo.getVolumeFraction()) }
-                var flashlightOn by remember { mutableStateOf(false) }
+                val screenWidthDp = LocalConfiguration.current.screenWidthDp.toFloat().coerceAtLeast(360f)
+                val kinematics = remember { CoupledIslandKinematicsState() }
+                val backdrop = remember { LiquidBackdrop() }
+                val effectController = remember { LiquidEffectController() }
 
-                val absorptionFrame = remember(islandWidthDp, islandVelocity, splitOffsetDp, settings) {
-                    AbsorptionEngine.evaluateFrame(
-                        screenWidthDp = 360f,
-                        islandWidthDp = islandWidthDp,
-                        islandVelocityDpPerSec = islandVelocity,
-                        splitRightBubbleOffsetDp = splitOffsetDp,
-                        absorptionStrength = settings.absorptionStrength,
-                        motionBlurIntensity = settings.motionBlurIntensity
-                    )
-                }
+                val currentW = kinematics.widthAnim.value
+                val islandCenterX = screenWidthDp * 0.5f + settings.islandHorizontalOffsetDp
+                val islandLeftEdge = islandCenterX - currentW * 0.5f
+                val islandRightEdge = islandCenterX + currentW * 0.5f
+                val velocity = kinematics.widthAnim.velocity
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color(0xFF0A0F1D)
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // iOS Wallpaper Backdrop matching reference video 96942.mp4
                         WallpaperBackdrop()
 
-                        // Main screen content
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .statusBarsPadding()
                                 .navigationBarsPadding()
                         ) {
-                            // Top reserve space for Dynamic Status Bar + Dynamic Island
                             Spacer(modifier = Modifier.height(54.dp))
 
                             Box(
@@ -139,54 +117,14 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 when (selectedBottomTab) {
                                     0 -> HomeReferenceWorkspace(
-                                        absorptionLeftProgress = absorptionFrame.leftCluster.absorptionProgress,
-                                        absorptionRightProgress = absorptionFrame.rightCluster.absorptionProgress,
-                                        nativeShaderActive = LiquidGlassNativeBridge.isNativeAvailable,
-                                        onTriggerTelegramCompact = {
-                                            systemRepo.triggerTelegramNotificationDemo(expanded = false)
-                                        },
-                                        onTriggerTelegramExpanded = {
-                                            systemRepo.triggerTelegramNotificationDemo(expanded = true)
-                                        },
-                                        onTriggerMetrolistBanner = {
-                                            systemRepo.triggerMetrolistUpdateBanner()
-                                        },
-                                        onTriggerCompactMusic = {
-                                            systemRepo.triggerMusicIsland(expanded = false)
-                                        },
-                                        onTriggerSplitActivity = {
-                                            systemRepo.triggerSplitDualActivity()
-                                        },
-                                        onTriggerExpandedMusic = {
-                                            systemRepo.triggerMusicIsland(expanded = true)
-                                        },
-                                        onTriggerTimerCompact = {
-                                            systemRepo.startOrToggleTimer(expanded = false)
-                                        },
-                                        onTriggerTimerExpanded = {
-                                            systemRepo.startOrToggleTimer(expanded = true)
-                                        },
-                                        onTriggerNavCompact = {
-                                            systemRepo.triggerNavigationIsland(expanded = false)
-                                        },
-                                        onTriggerNavExpanded = {
-                                            systemRepo.triggerNavigationIsland(expanded = true)
-                                        },
-                                        onTriggerRinger = { mode ->
-                                            systemRepo.triggerRingerAlert(mode)
-                                        },
-                                        onTriggerCharging = {
-                                            systemRepo.triggerChargingAlert(80)
-                                        },
-                                        onTriggerBiometric = {
-                                            systemRepo.triggerBiometricAuthSequence()
-                                        },
-                                        onResetIdle = {
-                                            systemRepo.resetToIdle()
-                                        },
+                                        backdrop = backdrop,
+                                        effectController = effectController,
+                                        nativeShaderActive = LiquidGlassNativeBridge.isNativeLibraryLoaded,
+                                        onTriggerState = { key -> systemRepo.triggerStateByKey(key) },
                                         onStartOverlayService = {
                                             if (Settings.canDrawOverlays(this@MainActivity)) {
                                                 AndroidIslandOverlayService.startOrUpdate(this@MainActivity)
+                                                overlayRunning = true
                                             } else {
                                                 startActivity(
                                                     Intent(
@@ -198,100 +136,72 @@ class MainActivity : ComponentActivity() {
                                         }
                                     )
 
-                                    1 -> IosControlCenterScreen(
-                                        statusBarState = statusBarState,
-                                        islandState = islandState,
-                                        mediaData = mediaData,
-                                        settings = settings,
-                                        brightnessFraction = brightness,
-                                        volumeFraction = volume,
-                                        isFlashlightOn = flashlightOn,
-                                        onBrightnessChange = {
-                                            brightness = it
-                                            systemRepo.setBrightnessFraction(it)
-                                        },
-                                        onVolumeChange = {
-                                            volume = it
-                                            systemRepo.setVolumeFraction(it)
-                                        },
-                                        onToggleWifi = { systemRepo.toggleWifi() },
-                                        onToggleCellular = { systemRepo.toggleMobileData() },
-                                        onToggleBluetooth = { systemRepo.toggleBluetooth() },
-                                        onToggleAirplane = { systemRepo.toggleAirplaneMode() },
-                                        onToggleHotspot = { systemRepo.toggleHotspot() },
-                                        onToggleFlashlight = {
-                                            flashlightOn = !flashlightOn
-                                            systemRepo.toggleFlashlight(flashlightOn)
-                                        },
-                                        onTriggerRingerPreview = { mode ->
-                                            systemRepo.triggerRingerAlert(mode)
-                                        },
-                                        onMediaPlayPause = {
-                                            systemRepo.sendMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
-                                        },
-                                        onMediaNext = {
-                                            systemRepo.sendMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT)
-                                        },
-                                        onMediaPrevious = {
-                                            systemRepo.sendMediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
-                                        },
-                                        onDismiss = { selectedBottomTab = 0 }
+                                    1 -> IosControlCenterSheet(
+                                        status = status,
+                                        track = track,
+                                        backdrop = backdrop,
+                                        effectController = effectController,
+                                        onToggleWifi = { systemRepo.toggleWifi(this@MainActivity) },
+                                        onToggleAirplane = { systemRepo.toggleAirplaneMode(this@MainActivity) },
+                                        onToggleMobileData = { systemRepo.toggleMobileData(this@MainActivity) },
+                                        onToggleHotspot = { systemRepo.toggleHotspot(this@MainActivity) },
+                                        onCycleRingerMode = { systemRepo.cycleRingerMode() },
+                                        onBrightnessChange = { systemRepo.setBrightnessPercent(it) },
+                                        onVolumeChange = { systemRepo.setVolumePercent(it) },
+                                        onOpenSettings = { selectedBottomTab = 2 },
+                                        onCloseControlCenter = { selectedBottomTab = 0 }
                                     )
 
-                                    else -> LiquidIslandSettingsScreen(
-                                        settings = settings,
-                                        islandState = islandState,
-                                        shizukuState = shizukuState,
-                                        hasOverlayPermission = Settings.canDrawOverlays(this@MainActivity),
-                                        hasNotificationAccess = isNotificationServiceEnabled(),
-                                        hasWriteSettings = Settings.System.canWrite(this@MainActivity),
-                                        onUpdateSettings = { transform ->
-                                            systemRepo.updateSettings(transform)
-                                        },
-                                        onTriggerBiometricDemo = {
-                                            systemRepo.triggerBiometricAuthSequence()
-                                        },
-                                        onRequestOverlayPermission = {
-                                            startActivity(
-                                                Intent(
-                                                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                                                    Uri.parse("package:$packageName")
-                                                )
-                                            )
-                                        },
-                                        onRequestNotificationAccess = {
-                                            startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                                        },
-                                        onRequestAccessibility = {
-                                            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                                        },
-                                        onRequestWriteSettings = {
-                                            startActivity(
-                                                Intent(
-                                                    Settings.ACTION_MANAGE_WRITE_SETTINGS,
-                                                    Uri.parse("package:$packageName")
-                                                )
-                                            )
-                                        },
-                                        onRequestShizuku = {
-                                            shizukuBridge.requestPermissionIfNeeded()
-                                        }
-                                    )
+                                    else -> Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .verticalScroll(rememberScrollState())
+                                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    ) {
+                                        LiquidIslandSettingsSheet(
+                                            settings = settings,
+                                            isSystemOverlayRunning = overlayRunning,
+                                            onUpdateSettings = { newSettings ->
+                                                systemRepo.updateSettings(newSettings)
+                                            },
+                                            onSelectDemoState = { key ->
+                                                systemRepo.triggerStateByKey(key)
+                                            },
+                                            onToggleOverlayService = { enable ->
+                                                if (enable) {
+                                                    if (Settings.canDrawOverlays(this@MainActivity)) {
+                                                        AndroidIslandOverlayService.startOrUpdate(this@MainActivity)
+                                                        overlayRunning = true
+                                                    } else {
+                                                        startActivity(
+                                                            Intent(
+                                                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                                                Uri.parse("package:$packageName")
+                                                            )
+                                                        )
+                                                    }
+                                                } else {
+                                                    stopService(Intent(this@MainActivity, AndroidIslandOverlayService::class.java))
+                                                    overlayRunning = false
+                                                }
+                                            },
+                                            onOpenControlCenter = { selectedBottomTab = 1 }
+                                        )
+                                    }
                                 }
                             }
 
-                            // Bottom Liquid Glass Dock Bar
                             LiquidBottomNavigationDock(
                                 selectedTab = selectedBottomTab,
-                                currentMode = settings.mode,
+                                currentMode = settings.activeMode,
                                 onSelectTab = { selectedBottomTab = it },
                                 onToggleMode = {
                                     systemRepo.updateSettings { s ->
                                         s.copy(
-                                            mode = if (s.mode == IslandAppMode.LIQUID_ISLAND) {
-                                                IslandAppMode.DROID_BUBBLE
+                                            activeMode = if (s.activeMode == IslandMode.LIQUID_ISLAND) {
+                                                IslandMode.DROID_BUBBLE
                                             } else {
-                                                IslandAppMode.LIQUID_ISLAND
+                                                IslandMode.LIQUID_ISLAND
                                             }
                                         )
                                     }
@@ -299,7 +209,6 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // Persistent Top Layer: Dynamic iOS Status Bar + Dynamic Island with Edge-Based Liquid Absorption
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -307,114 +216,81 @@ class MainActivity : ComponentActivity() {
                                 .align(Alignment.TopCenter),
                             contentAlignment = Alignment.TopCenter
                         ) {
-                            if (settings.mode == IslandAppMode.DROID_BUBBLE) {
-                                DroidBubbleOverlayBar(
-                                    islandState = islandState,
-                                    onExpandToggle = { systemRepo.onIslandTapped() }
+                            if (settings.activeMode == IslandMode.DROID_BUBBLE) {
+                                DroidBubbleOverlayView(
+                                    state = DroidBubbleState(),
+                                    onToggleExpand = { systemRepo.onIslandTapped() },
+                                    modifier = Modifier.padding(top = 6.dp)
                                 )
                             } else {
-                                if (settings.replaceSystemStatusBar) {
-                                    DynamicStatusBar(
-                                        state = statusBarState,
-                                        absorptionFrame = absorptionFrame,
-                                        onLeftSwipeDown = {
-                                            systemRepo.setControlCenterVisible(false)
-                                        },
-                                        onRightSwipeDown = {
-                                            systemRepo.setControlCenterVisible(true)
-                                        }
+                                if (settings.enableIosStatusBarReplacement) {
+                                    DynamicIosStatusBar(
+                                        status = status,
+                                        settings = settings,
+                                        screenWidthDp = screenWidthDp,
+                                        islandCenterXDp = islandCenterX,
+                                        islandLeftEdgeDp = islandLeftEdge,
+                                        islandRightEdgeDp = islandRightEdge,
+                                        leftEdgeVelocityDpPerSec = -velocity * 0.5f,
+                                        rightEdgeVelocityDpPerSec = velocity * 0.5f,
+                                        isOnDarkBackground = true
                                     )
                                 }
 
-                                LiquidIslandOverlayHost(
-                                    islandState = islandState,
+                                DynamicIslandComposable(
+                                    activityState = islandState,
                                     settings = settings,
-                                    onGeometryFrame = { wDp, velDpPerSec, splitOffDp ->
-                                        islandWidthDp = wDp
-                                        islandVelocity = velDpPerSec
-                                        splitOffsetDp = splitOffDp
-                                    },
-                                    onPrimaryTap = { systemRepo.onIslandTapped() },
-                                    onDismissIsland = { systemRepo.collapseIslandToCompactOrIdle() },
-                                    onMediaPlayPause = {
-                                        systemRepo.sendMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
-                                    },
-                                    onMediaNext = {
-                                        systemRepo.sendMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT)
-                                    },
-                                    onMediaPrevious = {
-                                        systemRepo.sendMediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
-                                    },
-                                    onMediaSeek = { posMs ->
-                                        IslandNotificationListenerService.instance?.seekActiveSessionTo(posMs)
-                                        systemRepo.seekMediaTo(posMs)
-                                    },
-                                    onTimerCancel = { systemRepo.cancelTimer() },
-                                    onNavigationEnd = { systemRepo.endNavigation() }
+                                    kinematics = kinematics,
+                                    backdrop = backdrop,
+                                    effectController = effectController,
+                                    onTapIsland = { systemRepo.onIslandTapped() },
+                                    onLongPressIsland = { systemRepo.onIslandSecondaryTapped() },
+                                    onMediaPrev = { systemRepo.onMediaPrevious() },
+                                    onMediaPlayPause = { systemRepo.onMediaPlayPause() },
+                                    onMediaNext = { systemRepo.onMediaNext() },
+                                    onTimerLap = { systemRepo.onTimerLap() },
+                                    onTimerCancel = { systemRepo.onTimerCancel() },
+                                    onEndNavigationTrip = { systemRepo.endNavigation() },
+                                    onDismissNotification = { systemRepo.dismissNotification() },
+                                    modifier = Modifier.padding(top = 6.dp)
                                 )
                             }
                         }
 
-                        // Pull-down full-screen iOS Control Center overlay when triggered from top-right swipe
                         AnimatedVisibility(
                             visible = isControlCenterOpen,
                             enter = fadeIn(),
                             exit = fadeOut()
                         ) {
-                            IosControlCenterScreen(
-                                statusBarState = statusBarState,
-                                islandState = islandState,
-                                mediaData = mediaData,
-                                settings = settings,
-                                brightnessFraction = brightness,
-                                volumeFraction = volume,
-                                isFlashlightOn = flashlightOn,
-                                onBrightnessChange = {
-                                    brightness = it
-                                    systemRepo.setBrightnessFraction(it)
-                                },
-                                onVolumeChange = {
-                                    volume = it
-                                    systemRepo.setVolumeFraction(it)
-                                },
-                                onToggleWifi = { systemRepo.toggleWifi() },
-                                onToggleCellular = { systemRepo.toggleMobileData() },
-                                onToggleBluetooth = { systemRepo.toggleBluetooth() },
-                                onToggleAirplane = { systemRepo.toggleAirplaneMode() },
-                                onToggleHotspot = { systemRepo.toggleHotspot() },
-                                onToggleFlashlight = {
-                                    flashlightOn = !flashlightOn
-                                    systemRepo.toggleFlashlight(flashlightOn)
-                                },
-                                onTriggerRingerPreview = { mode ->
-                                    systemRepo.triggerRingerAlert(mode)
-                                },
-                                onMediaPlayPause = {
-                                    systemRepo.sendMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
-                                },
-                                onMediaNext = {
-                                    systemRepo.sendMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT)
-                                },
-                                onMediaPrevious = {
-                                    systemRepo.sendMediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
-                                },
-                                onDismiss = {
+                            IosControlCenterSheet(
+                                status = status,
+                                track = track,
+                                backdrop = backdrop,
+                                effectController = effectController,
+                                onToggleWifi = { systemRepo.toggleWifi(this@MainActivity) },
+                                onToggleAirplane = { systemRepo.toggleAirplaneMode(this@MainActivity) },
+                                onToggleMobileData = { systemRepo.toggleMobileData(this@MainActivity) },
+                                onToggleHotspot = { systemRepo.toggleHotspot(this@MainActivity) },
+                                onCycleRingerMode = { systemRepo.cycleRingerMode() },
+                                onBrightnessChange = { systemRepo.setBrightnessPercent(it) },
+                                onVolumeChange = { systemRepo.setVolumePercent(it) },
+                                onOpenSettings = {
                                     systemRepo.setControlCenterVisible(false)
-                                }
+                                    selectedBottomTab = 2
+                                },
+                                onCloseControlCenter = {
+                                    systemRepo.setControlCenterVisible(false)
+                                },
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(Color(0xD80A0F1D))
+                                    .statusBarsPadding()
                             )
                         }
                     }
                 }
             }
         }
-    }
-
-    private fun isNotificationServiceEnabled(): Boolean {
-        val enabledListeners = Settings.Secure.getString(
-            contentResolver,
-            "enabled_notification_listeners"
-        ).orEmpty()
-        return enabledListeners.contains(packageName)
     }
 }
 
@@ -440,58 +316,39 @@ private fun WallpaperBackdrop() {
             center = Offset(size.width * 0.25f, size.height * 0.22f),
             radius = size.width * 0.65f
         )
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(Color(0x66224070), Color.Transparent),
-                center = Offset(size.width * 0.78f, size.height * 0.55f),
-                radius = size.width * 0.75f
-            ),
-            center = Offset(size.width * 0.78f, size.height * 0.55f),
-            radius = size.width * 0.75f
-        )
     }
 }
 
 @Composable
 private fun HomeReferenceWorkspace(
-    absorptionLeftProgress: Float,
-    absorptionRightProgress: Float,
+    backdrop: LiquidBackdrop,
+    effectController: LiquidEffectController,
     nativeShaderActive: Boolean,
-    onTriggerTelegramCompact: () -> Unit,
-    onTriggerTelegramExpanded: () -> Unit,
-    onTriggerMetrolistBanner: () -> Unit,
-    onTriggerCompactMusic: () -> Unit,
-    onTriggerSplitActivity: () -> Unit,
-    onTriggerExpandedMusic: () -> Unit,
-    onTriggerTimerCompact: () -> Unit,
-    onTriggerTimerExpanded: () -> Unit,
-    onTriggerNavCompact: () -> Unit,
-    onTriggerNavExpanded: () -> Unit,
-    onTriggerRinger: (RingerModeState) -> Unit,
-    onTriggerCharging: () -> Unit,
-    onTriggerBiometric: () -> Unit,
-    onResetIdle: () -> Unit,
+    onTriggerState: (String) -> Unit,
     onStartOverlayService: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Exact Home Screen Widgets from 00:00 - 00:48 of 96942.mp4
-        HomeScreenWidgetsSection(
-            onSpotifyClick = onTriggerExpandedMusic,
-            onThreadsClick = onTriggerTelegramExpanded,
-            onClockClick = onTriggerTimerExpanded
+        DualMonthCalendarWidget(
+            backdrop = backdrop,
+            effectController = effectController
         )
 
-        // 2. Interactive Dynamic Motion 1.2 Timeline State Controller
+        HomeAppIconsAndAnalogClockRow(
+            backdrop = backdrop,
+            effectController = effectController,
+            onTriggerMusicDemo = { onTriggerState("MusicExpanded") },
+            onTriggerNotificationDemo = { onTriggerState("NotifExpanded") }
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp)
                 .clip(RoundedCornerShape(26.dp))
                 .background(Color(0xB8101828))
                 .padding(16.dp),
@@ -511,7 +368,7 @@ private fun HomeReferenceWorkspace(
                         letterSpacing = 0.8.sp
                     )
                     Text(
-                        text = "Absorption L=${(absorptionLeftProgress * 100).toInt()}% • R=${(absorptionRightProgress * 100).toInt()}% • NDK=${if (nativeShaderActive) "GLES3" else "AGSL"}",
+                        text = "Shader=${if (nativeShaderActive) "GLES 3.0 NDK" else "AGSL RuntimeShader"}",
                         color = Color(0xFF94A3B8),
                         fontSize = 11.sp
                     )
@@ -533,34 +390,32 @@ private fun HomeReferenceWorkspace(
                 }
             }
 
-            // Row 1: Notifications & Music (00:00 - 00:18)
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                StateChip("00:00 Idle Pill", Color(0xFF334155), onResetIdle)
-                StateChip("00:01 Telegram Pill", Color(0xFF0284C7), onTriggerTelegramCompact)
-                StateChip("00:04 Telegram Card", Color(0xFF0369A1), onTriggerTelegramExpanded)
-                StateChip("00:07 Compact Music", Color(0xFF7C3AED), onTriggerCompactMusic)
-                StateChip("00:09 Split Metaball", Color(0xFF9333EA), onTriggerSplitActivity)
-                StateChip("00:10 Metrolist 13.7.0", Color(0xFF4F46E5), onTriggerMetrolistBanner)
-                StateChip("00:13 Jane!! Music Card", Color(0xFF6D28D9), onTriggerExpandedMusic)
+                StateChip("00:00 Idle", Color(0xFF334155)) { onTriggerState("Idle") }
+                StateChip("00:01 Telegram", Color(0xFF0284C7)) { onTriggerState("NotifCompact") }
+                StateChip("00:04 Telegram Card", Color(0xFF0369A1)) { onTriggerState("NotifExpanded") }
+                StateChip("00:07 Music Pill", Color(0xFF7C3AED)) { onTriggerState("MusicCompact") }
+                StateChip("00:09 Split Metaball", Color(0xFF9333EA)) { onTriggerState("SplitDual") }
+                StateChip("00:10 Metrolist", Color(0xFF4F46E5)) { onTriggerState("NotifBanner") }
+                StateChip("00:13 Music Card", Color(0xFF6D28D9)) { onTriggerState("MusicExpanded") }
             }
 
-            // Row 2: Timer, Navigation, Ringer, Charging, Face ID (00:22 - 01:25)
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                StateChip("00:22 Timer Pill", Color(0xFFD97706), onTriggerTimerCompact)
-                StateChip("00:28 Timer Card", Color(0xFFB45309), onTriggerTimerExpanded)
-                StateChip("00:39 Nav 3.6 km", Color(0xFF059669), onTriggerNavCompact)
-                StateChip("00:44 Nav Expanded", Color(0xFF047857), onTriggerNavExpanded)
-                StateChip("00:50 Ring", Color(0xFF475569)) { onTriggerRinger(RingerModeState.NORMAL) }
-                StateChip("00:51 Vibrate", Color(0xFFEA580C)) { onTriggerRinger(RingerModeState.VIBRATE) }
-                StateChip("00:54 Silent", Color(0xFFDC2626)) { onTriggerRinger(RingerModeState.SILENT) }
-                StateChip("01:03 Charging 80%", Color(0xFF16A34A), onTriggerCharging)
-                StateChip("01:21 Face ID Auth", Color(0xFF0D9488), onTriggerBiometric)
+                StateChip("00:22 Timer", Color(0xFFD97706)) { onTriggerState("TimerCompact") }
+                StateChip("00:28 Timer Card", Color(0xFFB45309)) { onTriggerState("TimerExpanded") }
+                StateChip("00:39 Nav 3.6km", Color(0xFF059669)) { onTriggerState("NavCompact") }
+                StateChip("00:44 Nav Card", Color(0xFF047857)) { onTriggerState("NavExpanded") }
+                StateChip("00:50 Ring", Color(0xFF475569)) { onTriggerState("Ring") }
+                StateChip("00:51 Vibrate", Color(0xFFEA580C)) { onTriggerState("Vibrate") }
+                StateChip("00:54 Silent", Color(0xFFDC2626)) { onTriggerState("Silent") }
+                StateChip("01:03 Charging 80%", Color(0xFF16A34A)) { onTriggerState("Charging") }
+                StateChip("01:21 Face ID", Color(0xFF0D9488)) { onTriggerState("Auth") }
             }
         }
     }
@@ -591,7 +446,7 @@ private fun StateChip(
 @Composable
 private fun LiquidBottomNavigationDock(
     selectedTab: Int,
-    currentMode: IslandAppMode,
+    currentMode: IslandMode,
     onSelectTab: (Int) -> Unit,
     onToggleMode: () -> Unit
 ) {
@@ -605,34 +460,22 @@ private fun LiquidBottomNavigationDock(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        DockTabItem(
-            title = "Home & Widgets",
-            selected = selectedTab == 0,
-            onClick = { onSelectTab(0) }
-        )
-        DockTabItem(
-            title = "Control Center",
-            selected = selectedTab == 1,
-            onClick = { onSelectTab(1) }
-        )
-        DockTabItem(
-            title = "Settings",
-            selected = selectedTab == 2,
-            onClick = { onSelectTab(2) }
-        )
+        DockTabItem("Home", selectedTab == 0) { onSelectTab(0) }
+        DockTabItem("Control Center", selectedTab == 1) { onSelectTab(1) }
+        DockTabItem("Settings", selectedTab == 2) { onSelectTab(2) }
 
         Box(
             modifier = Modifier
                 .clip(CircleShape)
                 .background(
-                    if (currentMode == IslandAppMode.LIQUID_ISLAND) Color(0xFF2563EB)
+                    if (currentMode == IslandMode.LIQUID_ISLAND) Color(0xFF2563EB)
                     else Color(0xFF475569)
                 )
                 .clickable { onToggleMode() }
                 .padding(horizontal = 12.dp, vertical = 7.dp)
         ) {
             Text(
-                text = if (currentMode == IslandAppMode.LIQUID_ISLAND) "LiquidIsland" else "DroidBubble",
+                text = if (currentMode == IslandMode.LIQUID_ISLAND) "LiquidIsland" else "DroidBubble",
                 color = Color.White,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold

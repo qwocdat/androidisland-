@@ -17,19 +17,21 @@ import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -38,21 +40,19 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.droidbubble.app.R
 import com.xiao.androidisland.AndroidIslandApp
 import com.xiao.androidisland.MainActivity
-import com.xiao.androidisland.R
-import com.xiao.androidisland.core.model.IslandAppMode
-import com.xiao.androidisland.droidbubble.DroidBubbleOverlayBar
-import com.xiao.androidisland.liquidisland.absorption.AbsorptionEngine
-import com.xiao.androidisland.liquidisland.controlcenter.IosControlCenterScreen
-import com.xiao.androidisland.liquidisland.engine.LiquidIslandOverlayHost
-import com.xiao.androidisland.liquidisland.statusbar.DynamicStatusBar
+import com.xiao.androidisland.core.model.IslandMode
+import com.xiao.androidisland.droidbubble.DroidBubbleOverlayView
+import com.xiao.androidisland.droidbubble.DroidBubbleState
+import com.xiao.androidisland.liquidisland.controlcenter.IosControlCenterSheet
+import com.xiao.androidisland.liquidisland.engine.CoupledIslandKinematicsState
+import com.xiao.androidisland.liquidisland.engine.DynamicIslandComposable
+import com.xiao.androidisland.liquidisland.renderer.LiquidBackdrop
+import com.xiao.androidisland.liquidisland.renderer.LiquidEffectController
+import com.xiao.androidisland.liquidisland.statusbar.DynamicIosStatusBar
 
-/**
- * Persistent foreground WindowManager overlay service that renders either:
- * - [IslandAppMode.DROID_BUBBLE] (preserved legacy pill)
- * - [IslandAppMode.LIQUID_ISLAND] (Dynamic Island + iOS Status Bar + Edge-Based Liquid Absorption + Control Center)
- */
 class AndroidIslandOverlayService : Service(), LifecycleOwner, SavedStateRegistryOwner {
 
     private val lifecycleRegistry = LifecycleRegistry(this)
@@ -175,71 +175,76 @@ class AndroidIslandOverlayService : Service(), LifecycleOwner, SavedStateRegistr
             setViewTreeSavedStateRegistryOwner(this@AndroidIslandOverlayService)
             setContent {
                 val settings by systemRepo.settings.collectAsState()
-                val statusBarState by systemRepo.statusBarState.collectAsState()
+                val status by systemRepo.statusSnapshot.collectAsState()
                 val islandState by systemRepo.islandState.collectAsState()
+                val screenWidthDp = LocalConfiguration.current.screenWidthDp.toFloat().coerceAtLeast(360f)
 
-                var islandWidthDp by remember { mutableFloatStateOf(120f) }
-                var islandVelocity by remember { mutableFloatStateOf(0f) }
-                var splitOffsetDp by remember { mutableFloatStateOf(0f) }
+                val kinematics = remember { CoupledIslandKinematicsState() }
+                val backdrop = remember { LiquidBackdrop() }
+                val effectController = remember { LiquidEffectController() }
 
-                val absorptionFrame = remember(islandWidthDp, islandVelocity, splitOffsetDp, settings) {
-                    AbsorptionEngine.evaluateFrame(
-                        screenWidthDp = 360f,
-                        islandWidthDp = islandWidthDp,
-                        islandVelocityDpPerSec = islandVelocity,
-                        splitRightBubbleOffsetDp = splitOffsetDp,
-                        absorptionStrength = settings.absorptionStrength,
-                        motionBlurIntensity = settings.motionBlurIntensity
-                    )
-                }
+                val currentW = kinematics.widthAnim.value
+                val islandCenterX = screenWidthDp * 0.5f + settings.islandHorizontalOffsetDp
+                val islandLeftEdge = islandCenterX - currentW * 0.5f
+                val islandRightEdge = islandCenterX + currentW * 0.5f
+                val velocity = kinematics.widthAnim.velocity
 
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .wrapContentHeight(),
+                        .wrapContentHeight()
+                        .pointerInput(Unit) {
+                            var dySum = 0f
+                            detectVerticalDragGestures(
+                                onDragStart = { dySum = 0f },
+                                onVerticalDrag = { _, dragAmount ->
+                                    dySum += dragAmount
+                                    if (dySum > 70f) {
+                                        systemRepo.setControlCenterVisible(true)
+                                        ensureControlCenterWindow()
+                                    }
+                                }
+                            )
+                        },
                     contentAlignment = Alignment.TopCenter
                 ) {
-                    if (settings.mode == IslandAppMode.DROID_BUBBLE) {
-                        DroidBubbleOverlayBar(
-                            islandState = islandState,
-                            onExpandToggle = {
-                                systemRepo.onIslandTapped()
-                            }
+                    if (settings.activeMode == IslandMode.DROID_BUBBLE) {
+                        DroidBubbleOverlayView(
+                            state = DroidBubbleState(),
+                            onToggleExpand = { systemRepo.onIslandTapped() },
+                            modifier = Modifier.padding(top = 8.dp)
                         )
                     } else {
-                        if (settings.replaceSystemStatusBar) {
-                            DynamicStatusBar(
-                                state = statusBarState,
-                                absorptionFrame = absorptionFrame,
-                                onLeftSwipeDown = {
-                                    systemRepo.setControlCenterVisible(false)
-                                },
-                                onRightSwipeDown = {
-                                    systemRepo.setControlCenterVisible(true)
-                                    ensureControlCenterWindow()
-                                }
+                        if (settings.enableIosStatusBarReplacement) {
+                            DynamicIosStatusBar(
+                                status = status,
+                                settings = settings,
+                                screenWidthDp = screenWidthDp,
+                                islandCenterXDp = islandCenterX,
+                                islandLeftEdgeDp = islandLeftEdge,
+                                islandRightEdgeDp = islandRightEdge,
+                                leftEdgeVelocityDpPerSec = -velocity * 0.5f,
+                                rightEdgeVelocityDpPerSec = velocity * 0.5f,
+                                isOnDarkBackground = true
                             )
                         }
 
-                        LiquidIslandOverlayHost(
-                            islandState = islandState,
+                        DynamicIslandComposable(
+                            activityState = islandState,
                             settings = settings,
-                            onGeometryFrame = { wDp, velDpPerSec, splitOffDp ->
-                                islandWidthDp = wDp
-                                islandVelocity = velDpPerSec
-                                splitOffsetDp = splitOffDp
-                            },
-                            onPrimaryTap = { systemRepo.onIslandTapped() },
-                            onDismissIsland = { systemRepo.collapseIslandToCompactOrIdle() },
-                            onMediaPlayPause = { systemRepo.sendMediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) },
-                            onMediaNext = { systemRepo.sendMediaKey(android.view.KeyEvent.KEYCODE_MEDIA_NEXT) },
-                            onMediaPrevious = { systemRepo.sendMediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS) },
-                            onMediaSeek = { posMs ->
-                                IslandNotificationListenerService.instance?.seekActiveSessionTo(posMs)
-                                systemRepo.seekMediaTo(posMs)
-                            },
-                            onTimerCancel = { systemRepo.cancelTimer() },
-                            onNavigationEnd = { systemRepo.endNavigation() }
+                            kinematics = kinematics,
+                            backdrop = backdrop,
+                            effectController = effectController,
+                            onTapIsland = { systemRepo.onIslandTapped() },
+                            onLongPressIsland = { systemRepo.onIslandSecondaryTapped() },
+                            onMediaPrev = { systemRepo.onMediaPrevious() },
+                            onMediaPlayPause = { systemRepo.onMediaPlayPause() },
+                            onMediaNext = { systemRepo.onMediaNext() },
+                            onTimerLap = { systemRepo.onTimerLap() },
+                            onTimerCancel = { systemRepo.onTimerCancel() },
+                            onEndNavigationTrip = { systemRepo.endNavigation() },
+                            onDismissNotification = { systemRepo.dismissNotification() },
+                            modifier = Modifier.padding(top = 8.dp)
                         )
                     }
                 }
@@ -280,13 +285,10 @@ class AndroidIslandOverlayService : Service(), LifecycleOwner, SavedStateRegistr
             setViewTreeSavedStateRegistryOwner(this@AndroidIslandOverlayService)
             setContent {
                 val visible by systemRepo.isControlCenterVisible.collectAsState()
-                val statusBar by systemRepo.statusBarState.collectAsState()
-                val islandState by systemRepo.islandState.collectAsState()
-                val media by systemRepo.activeMedia.collectAsState()
-                val settings by systemRepo.settings.collectAsState()
-                var brightness by remember { mutableFloatStateOf(systemRepo.getBrightnessFraction()) }
-                var volume by remember { mutableFloatStateOf(systemRepo.getVolumeFraction()) }
-                var flashlightOn by remember { mutableStateOf(false) }
+                val status by systemRepo.statusSnapshot.collectAsState()
+                val track by systemRepo.currentTrack.collectAsState()
+                val backdrop = remember { LiquidBackdrop() }
+                val effectController = remember { LiquidEffectController() }
 
                 AnimatedVisibility(
                     visible = visible,
@@ -294,44 +296,27 @@ class AndroidIslandOverlayService : Service(), LifecycleOwner, SavedStateRegistr
                     exit = fadeOut()
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        IosControlCenterScreen(
-                            statusBarState = statusBar,
-                            islandState = islandState,
-                            mediaData = media,
-                            settings = settings,
-                            brightnessFraction = brightness,
-                            volumeFraction = volume,
-                            isFlashlightOn = flashlightOn,
-                            onBrightnessChange = {
-                                brightness = it
-                                systemRepo.setBrightnessFraction(it)
+                        IosControlCenterSheet(
+                            status = status,
+                            track = track,
+                            backdrop = backdrop,
+                            effectController = effectController,
+                            onToggleWifi = { systemRepo.toggleWifi(this@AndroidIslandOverlayService) },
+                            onToggleAirplane = { systemRepo.toggleAirplaneMode(this@AndroidIslandOverlayService) },
+                            onToggleMobileData = { systemRepo.toggleMobileData(this@AndroidIslandOverlayService) },
+                            onToggleHotspot = { systemRepo.toggleHotspot(this@AndroidIslandOverlayService) },
+                            onCycleRingerMode = { systemRepo.cycleRingerMode() },
+                            onBrightnessChange = { systemRepo.setBrightnessPercent(it) },
+                            onVolumeChange = { systemRepo.setVolumePercent(it) },
+                            onOpenSettings = {
+                                systemRepo.setControlCenterVisible(false)
+                                removeControlCenterWindow()
+                                startActivity(
+                                    Intent(this@AndroidIslandOverlayService, MainActivity::class.java)
+                                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                )
                             },
-                            onVolumeChange = {
-                                volume = it
-                                systemRepo.setVolumeFraction(it)
-                            },
-                            onToggleWifi = { systemRepo.toggleWifi() },
-                            onToggleCellular = { systemRepo.toggleMobileData() },
-                            onToggleBluetooth = { systemRepo.toggleBluetooth() },
-                            onToggleAirplane = { systemRepo.toggleAirplaneMode() },
-                            onToggleHotspot = { systemRepo.toggleHotspot() },
-                            onToggleFlashlight = {
-                                flashlightOn = !flashlightOn
-                                systemRepo.toggleFlashlight(flashlightOn)
-                            },
-                            onTriggerRingerPreview = { mode ->
-                                systemRepo.triggerRingerAlert(mode)
-                            },
-                            onMediaPlayPause = {
-                                systemRepo.sendMediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
-                            },
-                            onMediaNext = {
-                                systemRepo.sendMediaKey(android.view.KeyEvent.KEYCODE_MEDIA_NEXT)
-                            },
-                            onMediaPrevious = {
-                                systemRepo.sendMediaKey(android.view.KeyEvent.KEYCODE_MEDIA_PREVIOUS)
-                            },
-                            onDismiss = {
+                            onCloseControlCenter = {
                                 systemRepo.setControlCenterVisible(false)
                                 removeControlCenterWindow()
                             }

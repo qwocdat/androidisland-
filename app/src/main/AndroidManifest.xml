@@ -47,7 +47,7 @@
         tools:ignore="ProtectedPermissions" />
 
     <application
-        android:name=".AndroidIslandApp"
+        android:name="com.xiao.androidisland.AndroidIslandApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -60,7 +60,7 @@
 
         <!-- Main Activity: Interactive LiquidIsland Workspace (Status Bar + Dynamic Island + Calendar/Clock Widgets + Settings) -->
         <activity
-            android:name=".MainActivity"
+            android:name="com.xiao.androidisland.MainActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:exported="true"
             android:launchMode="singleTop"
@@ -73,7 +73,7 @@
 
         <!-- Dedicated Translucent Control Center & Island Overlay Activity -->
         <activity
-            android:name=".LiquidControlCenterActivity"
+            android:name="com.xiao.androidisland.LiquidControlCenterActivity"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
             android:excludeFromRecents="true"
             android:exported="true"
@@ -85,7 +85,7 @@
 
         <!-- Continuous System Overlay Service (Dynamic Island + iOS Status Bar + Control Center Trigger) -->
         <service
-            android:name=".service.AndroidIslandOverlayService"
+            android:name="com.xiao.androidisland.service.AndroidIslandOverlayService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="specialUse"
@@ -97,7 +97,7 @@
 
         <!-- Accessibility Service: Top-Edge Gesture Interceptor & System Status Bar Overlay Host -->
         <service
-            android:name=".service.AndroidIslandAccessibilityService"
+            android:name="com.xiao.androidisland.service.AndroidIslandAccessibilityService"
             android:enabled="true"
             android:exported="true"
             android:label="@string/accessibility_service_label"
@@ -112,7 +112,7 @@
 
         <!-- Notification & MediaSession Listener Service -->
         <service
-            android:name=".service.IslandNotificationListenerService"
+            android:name="com.xiao.androidisland.service.IslandNotificationListenerService"
             android:exported="true"
             android:label="@string/app_name"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
@@ -123,7 +123,7 @@
 
         <!-- Quick Settings Tile Service -->
         <service
-            android:name=".service.AndroidIslandTileService"
+            android:name="com.xiao.androidisland.service.AndroidIslandTileService"
             android:exported="true"
             android:icon="@drawable/ic_island_tile"
             android:label="@string/tile_label"
@@ -135,7 +135,7 @@
 
         <!-- Continuous 24/7 Boot & Restart Receiver -->
         <receiver
-            android:name=".service.IslandBootReceiver"
+            android:name="com.xiao.androidisland.service.IslandBootReceiver"
             android:enabled="true"
             android:exported="true">
             <intent-filter>

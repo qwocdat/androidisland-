@@ -15,16 +15,16 @@ class AndroidIslandApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        shizukuBridge = ShizukuBridge(this).also { it.initialize() }
-        systemStateManager = SystemStateManager(this, shizukuBridge)
+        shizukuBridge = ShizukuBridge().also { it.register() }
+        systemStateManager = SystemStateManager(this, shizukuBridge).also { it.startObserving() }
     }
 
     override fun onTerminate() {
         if (::systemStateManager.isInitialized) {
-            systemStateManager.dispose()
+            systemStateManager.stopObserving()
         }
         if (::shizukuBridge.isInitialized) {
-            shizukuBridge.dispose()
+            shizukuBridge.unregister()
         }
         super.onTerminate()
     }

@@ -235,7 +235,7 @@ class SystemStateManager(
         val ssid = try {
             val info = (if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) caps?.transportInfo as? WifiInfo else null)
                 ?: wifiManager?.connectionInfo
-            info?.ssid?.removeSurrounding(""")?.takeIf {
+            info?.ssid?.removeSurrounding("\"")?.takeIf {
                 it.isNotBlank() && !it.equals("<unknown ssid>", ignoreCase = true)
             } ?: "WE 5G"
         } catch (_: Throwable) {
@@ -533,5 +533,33 @@ class SystemStateManager(
             audioManager.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0))
             audioManager.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0))
         } catch (_: Throwable) {}
+    }
+
+    private val _isControlCenterVisible = MutableStateFlow(false)
+    val isControlCenterVisible: StateFlow<Boolean> = _isControlCenterVisible.asStateFlow()
+
+    fun setControlCenterVisible(visible: Boolean) {
+        _isControlCenterVisible.value = visible
+    }
+
+    fun triggerBiometricAuthSequence() {
+        triggerStateByKey("Auth")
+    }
+
+    fun updateSettings(transform: (LiquidIslandSettings) -> LiquidIslandSettings) {
+        _settings.value = transform(_settings.value)
+    }
+
+    fun endNavigation() {
+        _islandState.value = IslandActivityState.CompactIdle
+    }
+
+    fun dismissNotification() {
+        _islandState.value = IslandActivityState.CompactIdle
+    }
+
+    fun seekMediaTo(positionMs: Long) {
+        _currentTrack.update { it.copy(positionMs = positionMs.coerceIn(0L, it.durationMs.coerceAtLeast(1L))) }
+        syncTrackIntoCurrentIslandState(_currentTrack.value)
     }
 }

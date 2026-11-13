@@ -4,4 +4,7 @@
     <string name="tile_label">LiquidIsland</string>
     <string name="accessibility_service_label">AndroidIsland – LiquidIsland Overlay</string>
     <string name="accessibility_service_description">Hiển thị Dynamic Island, iOS Status Bar với hiệu ứng Liquid Absorption và iOS Control Center.</string>
+    <string name="overlay_notification_channel">AndroidIsland Overlay</string>
+    <string name="overlay_notification_title">LiquidIsland Active</string>
+    <string name="overlay_notification_text">Dynamic Island &amp; iOS Status Bar overlay đang hoạt động.</string>
 </resources>
