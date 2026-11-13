@@ -562,4 +562,9 @@ class SystemStateManager(
         _currentTrack.update { it.copy(positionMs = positionMs.coerceIn(0L, it.durationMs.coerceAtLeast(1L))) }
         syncTrackIntoCurrentIslandState(_currentTrack.value)
     }
+
+    fun updateChargingStateFromBridge(level: Int) {
+        val clamped = level.coerceIn(1, 100)
+        _statusSnapshot.update { it.copy(batteryPercent = clamped, isCharging = true) }
+    }
 }
