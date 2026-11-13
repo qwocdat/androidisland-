@@ -7,6 +7,10 @@ on:
       - master
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
 
@@ -83,8 +87,10 @@ jobs:
               if [ -z "$CURRENT_BRANCH" ] || [ "$CURRENT_BRANCH" = "HEAD" ]; then
                 CURRENT_BRANCH="main"
               fi
-              echo "Pushing changes to origin $CURRENT_BRANCH..."
-              git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" "HEAD:$CURRENT_BRANCH"
+              REPO_URL="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+              echo "Syncing and pushing changes to origin $CURRENT_BRANCH..."
+              git pull --rebase "$REPO_URL" "$CURRENT_BRANCH" || true
+              git push "$REPO_URL" "HEAD:$CURRENT_BRANCH"
               echo "Successfully pushed extracted changes to $CURRENT_BRANCH!"
             else
               echo "No diff detected after unzipping."
