@@ -709,18 +709,34 @@ fun IslandOverlayRoot(
 
 
 
-    // Animation Specs (dynamically scaled by settings.animationSpeed):
+    // Animation Specs (dynamically scaled by settings.animationSpeed & Liquid custom animations):
+    val effectiveExpandDamping = if (settings.isGlass && settings.customAnimationsEnabled) {
+        (1f - (settings.animExpandBounce * 0.52f)).coerceIn(0.32f, 0.96f)
+    } else {
+        settings.expandDamping
+    }
+    val effectiveExpandStiffness = if (settings.isGlass && settings.customAnimationsEnabled) {
+        (settings.animExpandSpeed * 2.6f).coerceIn(140f, 1200f) * speedSq
+    } else {
+        settings.expandStiffness * speedSq
+    }
+    val collapseDurationMs = if (settings.isGlass && settings.customAnimationsEnabled) {
+        (settings.animCollapseSpeed / speed).roundToInt().coerceIn(90, 450)
+    } else {
+        (190 / speed).roundToInt()
+    }
+
     val sizeAnimSpecDp = when {
         isCharging || isUnlock || isBluetooth || isRingerMode || isAirplaneMode || isTaskConfirmation -> spring<androidx.compose.ui.unit.Dp>(
             dampingRatio = settings.appearDamping,
             stiffness = settings.appearStiffness * speedSq
         )
         isExpanded -> spring<androidx.compose.ui.unit.Dp>(
-            dampingRatio = settings.expandDamping,
-            stiffness = settings.expandStiffness * speedSq
+            dampingRatio = effectiveExpandDamping,
+            stiffness = effectiveExpandStiffness
         )
         else -> tween<androidx.compose.ui.unit.Dp>(
-            durationMillis = (190 / speed).roundToInt(),
+            durationMillis = collapseDurationMs,
             easing = CubicBezierEasing(0.28f, 0.0f, 0.20f, 1.0f)
         )
     }
@@ -731,11 +747,11 @@ fun IslandOverlayRoot(
             stiffness = settings.appearStiffness * speedSq
         )
         isExpanded -> spring<Float>(
-            dampingRatio = settings.expandDamping,
-            stiffness = settings.expandStiffness * speedSq
+            dampingRatio = effectiveExpandDamping,
+            stiffness = effectiveExpandStiffness
         )
         else -> tween<Float>(
-            durationMillis = (190 / speed).roundToInt(),
+            durationMillis = collapseDurationMs,
             easing = CubicBezierEasing(0.28f, 0.0f, 0.20f, 1.0f)
         )
     }
@@ -1143,7 +1159,9 @@ fun IslandOverlayRoot(
     }
 
     val targetCornerRadius = when {
-        isExpanded && !isCharging && !isUnlock && !isBluetooth && !isRingerMode -> 28.dp
+        isExpanded && !isCharging && !isUnlock && !isBluetooth && !isRingerMode -> {
+            if (settings.isGlass) settings.expandedCornerRadiusDp.coerceIn(22, 48).dp else 28.dp
+        }
         else -> settings.cornerRadiusDp.dp
     }
 
@@ -1218,7 +1236,7 @@ fun IslandOverlayRoot(
         animationSpec = compactPillWidthAnimSpec,
         label = "dualMainShiftX"
     )
-    val bubbleGap = 5.dp
+    val bubbleGap = if (settings.isGlass) settings.animBubbleGapDp.coerceIn(3, 14).dp else 5.dp
     val restingBubbleCenterX = if (settings.isLeftCutout) {
         compactMainFull + bubbleGap + (bubbleSize / 2f)
     } else {
@@ -1431,17 +1449,35 @@ fun IslandOverlayRoot(
             ),
         contentAlignment = Alignment.TopCenter
     ) {
+        val compactVelocityPx = rememberIslandVelocityVector(
+            currentWidthDp = animatedCompactWidth,
+            currentHeightDp = settings.heightDp.dp,
+            enabled = settings.isGlass && settings.motionBlur
+        )
+        val card1VelocityPx = rememberIslandVelocityVector(
+            currentWidthDp = animatedCard1Width,
+            currentHeightDp = animatedCard1Height,
+            enabled = settings.isGlass && settings.motionBlur
+        )
+
         // Tap outside backdrop when expanded (active during whole expand and collapse animation)
         if (expandProgress > 0.05f) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .then(
+                        if (settings.backgroundDimming) {
+                            Modifier.background(Color.Black.copy(alpha = 0.28f * expandProgress.coerceIn(0f, 1f)))
+                        } else Modifier
+                    )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
                     ) {
-                        triggerHaptic()
-                        IslandStateManager.collapse()
+                        if (settings.closeOnBackgroundTap) {
+                            triggerHaptic()
+                            IslandStateManager.collapse()
+                        }
                     }
             )
         }
@@ -1490,28 +1526,15 @@ fun IslandOverlayRoot(
                                         scaleY = morphScaleY
                                     }
                                 }
+                                .liquidVelocityMotionBlur(
+                                    velocityPx = card1VelocityPx,
+                                    enabled = settings.isGlass && settings.motionBlur
+                                )
                                 .clip(RoundedCornerShape(animatedCornerRadius))
                                 .then(
                                     if (animatedCard1Width > 2.dp) {
-                                        if (settings.glassEnabled) {
-                                            val bottomClearAlpha = (settings.glassOpacity / 100f).coerceIn(0f, 1f)
-                                            Modifier.background(
-                                                Brush.verticalGradient(
-                                                    colors = listOf(
-                                                        Color.Black,
-                                                        Color.Black.copy(alpha = bottomClearAlpha)
-                                                    )
-                                                )
-                                            )
-                                        } else if (settings.designLanguage == DesignLanguage.GLASS) {
-                                            Modifier.background(
-                                                Brush.verticalGradient(
-                                                    colors = listOf(
-                                                        Color.Black.copy(alpha = 0.92f),
-                                                        Color(0xFF141926).copy(alpha = 0.78f)
-                                                    )
-                                                )
-                                            )
+                                        if (settings.isGlass) {
+                                            Modifier.background(Color.Transparent)
                                         } else if (settings.designLanguage == DesignLanguage.MATERIAL3) {
                                             val m3CardBg = lerp(
                                                 Color.Black,
@@ -1520,13 +1543,7 @@ fun IslandOverlayRoot(
                                             )
                                             Modifier.background(m3CardBg)
                                         } else {
-                                            Modifier.background(
-                            if (settings.designLanguage == DesignLanguage.GLASS) {
-                                Color(0xFF0D1117).copy(alpha = 0.90f)
-                            } else {
-                                Color.Black
-                            }
-                        )
+                                            Modifier.background(Color.Black)
                                         }
                                     } else Modifier.background(Color.Transparent)
                                 )
@@ -1600,6 +1617,16 @@ fun IslandOverlayRoot(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
+                            if (settings.isGlass && animatedCard1Width > 2.dp) {
+                                LiquidIslandOpticalBox(
+                                    settings = settings,
+                                    shape = RoundedCornerShape(animatedCornerRadius),
+                                    accentColor = resolveLiquidPriorityAccentColor(primaryPriority, mediaAccentColor),
+                                    isExpandedCard = true,
+                                    albumArtBitmap = if (primaryPriority == IslandPriority.MEDIA) (blurredMediaArt ?: mediaArt) else null,
+                                    modifier = Modifier.matchParentSize()
+                                ) {}
+                            }
                             // Subtle ambient gradient background or blurred album art for media player or flashlight
                             if (isExpanded) {
                                 if (primaryPriority == IslandPriority.MEDIA && settings.blurredAlbumArtBackground && mediaArt != null) {
@@ -1780,6 +1807,7 @@ fun IslandOverlayRoot(
                                         designLanguage = settings.designLanguage,
                                         mediaControlAlignment = settings.mediaControlAlignment,
                                         mediaLayersOrder = settings.mediaLayersOrder,
+                                        settings = settings,
                                         onCollapse = {
                                             triggerHaptic()
                                             IslandStateManager.collapse()
@@ -1810,25 +1838,8 @@ fun IslandOverlayRoot(
                                 }
                                 .clip(RoundedCornerShape(animatedCornerRadius))
                                 .then(
-                                    if (settings.glassEnabled) {
-                                        val bottomClearAlpha = (settings.glassOpacity / 100f).coerceIn(0f, 1f)
-                                        Modifier.background(
-                                            Brush.verticalGradient(
-                                                colors = listOf(
-                                                    Color.Black,
-                                                    Color.Black.copy(alpha = bottomClearAlpha)
-                                                )
-                                            )
-                                        )
-                                    } else if (settings.designLanguage == DesignLanguage.GLASS) {
-                                        Modifier.background(
-                                            Brush.verticalGradient(
-                                                colors = listOf(
-                                                    Color.Black.copy(alpha = 0.92f),
-                                                    Color(0xFF141926).copy(alpha = 0.78f)
-                                                )
-                                            )
-                                        )
+                                    if (settings.isGlass) {
+                                        Modifier.background(Color.Transparent)
                                     } else if (settings.designLanguage == DesignLanguage.MATERIAL3) {
                                         val m3CardBg = lerp(
                                             Color.Black,
@@ -1837,13 +1848,7 @@ fun IslandOverlayRoot(
                                         )
                                         Modifier.background(m3CardBg)
                                     } else {
-                                        Modifier.background(
-                            if (settings.designLanguage == DesignLanguage.GLASS) {
-                                Color(0xFF0D1117).copy(alpha = 0.90f)
-                            } else {
-                                Color.Black
-                            }
-                        )
+                                        Modifier.background(Color.Black)
                                     }
                                 )
                                 .then(
@@ -1906,6 +1911,16 @@ fun IslandOverlayRoot(
                                     } else Modifier
                                 )
                         ) {
+                            if (settings.isGlass && animatedCard1Width > 2.dp) {
+                                LiquidIslandOpticalBox(
+                                    settings = settings,
+                                    shape = RoundedCornerShape(animatedCornerRadius),
+                                    accentColor = resolveLiquidPriorityAccentColor(secondaryPriority, mediaAccentColor),
+                                    isExpandedCard = true,
+                                    albumArtBitmap = if (secondaryPriority == IslandPriority.MEDIA) (blurredMediaArt ?: mediaArt) else null,
+                                    modifier = Modifier.matchParentSize()
+                                ) {}
+                            }
                             // Subtle ambient gradient background or blurred album art for secondary card if it's the media player or flashlight
                             if (isExpanded) {
                                 if (secondaryPriority == IslandPriority.MEDIA && settings.blurredAlbumArtBackground && mediaArt != null) {
@@ -2074,6 +2089,7 @@ fun IslandOverlayRoot(
                                         designLanguage = settings.designLanguage,
                                         mediaControlAlignment = settings.mediaControlAlignment,
                                         mediaLayersOrder = settings.mediaLayersOrder,
+                                        settings = settings,
                                         onCollapse = {
                                             triggerHaptic()
                                             IslandStateManager.collapse()
@@ -2104,25 +2120,8 @@ fun IslandOverlayRoot(
                                 }
                                 .clip(RoundedCornerShape(animatedCornerRadius))
                                 .then(
-                                    if (settings.glassEnabled) {
-                                        val bottomClearAlpha = (settings.glassOpacity / 100f).coerceIn(0f, 1f)
-                                        Modifier.background(
-                                            Brush.verticalGradient(
-                                                colors = listOf(
-                                                    Color.Black,
-                                                    Color.Black.copy(alpha = bottomClearAlpha)
-                                                )
-                                            )
-                                        )
-                                    } else if (settings.designLanguage == DesignLanguage.GLASS) {
-                                        Modifier.background(
-                                            Brush.verticalGradient(
-                                                colors = listOf(
-                                                    Color.Black.copy(alpha = 0.92f),
-                                                    Color(0xFF141926).copy(alpha = 0.78f)
-                                                )
-                                            )
-                                        )
+                                    if (settings.isGlass) {
+                                        Modifier.background(Color.Transparent)
                                     } else if (settings.designLanguage == DesignLanguage.MATERIAL3) {
                                         val m3CardBg = lerp(
                                             Color.Black,
@@ -2131,13 +2130,7 @@ fun IslandOverlayRoot(
                                         )
                                         Modifier.background(m3CardBg)
                                     } else {
-                                        Modifier.background(
-                            if (settings.designLanguage == DesignLanguage.GLASS) {
-                                Color(0xFF0D1117).copy(alpha = 0.90f)
-                            } else {
-                                Color.Black
-                            }
-                        )
+                                        Modifier.background(Color.Black)
                                     }
                                 )
                                 .then(
@@ -2200,6 +2193,16 @@ fun IslandOverlayRoot(
                                     } else Modifier
                                 )
                         ) {
+                            if (settings.isGlass && animatedCard1Width > 2.dp) {
+                                LiquidIslandOpticalBox(
+                                    settings = settings,
+                                    shape = RoundedCornerShape(animatedCornerRadius),
+                                    accentColor = resolveLiquidPriorityAccentColor(tertiaryPriority, mediaAccentColor),
+                                    isExpandedCard = true,
+                                    albumArtBitmap = if (tertiaryPriority == IslandPriority.MEDIA) (blurredMediaArt ?: mediaArt) else null,
+                                    modifier = Modifier.matchParentSize()
+                                ) {}
+                            }
                             if (isExpanded) {
                                 if (tertiaryPriority == IslandPriority.MEDIA && settings.blurredAlbumArtBackground && mediaArt != null) {
                                     Box(
@@ -2366,6 +2369,7 @@ fun IslandOverlayRoot(
                                         designLanguage = settings.designLanguage,
                                         mediaControlAlignment = settings.mediaControlAlignment,
                                         mediaLayersOrder = settings.mediaLayersOrder,
+                                        settings = settings,
                                         onCollapse = {
                                             triggerHaptic()
                                             IslandStateManager.collapse()
@@ -2418,6 +2422,43 @@ fun IslandOverlayRoot(
             val circleThreshold = (settings.heightDp.dp * 0.95f).coerceAtLeast(10.dp)
             val emergenceProgress = (animatedCompactWidth / circleThreshold).coerceIn(0f, 1f)
             val compactPillAlpha = emergenceProgress * emergenceProgress * (3f - 2f * emergenceProgress)
+
+            // 0A. Edge-Based Status Bar Liquid Absorption & Release (Dynamic Motion 1.2)
+            if (settings.isGlass && !isExpanded && animatedCompactWidth > 4.dp) {
+                LiquidStatusBarAbsorptionOverlay(
+                    compactWidth = animatedCompactWidth,
+                    compactHeight = compactPillHeight,
+                    restingWidth = settings.widthDp.dp,
+                    surfaceTension = settings.liquidSurfaceTension,
+                    accentColor = resolveLiquidPriorityAccentColor(compactPrimaryPriority, mediaAccentColor),
+                    isLiquidGlass = true
+                )
+            }
+
+            // 0B. Smooth-Minimum (smin) Liquid Metaball Bridge between Main Pill and Auxiliary Bubble
+            if ((isCompactDual || animatedBubbleOffsetX > 1.dp) && (settings.isGlass || settings.multitaskingMode == "FLUID_MERGE")) {
+                val mainCenterDp = if (settings.isLeftCutout) {
+                    (animatedCompactWidth - settings.heightDp.dp) / 2f
+                } else {
+                    animatedDualMainShiftX
+                }
+                val bubCenterDp = if (settings.isLeftCutout) {
+                    animatedBubbleOffsetX - (bubbleSize / 2f)
+                } else {
+                    animatedBubbleOffsetX
+                }
+                LiquidMetaballBridgeCanvas(
+                    mainPillWidth = animatedCompactWidth,
+                    mainPillHeight = compactPillHeight,
+                    mainPillCenterX = mainCenterDp,
+                    bubbleSize = bubbleSize,
+                    bubbleCenterX = bubCenterDp,
+                    surfaceTension = settings.liquidSurfaceTension,
+                    isLiquidGlass = settings.isGlass,
+                    accentColor = resolveLiquidPriorityAccentColor(compactSecondaryPriority, mediaAccentColor),
+                    alpha = compactPillAlpha * (1f - expandProgress * 3.5f).coerceIn(0f, 1f)
+                )
+            }
 
             // 1. Auxiliary Circular Island Bubble: Placed on the LAYER BELOW (rendered first so main pill covers it!)
             // Fixed circular shape & size; emerges and retracts purely along the X axis from the punch hole
@@ -2478,14 +2519,10 @@ fun IslandOverlayRoot(
                             .then(swipeToSwapModifier)
                             .clip(CircleShape)
                             .background(
-                            if (settings.designLanguage == DesignLanguage.GLASS) {
-                                Color(0xFF0D1117).copy(alpha = 0.90f)
-                            } else {
-                                Color.Black
-                            }
-                        )
+                                if (settings.isGlass) Color.Transparent else Color.Black
+                            )
                             .then(
-                                if (settings.showOutline && settings.designLanguage != DesignLanguage.MATERIAL3 && animatedBubbleOffsetX > mainRightEdgeFromOrigin * 0.7f) {
+                                if (!settings.isGlass && settings.showOutline && settings.designLanguage != DesignLanguage.MATERIAL3 && animatedBubbleOffsetX > mainRightEdgeFromOrigin * 0.7f) {
                                     Modifier.border(
                                         width = settings.outlineThicknessDp.dp,
                                         color = secondaryOutlineColor,
@@ -2497,8 +2534,10 @@ fun IslandOverlayRoot(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
                                 onClick = {
-                                    triggerHaptic()
-                                    IslandStateManager.expand(secondaryPriority)
+                                    if (settings.tapToExpand && !(isLandscape && settings.disableExpandInLandscape)) {
+                                        triggerHaptic()
+                                        IslandStateManager.expand(secondaryPriority)
+                                    }
                                 },
                                 onLongClick = {
                                     triggerHaptic()
@@ -2517,6 +2556,15 @@ fun IslandOverlayRoot(
                             ),
                         contentAlignment = Alignment.Center
                     ) {
+                        if (settings.isGlass) {
+                            LiquidIslandOpticalBox(
+                                settings = settings,
+                                shape = CircleShape,
+                                accentColor = resolveLiquidPriorityAccentColor(compactSecondaryPriority, mediaAccentColor),
+                                isExpandedCard = false,
+                                modifier = Modifier.matchParentSize()
+                            ) {}
+                        }
                         if (contentAlpha > 0.05f) {
                             Box(
                                 modifier = Modifier
@@ -2595,36 +2643,23 @@ fun IslandOverlayRoot(
                             scaleX = idleBounceScale.value * idleStretchX.value
                             scaleY = teardropScaleY
                         }
+                        .liquidVelocityMotionBlur(
+                            velocityPx = compactVelocityPx,
+                            enabled = settings.isGlass && settings.motionBlur
+                        )
                         .then(swipeToSwapModifier)
                         .clip(compactPillShape)
                         .then(
                             if (animatedCompactWidth > 2.dp) {
-                                if (settings.designLanguage == DesignLanguage.GLASS) {
-                                    Modifier
-                                        .background(
-                                            Brush.verticalGradient(
-                                                listOf(
-                                                    Color(0xE6111827),
-                                                    Color(0xCC050810)
-                                                )
-                                            )
-                                        )
-                                        .border(
-                                            width = 1.dp,
-                                            brush = Brush.verticalGradient(
-                                                0f to Color.White.copy(alpha = 0.40f),
-                                                0.5f to Color.White.copy(alpha = 0.12f),
-                                                1f to Color.Transparent,
-                                            ),
-                                            shape = compactPillShape
-                                        )
+                                if (settings.isGlass) {
+                                    Modifier.background(Color.Transparent)
                                 } else {
                                     Modifier.background(Color.Black)
                                 }
                             } else Modifier.background(Color.Transparent)
                         )
                         .then(
-                            if (settings.showOutline && (isOccupied || hasPersistent) && settings.designLanguage != DesignLanguage.MATERIAL3 && animatedCompactWidth > 8.dp) {
+                            if (!settings.isGlass && settings.showOutline && (isOccupied || hasPersistent) && settings.designLanguage != DesignLanguage.MATERIAL3 && animatedCompactWidth > 8.dp) {
                                 val outlineAlpha = primaryOutlineColor.alpha * compactPillAlpha
                                 if (settings.isTeardropCutout) {
                                     Modifier.drawWithContent {
@@ -2650,8 +2685,10 @@ fun IslandOverlayRoot(
                             indication = null,
                             onClick = {
                                 if (!isExpanded && (isOccupied || hasPersistent) && !isUnlock && !isBluetooth && !isRingerMode && !isAirplaneMode && !isTaskConfirmation) {
-                                    triggerHaptic()
-                                    IslandStateManager.expand(primaryPriority)
+                                    if (settings.tapToExpand && !(isLandscape && settings.disableExpandInLandscape)) {
+                                        triggerHaptic()
+                                        IslandStateManager.expand(primaryPriority)
+                                    }
                                 } else if (!isExpanded && !isOccupied && !hasPersistent && settings.alwaysShowPill) {
                                     if (settings.hapticsEnabled) {
                                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -2743,6 +2780,22 @@ fun IslandOverlayRoot(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
+                    if (settings.isGlass && animatedCompactWidth > 2.dp) {
+                        val activeCompactAccent = when {
+                            isCharging -> Color(0xFF7CE8A0)
+                            isRingerMode -> if (displayRingerMode == IslandStateManager.RingerMode.SILENT) Color(0xFFFF453A) else Color(0xFF38BDF8)
+                            isAirplaneMode -> Color(0xFFFF9F0A)
+                            isUnlock || isBluetooth -> Color(0xFF38BDF8)
+                            else -> resolveLiquidPriorityAccentColor(compactPrimaryPriority, mediaAccentColor)
+                        }
+                        LiquidIslandOpticalBox(
+                            settings = settings,
+                            shape = compactPillShape,
+                            accentColor = activeCompactAccent,
+                            isExpandedCard = false,
+                            modifier = Modifier.matchParentSize()
+                        ) {}
+                    }
                     val compactAlpha = if (isExpanded) {
                         (1f - (expandProgress * 3.0f)).coerceIn(0f, 1f)
                     } else {
@@ -3033,6 +3086,18 @@ fun IslandOverlayRoot(
                                 designLanguage = settings.designLanguage
                             )
                         }
+                    }
+                    if (settings.isGlass && settings.privacyIndicators && !isExpanded) {
+                        LiquidPrivacyIndicatorDot(
+                            priority = compactPrimaryPriority,
+                            isCallActive = isCall,
+                            isVoiceMemoActive = isVoiceMemo,
+                            isRecordingActive = isRecording,
+                            offsetPx = settings.privacyDotPositionPx,
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(top = 4.dp, end = 6.dp)
+                        )
                     }
                 }
             }
@@ -3421,11 +3486,6 @@ fun AuxiliaryBubbleContent(
     charging: IslandStateManager.ChargingInfo? = null,
     designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE
 ) {
-    if (com.xiao.androidisland.liquidisland.LiquidIslandDroidBubbleBridge.shouldRenderLiquidIsland(androidx.compose.ui.platform.LocalContext.current, priority, media, notification, recording, voiceMemo, fpsInfo, weatherInfo, networkSpeedInfo, alarmInfo, spinningAlbumArt, charging, designLanguage)) {
-        com.xiao.androidisland.liquidisland.LiquidIslandDroidBubbleBridge.RenderLiquidIslandOverlay(priority, media, notification, recording, voiceMemo, fpsInfo, weatherInfo, networkSpeedInfo, alarmInfo, spinningAlbumArt, charging, designLanguage)
-        return
-    }
-
     val isM3 = designLanguage == DesignLanguage.MATERIAL3
     val m3Primary = MaterialTheme.colorScheme.primary
     val m3SurfVariant = MaterialTheme.colorScheme.surfaceVariant
@@ -3902,7 +3962,17 @@ fun CompactContent(
                 } else {
                     defaultEqTint
                 }
-                EqualizerVisualizer(isPlaying = media?.isPlaying == true, barColor = compactEqTint)
+                if (designLanguage == DesignLanguage.GLASS) {
+                    LiquidSixBarVisualizer(
+                        isPlaying = media?.isPlaying == true,
+                        accentColor = compactEqTint,
+                        barCount = 5,
+                        maxHeightDp = 15.dp,
+                        barWidthDp = 2.4.dp
+                    )
+                } else {
+                    EqualizerVisualizer(isPlaying = media?.isPlaying == true, barColor = compactEqTint)
+                }
             }
 
             IslandPriority.FPS -> {
@@ -4096,6 +4166,7 @@ fun ExpandedCardContent(
     designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE,
     mediaControlAlignment: String = "CENTER",
     mediaLayersOrder: List<String> = DEFAULT_MEDIA_LAYERS,
+    settings: IslandSettings = IslandSettings(),
     onCollapse: () -> Unit
 ) {
     when (priority) {
@@ -4118,16 +4189,25 @@ fun ExpandedCardContent(
             ExpandedProgressView(notification, onCollapse, scale, designLanguage = designLanguage)
         }
         IslandPriority.MEDIA -> {
-            ExpandedMediaView(
-                media = media,
-                onCollapse = onCollapse,
-                scale = scale,
-                spinningAlbumArt = spinningAlbumArt,
-                wavyProgressBar = wavyProgressBar,
-                designLanguage = designLanguage,
-                mediaControlAlignment = mediaControlAlignment,
-                mediaLayersOrder = mediaLayersOrder
-            )
+            if (designLanguage == DesignLanguage.GLASS || settings.isGlass) {
+                LiquidExpandedMediaView(
+                    media = media,
+                    settings = settings,
+                    onCollapse = onCollapse,
+                    scale = scale
+                )
+            } else {
+                ExpandedMediaView(
+                    media = media,
+                    onCollapse = onCollapse,
+                    scale = scale,
+                    spinningAlbumArt = spinningAlbumArt,
+                    wavyProgressBar = wavyProgressBar,
+                    designLanguage = designLanguage,
+                    mediaControlAlignment = mediaControlAlignment,
+                    mediaLayersOrder = mediaLayersOrder
+                )
+            }
         }
         IslandPriority.FLASHLIGHT -> {
             ExpandedFlashlightView(
@@ -5333,15 +5413,15 @@ fun ExpandedNotificationView(
                         shape = shape,
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = if (designLanguage == DesignLanguage.MATERIAL3) {
-                                if (item.isPrimary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
-                            } else {
-                                if (item.isPrimary) Color(0xFFE5E5EA) else Color(0xFF2C2C2E)
+                            containerColor = when (designLanguage) {
+                                DesignLanguage.MATERIAL3 -> if (item.isPrimary) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest
+                                DesignLanguage.GLASS -> if (item.isPrimary) Color.White.copy(alpha = 0.88f) else Color.White.copy(alpha = 0.16f)
+                                else -> if (item.isPrimary) Color(0xFFE5E5EA) else Color(0xFF2C2C2E)
                             },
-                            contentColor = if (designLanguage == DesignLanguage.MATERIAL3) {
-                                if (item.isPrimary) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-                            } else {
-                                if (item.isPrimary) Color.Black else Color(0xFFF4F4F5)
+                            contentColor = when (designLanguage) {
+                                DesignLanguage.MATERIAL3 -> if (item.isPrimary) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                                DesignLanguage.GLASS -> if (item.isPrimary) Color(0xFF090D16) else Color.White
+                                else -> if (item.isPrimary) Color.Black else Color(0xFFF4F4F5)
                             }
                         )
                     ) {
@@ -5476,7 +5556,11 @@ fun ExpandedProgressView(
             val progSubColor = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onSurfaceVariant else Color(0xFFA1A1AA)
             val progPctColor = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.primary else Color(0xFF64D2FF)
             val progBarColor = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.primary else Color(0xFFE5E5EA)
-            val progTrackColor = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.surfaceVariant else Color(0xFF2C2C2E)
+            val progTrackColor = when (designLanguage) {
+                DesignLanguage.MATERIAL3 -> MaterialTheme.colorScheme.surfaceVariant
+                DesignLanguage.GLASS -> Color.White.copy(alpha = 0.22f)
+                else -> Color(0xFF2C2C2E)
+            }
 
             Column(
                 modifier = Modifier.weight(1f),
@@ -5684,7 +5768,11 @@ fun ExpandedRecordingView(
                 shape = recSecondaryShape,
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.surfaceContainerHighest else Color(0xFF2C2C2E),
+                    containerColor = when (designLanguage) {
+                        DesignLanguage.MATERIAL3 -> MaterialTheme.colorScheme.surfaceContainerHighest
+                        DesignLanguage.GLASS -> Color.White.copy(alpha = 0.18f)
+                        else -> Color(0xFF2C2C2E)
+                    },
                     contentColor = if (designLanguage == DesignLanguage.MATERIAL3) MaterialTheme.colorScheme.onSurface else Color(0xFFF4F4F5)
                 )
             ) {
@@ -5889,10 +5977,10 @@ fun ExpandedCallView(
                 shape = callSecondaryShape,
                 contentPadding = PaddingValues(0.dp),
                 colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = if (designLanguage == DesignLanguage.MATERIAL3) {
-                        if (activeCall.isMuted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
-                    } else {
-                        if (activeCall.isMuted) Color.White else Color(0xFF2C2C2E)
+                    containerColor = when (designLanguage) {
+                        DesignLanguage.MATERIAL3 -> if (activeCall.isMuted) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainerHighest
+                        DesignLanguage.GLASS -> if (activeCall.isMuted) Color.White.copy(alpha = 0.90f) else Color.White.copy(alpha = 0.18f)
+                        else -> if (activeCall.isMuted) Color.White else Color(0xFF2C2C2E)
                     },
                     contentColor = if (designLanguage == DesignLanguage.MATERIAL3) {
                         if (activeCall.isMuted) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface

@@ -145,8 +145,6 @@ fun LiquidHomeTab(
     onDeactivateLicense: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    com.xiao.androidisland.liquidisland.LiquidIslandDroidBubbleBridge.shouldRenderLiquidIsland(androidx.compose.ui.platform.LocalContext.current, settings, strings, viewModel, onUpdateSettings)
-
     val context = LocalContext.current
     val updateState by viewModel.updateState.collectAsState()
     val pendingPerms by viewModel.pendingPermissions.collectAsState()
@@ -1530,11 +1528,6 @@ private fun ActivityLivePreviewPill(
     isExpanded: Boolean,
     accentColor: Color
 ) {
-    if (com.xiao.androidisland.liquidisland.LiquidIslandDroidBubbleBridge.shouldRenderLiquidIsland(androidx.compose.ui.platform.LocalContext.current, activityKey, isExpanded, accentColor)) {
-        com.xiao.androidisland.liquidisland.LiquidIslandDroidBubbleBridge.RenderLiquidIslandHomePreview(activityKey, isExpanded, accentColor)
-        return
-    }
-
     val pillW by animateDpAsState(
         targetValue = if (isExpanded) 288.dp else 168.dp,
         animationSpec = spring(dampingRatio = 0.72f, stiffness = 360f),
