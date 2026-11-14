@@ -43,7 +43,6 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -231,24 +230,7 @@ class LayerBackdrop : Backdrop {
             dx = srcPos.x - dstPos.x
             dy = srcPos.y - dstPos.y
         }
-        var invScaleX = 1f
-        var invScaleY = 1f
-        if (layerBlock != null) {
-            val tmp = SimpleGraphicsLayerScope().apply {
-                reset(size, density.density, density.fontScale)
-                layerBlock(this)
-            }
-            if (tmp.scaleX > 0.05f) invScaleX = 1f / tmp.scaleX
-            if (tmp.scaleY > 0.05f) invScaleY = 1f / tmp.scaleY
-        }
         drawContext.canvas.save()
-        if (invScaleX != 1f || invScaleY != 1f) {
-            val px = size.width * 0.5f
-            val py = size.height * 0.5f
-            drawContext.canvas.translate(px, py)
-            drawContext.canvas.scale(invScaleX, invScaleY)
-            drawContext.canvas.translate(-px, -py)
-        }
         drawContext.canvas.translate(dx, dy)
         drawLayer(layer)
         drawContext.canvas.restore()
@@ -617,26 +599,27 @@ private class DrawBackdropNode(
             // Stage 1: Record backdrop and apply vibrancy + Gaussian blur
             pLayer.renderEffect = preEffect
             pLayer.record(size = recordSize) {
-                inset(left = pad, top = pad, right = pad, bottom = pad) {
-                    with(backdrop) {
-                        drawBackdrop(
-                            density = this@draw,
-                            coordinates = nodeCoordinates,
-                            layerBlock = layerBlock,
-                            downscaleFactor = 1,
-                        )
-                    }
+                drawContext.canvas.save()
+                drawContext.canvas.translate(pad, pad)
+                with(backdrop) {
+                    drawBackdrop(
+                        density = this@draw,
+                        coordinates = nodeCoordinates,
+                        layerBlock = layerBlock,
+                        downscaleFactor = 1,
+                    )
                 }
+                drawContext.canvas.restore()
             }
 
-            // Stage 2: Record blurred preLayer + subsurface glass surface/light in exact node bounds via inset(pad),
-            // then apply AGSL lens() refraction over all of it!
+            // Stage 2: Record blurred preLayer + subsurface glass surface/light, then apply AGSL lens() refraction over all of it!
             sLayer.renderEffect = agslEffect
             sLayer.record(size = recordSize) {
                 drawLayer(pLayer)
-                inset(left = pad, top = pad, right = pad, bottom = pad) {
-                    onDrawSurface?.invoke(this)
-                }
+                drawContext.canvas.save()
+                drawContext.canvas.translate(pad, pad)
+                onDrawSurface?.invoke(this)
+                drawContext.canvas.restore()
             }
         }
 
