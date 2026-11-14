@@ -975,7 +975,7 @@ class NotificationReceiverService : NotificationListenerService() {
         if ((isClockPkg || isTimerOrStopwatchCat) && ((notification.flags and Notification.FLAG_ONGOING_EVENT) != 0 || sbn.isOngoing)) {
             val rawTitle = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
             val rawText = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-            val timeRegex = Regex("\b\d{1,2}:\d{2}(?::\d{2})?\b")
+            val timeRegex = Regex("""\b\d{1,2}:\d{2}(?::\d{2})?\b""")
             val matchedTime = timeRegex.find(rawTitle)?.value ?: timeRegex.find(rawText)?.value ?: rawText.takeIf { it.length <= 10 } ?: "00:01"
             IslandStateManager.updateAlarm(
                 IslandStateManager.AlarmInfo(
