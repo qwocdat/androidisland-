@@ -181,6 +181,8 @@ class NotificationReceiverService : NotificationListenerService() {
             // Intentionally no-op: dismissing only dismisses the island card, not the system notification itself
         }
 
+        scanActiveClockAndNavigationNotifications()
+
         IslandStateManager.onSendReply = { key, replyText ->
             val notif = IslandStateManager.activeNotification.value
             if (notif != null && notif.key == key) {
@@ -969,23 +971,13 @@ class NotificationReceiverService : NotificationListenerService() {
             return
         }
 
-        // 2B. Detect active Stopwatch / Timer notifications from Clock apps (00:22 & 00:28 in Dynamic Motion 1.2)
+        // 2B. Detect active Stopwatch / Timer notifications from Clock apps (MIUI/HyperOS/Google/Samsung Clock)
         val isClockPkg = packageName.contains("deskclock") || packageName.contains("clock") || packageName.contains("alarm")
         val isTimerOrStopwatchCat = notification.category == Notification.CATEGORY_STOPWATCH || notification.category == Notification.CATEGORY_ALARM
-        if ((isClockPkg || isTimerOrStopwatchCat) && ((notification.flags and Notification.FLAG_ONGOING_EVENT) != 0 || sbn.isOngoing)) {
-            val rawTitle = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
-            val rawText = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
-            val timeRegex = Regex("""\b\d{1,2}:\d{2}(?::\d{2})?\b""")
-            val matchedTime = timeRegex.find(rawTitle)?.value ?: timeRegex.find(rawText)?.value ?: rawText.takeIf { it.length <= 10 } ?: "00:01"
-            IslandStateManager.updateAlarm(
-                IslandStateManager.AlarmInfo(
-                    triggerTimeMs = System.currentTimeMillis(),
-                    formattedTime = matchedTime,
-                    timeRemainingFormatted = rawTitle.ifBlank { "Timer" },
-                    showIntent = notification.contentIntent
-                )
-            )
-            return
+        if (isClockPkg || isTimerOrStopwatchCat) {
+            if (handleClockNotification(sbn)) {
+                return
+            }
         }
 
         // 3. Extract live progress tracking (e.g. Google Play Store, downloads, transfers, navigation)
@@ -994,7 +986,13 @@ class NotificationReceiverService : NotificationListenerService() {
         val isIndeterminate = extras.getBoolean(Notification.EXTRA_PROGRESS_INDETERMINATE, false)
         val isOngoing = (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0 || sbn.isOngoing
         val isNavCategory = notification.category == Notification.CATEGORY_NAVIGATION
-        val isNavApp = packageName == "com.google.android.apps.maps" || packageName == "com.waze" || packageName.contains("maps")
+        val isNavApp = packageName == "com.google.android.apps.maps" ||
+            packageName == "com.waze" ||
+            packageName.contains("maps") ||
+            packageName.contains("vietmap") ||
+            packageName.contains("grab") ||
+            packageName.contains("gsm.be") ||
+            packageName.contains("xanhsm")
         val isNavigation = (isNavCategory || isNavApp) && isOngoing
         val hasProgress = maxProgress > 0 || isIndeterminate || (progress >= 0 && maxProgress > 0) || isNavigation
 
@@ -1002,7 +1000,7 @@ class NotificationReceiverService : NotificationListenerService() {
         if (hasProgress) {
             if (!currentSettings.showLiveProgress) return
         } else {
-            if (!currentSettings.showNotifications) return
+            if (currentSettings.isGlass || !currentSettings.showNotifications) return
         }
 
         // Skip ongoing notifications UNLESS they report live progress (e.g. downloads, navigation)
@@ -1066,9 +1064,83 @@ class NotificationReceiverService : NotificationListenerService() {
         }
     }
 
+    fun scanActiveClockAndNavigationNotifications() {
+        val activeList = try {
+            activeNotifications ?: emptyArray()
+        } catch (_: Exception) {
+            emptyArray()
+        }
+        for (sbn in activeList) {
+            val pkg = sbn.packageName ?: continue
+            val notif = sbn.notification ?: continue
+            val isClockPkg = pkg.contains("deskclock") || pkg.contains("clock") || pkg.contains("alarm")
+            val isTimerOrStopwatchCat = notif.category == Notification.CATEGORY_STOPWATCH || notif.category == Notification.CATEGORY_ALARM
+            if (isClockPkg || isTimerOrStopwatchCat) {
+                if (handleClockNotification(sbn)) break
+            }
+        }
+    }
+
+    private fun handleClockNotification(sbn: StatusBarNotification): Boolean {
+        val notification = sbn.notification ?: return false
+        val extras = notification.extras ?: return false
+        val rawTitle = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim() ?: ""
+        val rawText = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim()
+            ?: extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString()?.trim()
+            ?: extras.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString()?.trim()
+            ?: ""
+        val combined = "$rawTitle $rawText".lowercase()
+        val isOngoing = (notification.flags and Notification.FLAG_ONGOING_EVENT) != 0 || sbn.isOngoing
+        val usesChronometer = extras.getBoolean(Notification.EXTRA_SHOW_CHRONOMETER, false)
+        val isCountdownChrono = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            extras.getBoolean(Notification.EXTRA_CHRONOMETER_COUNT_DOWN, false)
+        } else false
+
+        val timeRegex = Regex("""\b(\d{1,2}):(\d{2})(?::(\d{2}))?\b""")
+        val match = timeRegex.find(rawText) ?: timeRegex.find(rawTitle)
+
+        var parsedSeconds: Long? = null
+        if (match != null) {
+            val p1 = match.groupValues[1].toLongOrNull() ?: 0L
+            val p2 = match.groupValues[2].toLongOrNull() ?: 0L
+            val p3 = match.groupValues[3].toLongOrNull()
+            parsedSeconds = if (p3 != null) p1 * 3600L + p2 * 60L + p3 else p1 * 60L + p2
+        } else if (usesChronometer && notification.`when` > 0L) {
+            val diffMs = kotlin.math.abs(System.currentTimeMillis() - notification.`when`)
+            parsedSeconds = (diffMs / 1000L).coerceAtLeast(0L)
+        }
+
+        if (!isOngoing && !usesChronometer && parsedSeconds == null) return false
+
+        val isTimer = isCountdownChrono ||
+            notification.category == Notification.CATEGORY_ALARM ||
+            combined.contains("hẹn giờ") ||
+            combined.contains("timer") ||
+            combined.contains("đếm ngược")
+        val isPaused = combined.contains("tạm dừng") || combined.contains("paused")
+
+        val actionTitles = notification.actions?.mapNotNull { it.title?.toString()?.lowercase() } ?: emptyList()
+        val isRunning = !isPaused && (isOngoing || usesChronometer || actionTitles.any {
+            it.contains("tạm dừng") || it.contains("pause") || it.contains("vòng") || it.contains("lap") || it.contains("dừng") || it.contains("stop")
+        })
+
+        IslandStateManager.syncExternalClockActivity(
+            seconds = parsedSeconds ?: 1L,
+            isCountdown = isTimer,
+            isRunning = isRunning,
+            label = rawTitle.ifBlank { if (isTimer) "Hẹn giờ" else "Bấm giờ" },
+            showIntent = notification.contentIntent
+        )
+        return true
+    }
+
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
         super.onNotificationRemoved(sbn)
         if (sbn == null) return
+        val removedPkg = sbn.packageName ?: ""
+        if (removedPkg.contains("deskclock") || removedPkg.contains("clock") || removedPkg.contains("alarm")) {
+            IslandStateManager.clearExternalClockActivity()
+        }
         if (systemRecordingKey == sbn.key || (sbn.notification != null && isScreenRecordingNotification(sbn, sbn.notification))) {
             systemRecordingKey = null
             recordingTimerJob?.cancel()

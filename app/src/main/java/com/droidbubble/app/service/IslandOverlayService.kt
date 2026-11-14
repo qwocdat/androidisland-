@@ -53,6 +53,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.droidbubble.app.MainActivity
 import com.droidbubble.app.R
 import com.droidbubble.app.data.SettingsRepository
+import com.droidbubble.app.island.CustomStatusBarOverlay
 import com.droidbubble.app.island.IslandOverlayRoot
 import com.droidbubble.app.droidbar.DroidbarOverlay
 import com.droidbubble.app.island.IslandStateManager
@@ -112,9 +113,12 @@ class IslandOverlayService : Service() {
     private var windowManager: WindowManager? = null
     private var composeView: ComposeView? = null
     private var layoutParams: WindowManager.LayoutParams? = null
+    private var statusBarView: ComposeView? = null
+    private var statusBarParams: WindowManager.LayoutParams? = null
     private var droidbarView: ComposeView? = null
     private var droidbarParams: WindowManager.LayoutParams? = null
     private var isDroidbarExpanded: Boolean = false
+    private var audioRecordingCallback: AudioManager.AudioRecordingCallback? = null
 
     private val lifecycleOwner = CustomLifecycleOwner()
     private var currentSettings = IslandSettings()
@@ -497,6 +501,7 @@ class IslandOverlayService : Service() {
 
         createNotificationChannel()
         initCameraTorch()
+        initAudioRecordingDetector()
         startAutoUpdateChecker()
 
         persistentTelemetryManager = PersistentWidgetTelemetryManager(this).apply { start(currentSettings) }
@@ -645,7 +650,8 @@ class IslandOverlayService : Service() {
         val isDeviceLocked = IslandStateManager.isDeviceLocked.value
         val allowedInOrientation = currentSettings.isEnabled && (currentSettings.showInLandscape || !isLandscape) && (!currentSettings.hideOnLockScreen || !isDeviceLocked)
         val isOccupied = IslandStateManager.isOccupied && allowedInOrientation
-        val hasPersistentWidgets = (currentSettings.showFps || currentSettings.showWeather || currentSettings.showNetworkSpeed) && allowedInOrientation
+        val isAlarm = (currentSettings.showAlarm || currentSettings.isGlass) && IslandStateManager.isAlarmActive
+        val hasPersistentWidgets = (currentSettings.showFps || currentSettings.showWeather || currentSettings.showNetworkSpeed || isAlarm) && allowedInOrientation
         val shouldShowCompact = (isOccupied || currentSettings.alwaysShowPill || hasPersistentWidgets) && allowedInOrientation
 
         val mainHalf = (currentSettings.widthDp * 0.90f).coerceAtLeast(80f) / 2f
@@ -653,15 +659,18 @@ class IslandOverlayService : Service() {
         val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(156f) + 80f) / 2f
         val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(310f)
 
-        val initialWidth = if (shouldShowCompact) {
-            if (currentSettings.isLeftCutout) {
+        val shouldShowBarOrCompact = shouldShowCompact || (currentSettings.hideStatusBar && allowedInOrientation)
+        val initialWidth = if (shouldShowBarOrCompact) {
+            if (currentSettings.isLeftCutout || currentSettings.hideStatusBar) {
                 WindowManager.LayoutParams.MATCH_PARENT
             } else {
                 ((totalWidthDp + 2f * kotlin.math.abs(currentSettings.horizontalOffsetDp)) * density).toInt()
             }
         } else 1
-        val initialHeight = if (shouldShowCompact) {
-            ((currentSettings.topOffsetDp + currentSettings.heightDp + 12) * density).toInt()
+        val initialHeight = if (shouldShowBarOrCompact) {
+            val pillH = currentSettings.topOffsetDp + currentSettings.heightDp + 12
+            val barH = if (currentSettings.hideStatusBar) currentSettings.statusBarHeightDp + 10 else 0
+            (maxOf(pillH, barH) * density).toInt()
         } else 1
         val initialFlags = if (shouldShowCompact) flags else (flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
 
@@ -708,7 +717,9 @@ class IslandOverlayService : Service() {
             }
 
             setContent {
-                val liveSettings by settingsRepository.settingsFlow.collectAsState(initial = currentSettings)
+                val repoSettings by settingsRepository.settingsFlow.collectAsState(initial = currentSettings)
+                val previewOverride by IslandStateManager.livePreviewSettings.collectAsState()
+                val liveSettings = previewOverride ?: repoSettings
 
                 val activeFont = remember(liveSettings.fontKey) {
                     com.droidbubble.app.theme.getIslandFontFamily(liveSettings.fontKey)
@@ -725,23 +736,31 @@ class IslandOverlayService : Service() {
                     typography = com.droidbubble.app.theme.createTypography(activeFont),
                     motionScheme = MotionScheme.expressive()
                 ) {
-                    IslandOverlayRoot(
-                        settings = liveSettings,
-                        onBoundsChange = { _, _ -> },
-                        onCompactRectsChange = { rects ->
-                            val interactive = IslandStateManager.isOccupied ||
-                                liveSettings.alwaysShowPill ||
-                                liveSettings.showFps ||
-                                liveSettings.showWeather ||
-                                liveSettings.showNetworkSpeed ||
-                                (liveSettings.showAlarm && IslandStateManager.isAlarmActive)
-                            touchManager?.updateCompactBounds(
-                                rects = rects,
-                                occupied = interactive,
-                                expanded = IslandStateManager.isExpanded.value
-                            )
+                    androidx.compose.foundation.layout.Box(
+                        modifier = androidx.compose.ui.Modifier.fillMaxSize(),
+                        contentAlignment = androidx.compose.ui.Alignment.TopCenter
+                    ) {
+                        if (liveSettings.hideStatusBar) {
+                            CustomStatusBarOverlay(settings = liveSettings)
                         }
-                    )
+                        IslandOverlayRoot(
+                            settings = liveSettings,
+                            onBoundsChange = { _, _ -> },
+                            onCompactRectsChange = { rects ->
+                                val interactive = IslandStateManager.isOccupied ||
+                                    liveSettings.alwaysShowPill ||
+                                    liveSettings.showFps ||
+                                    liveSettings.showWeather ||
+                                    liveSettings.showNetworkSpeed ||
+                                    ((liveSettings.showAlarm || liveSettings.isGlass) && IslandStateManager.isAlarmActive)
+                                touchManager?.updateCompactBounds(
+                                    rects = rects,
+                                    occupied = interactive,
+                                    expanded = IslandStateManager.isExpanded.value
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -823,6 +842,8 @@ class IslandOverlayService : Service() {
                     updateWindowState(IslandStateManager.isExpanded.value)
                 }
 
+                removeStatusBarOverlay()
+
                 if (settings.droidbarEnabled && com.droidbubble.app.ui.main.PermissionHelper.isOverlayGranted(this@IslandOverlayService)) {
                     if (droidbarView == null) {
                         initDroidbar()
@@ -831,6 +852,19 @@ class IslandOverlayService : Service() {
                     }
                 } else {
                     removeDroidbar()
+                }
+            }
+        }
+
+        // Listen for zero-lag slider preview changes so WindowManager bounds update at 165fps during drag
+        serviceScope.launch {
+            IslandStateManager.livePreviewSettings.collectLatest { preview ->
+                if (preview != null) {
+                    currentSettings = preview
+                    updateWindowState(IslandStateManager.isExpanded.value)
+                    if (preview.hideStatusBar && statusBarView != null) {
+                        updateStatusBarLayoutParams(preview)
+                    }
                 }
             }
         }
@@ -935,7 +969,7 @@ class IslandOverlayService : Service() {
             val isRingerMode = currentSettings.showRingerMode && IslandStateManager.isRingerModeActive
             val isAirplaneMode = currentSettings.showAirplaneMode && IslandStateManager.isAirplaneModeActive
             val isFlashlight = currentSettings.showFlashlight && IslandStateManager.isFlashlightActive
-            val isAlarm = currentSettings.showAlarm && IslandStateManager.isAlarmActive
+            val isAlarm = (currentSettings.showAlarm || currentSettings.isGlass) && IslandStateManager.isAlarmActive
             val isTaskConfirmation = IslandStateManager.isTaskConfirmationActive
             val isOccupied = (currentSettings.showCalls && IslandStateManager.isCallActive) ||
                     (currentSettings.showMedia && IslandStateManager.isMediaActive) ||
@@ -952,7 +986,7 @@ class IslandOverlayService : Service() {
                     isAlarm ||
                     isTaskConfirmation
             val hasPersistentWidgets = currentSettings.showFps || currentSettings.showWeather || currentSettings.showNetworkSpeed || isAlarm
-            val shouldShowCompact = isOccupied || currentSettings.alwaysShowPill || hasPersistentWidgets
+            val shouldShowCompact = isOccupied || currentSettings.alwaysShowPill || hasPersistentWidgets || currentSettings.hideStatusBar
 
             // Use a unified compact window width across all compact states (single, dual, charging, unlock, ringer)
             // so WindowManager never resizes params.width mid-animation, completely eliminating horizontal teleporting!
@@ -965,16 +999,18 @@ class IslandOverlayService : Service() {
                 collapseJob?.cancel()
                 if (shouldShowCompact) {
                     val targetFlags = params.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
-                    val compactWindowWidth = if (currentSettings.isLeftCutout) {
+                    val compactWindowWidth = if (currentSettings.isLeftCutout || currentSettings.hideStatusBar) {
                         WindowManager.LayoutParams.MATCH_PARENT
                     } else {
                         ((totalWidthDp + 2f * kotlin.math.abs(currentSettings.horizontalOffsetDp)) * density).toInt()
                     }
+                    val pillH = currentSettings.topOffsetDp + currentSettings.heightDp + 12
+                    val barH = if (currentSettings.hideStatusBar) currentSettings.statusBarHeightDp + 10 else 0
                     applyLayoutParams(
                         view = view,
                         params = params,
                         width = compactWindowWidth,
-                        height = ((currentSettings.topOffsetDp + currentSettings.heightDp + 12) * density).toInt(),
+                        height = (maxOf(pillH, barH) * density).toInt(),
                         x = 0,
                         y = 0,
                         gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL,
@@ -1040,6 +1076,7 @@ class IslandOverlayService : Service() {
     }
 
     private fun removeOverlay() {
+        removeStatusBarOverlay()
         touchManager?.detach()
         touchManager = null
         composeView?.let { view ->
@@ -1050,6 +1087,142 @@ class IslandOverlayService : Service() {
             }
         }
         composeView = null
+    }
+
+    private fun initAudioRecordingDetector() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            val am = getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return
+            val cb = object : AudioManager.AudioRecordingCallback() {
+                override fun onRecordingConfigChanged(configs: MutableList<android.media.AudioRecordingConfiguration>?) {
+                    super.onRecordingConfigChanged(configs)
+                    if (!currentSettings.showVoiceMemo) return
+                    val hasExternalMic = !configs.isNullOrEmpty()
+                    if (hasExternalMic && !VoiceMemoManager.isRecordingActive()) {
+                        IslandStateManager.updateVoiceMemoState(
+                            com.droidbubble.app.model.VoiceMemoState(
+                                isRecording = true,
+                                durationSeconds = 1,
+                                amplitude = 0.65f
+                            )
+                        )
+                    } else if (!hasExternalMic && !VoiceMemoManager.isRecordingActive()) {
+                        IslandStateManager.updateVoiceMemoState(
+                            com.droidbubble.app.model.VoiceMemoState(isRecording = false)
+                        )
+                    }
+                }
+            }
+            audioRecordingCallback = cb
+            runCatching { am.registerAudioRecordingCallback(cb, Handler(Looper.getMainLooper())) }
+        }
+    }
+
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+    private fun initStatusBarOverlay() {
+        if (statusBarView != null) return
+        val aService = IslandAccessibilityService.instance
+        val wm = windowManager ?: if (aService != null) {
+            aService.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        } else {
+            getSystemService(Context.WINDOW_SERVICE) as? WindowManager
+        } ?: return
+        windowManager = wm
+
+        val density = resources.displayMetrics.density
+        val barHeightPx = (currentSettings.statusBarHeightDp.coerceIn(28, 56) * density).toInt()
+        val flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR
+
+        val windowType = if (aService != null) {
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            @Suppress("DEPRECATION")
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            barHeightPx,
+            windowType,
+            flags,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            x = 0
+            y = 0
+            windowAnimations = 0
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+        disableMoveAnimation(params)
+        statusBarParams = params
+
+        val v = ComposeView(aService ?: this).apply {
+            setViewTreeLifecycleOwner(lifecycleOwner)
+            setViewTreeSavedStateRegistryOwner(lifecycleOwner)
+            setViewTreeViewModelStoreOwner(lifecycleOwner)
+            fitsSystemWindows = false
+            setContent {
+                val repoSettings by settingsRepository.settingsFlow.collectAsState(initial = currentSettings)
+                val previewOverride by IslandStateManager.livePreviewSettings.collectAsState()
+                val liveSettings = previewOverride ?: repoSettings
+                val activeFont = remember(liveSettings.fontKey) {
+                    com.droidbubble.app.theme.getIslandFontFamily(liveSettings.fontKey)
+                }
+                MaterialExpressiveTheme(
+                    colorScheme = darkColorScheme(),
+                    typography = com.droidbubble.app.theme.createTypography(activeFont),
+                    motionScheme = MotionScheme.expressive()
+                ) {
+                    CustomStatusBarOverlay(settings = liveSettings)
+                }
+            }
+        }
+        statusBarView = v
+        try {
+            wm.addView(v, params)
+            // Keep Dynamic Island composeView above statusBarView
+            composeView?.let { islandView ->
+                layoutParams?.let { islandLp ->
+                    runCatching {
+                        wm.removeView(islandView)
+                        wm.addView(islandView, islandLp)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun updateStatusBarLayoutParams(settings: IslandSettings) {
+        val v = statusBarView ?: return
+        val params = statusBarParams ?: return
+        val wm = windowManager ?: return
+        val density = resources.displayMetrics.density
+        val newHeightPx = (settings.statusBarHeightDp.coerceIn(28, 56) * density).toInt()
+        if (params.height != newHeightPx) {
+            params.height = newHeightPx
+            disableMoveAnimation(params)
+            runCatching { wm.updateViewLayout(v, params) }
+        }
+    }
+
+    private fun removeStatusBarOverlay() {
+        statusBarView?.let { v ->
+            runCatching { windowManager?.removeView(v) }
+        }
+        statusBarView = null
+        statusBarParams = null
     }
 
         @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -1188,6 +1361,14 @@ class IslandOverlayService : Service() {
 
 override fun onDestroy() {
         removeDroidbar()
+        removeStatusBarOverlay()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            audioRecordingCallback?.let { cb ->
+                val am = getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+                runCatching { am?.unregisterAudioRecordingCallback(cb) }
+            }
+        }
+        audioRecordingCallback = null
         super.onDestroy()
         if (serviceInstance === this) {
             serviceInstance = null

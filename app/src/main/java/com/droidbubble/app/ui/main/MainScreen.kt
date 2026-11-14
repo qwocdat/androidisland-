@@ -577,6 +577,16 @@ fun MainScreen(
                     )
                 }
 
+                val activeSliderId by IslandStateManager.activeSliderId.collectAsState()
+                val isDraggingAnySlider = activeSliderId != null
+                LaunchedEffect(activeSliderId) {
+                    if (activeSliderId != null && IslandStateManager.livePreviewSettings.value == null) {
+                        IslandStateManager.beginSliderDrag(activeSliderId!!, settings)
+                    }
+                }
+                val livePreview by IslandStateManager.livePreviewSettings.collectAsState()
+                val effectiveUiSettings = livePreview ?: settings
+
                 val rootBackdrop = rememberLayerBackdrop()
                 Box(
                     modifier = modifier
@@ -590,11 +600,12 @@ fun MainScreen(
                             .layerBackdrop(rootBackdrop)
                             .statusBarsPadding()
                     ) {
-                        // Top Header Bar matching video UI
+                        // Top Header Bar matching video UI (hidden while dragging sliders for zero-lag focus mode)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 14.dp),
+                                .padding(horizontal = 20.dp, vertical = 14.dp)
+                                .graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f },
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -700,7 +711,7 @@ fun MainScreen(
                             ) { tabIndex ->
                                 when (tabIndex) {
                                     0 -> LiquidHomeTab(
-                                        settings = settings,
+                                        settings = effectiveUiSettings,
                                         strings = s,
                                         viewModel = viewModel,
                                         onUpdateSettings = { viewModel.updateSettings(it) },
@@ -710,19 +721,19 @@ fun MainScreen(
                                         onDeactivateLicense = onDeactivateLicense
                                     )
                                     1 -> LiquidActivitiesTab(
-                                        settings = settings,
+                                        settings = effectiveUiSettings,
                                         strings = s,
                                         onUpdateSettings = { viewModel.updateSettings(it) },
                                         onOpenMediaPlayerCustomization = { showMediaPlayerPage = true }
                                     )
                                     2 -> LiquidShortcutsTab(
-                                        settings = settings,
+                                        settings = effectiveUiSettings,
                                         strings = s,
                                         onUpdateSettings = { viewModel.updateSettings(it) },
                                         onOpenChainedTasks = { showTasksPage = true }
                                     )
                                     3 -> LiquidSettingsTab(
-                                        settings = settings,
+                                        settings = effectiveUiSettings,
                                         strings = s,
                                         onToggleEnabled = { enabled -> viewModel.toggleEnabled(context, enabled) },
                                         onUpdateSettings = { viewModel.updateSettings(it) },
@@ -739,7 +750,7 @@ fun MainScreen(
                                         }
                                     )
                                     4 -> LiquidAppearanceTab(
-                                        settings = settings,
+                                        settings = effectiveUiSettings,
                                         strings = s,
                                         onUpdateSettings = { viewModel.updateSettings(it) }
                                     )
@@ -748,12 +759,13 @@ fun MainScreen(
                         }
                     }
 
-                    // Floating Liquid Glass Navigation Bar at Bottom
+                    // Floating Liquid Glass Navigation Bar at Bottom (hidden while dragging sliders for zero-lag focus mode)
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomCenter)
                             .fillMaxWidth()
                             .navigationBarsPadding()
+                            .graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f }
                     ) {
                         LiquidGlassNavigationBar(
                             items = navTabs,

@@ -57,10 +57,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
+import com.droidbubble.app.island.IslandStateManager
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -115,11 +119,13 @@ fun LiquidAnimationSettingsScreen(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
+            val activeSliderId by IslandStateManager.activeSliderId.collectAsState()
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .graphicsLayer { alpha = if (activeSliderId != null) 0f else 1f },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
@@ -629,17 +635,20 @@ fun ExpandableLiquidCard(
     onToggle: () -> Unit,
     content: @Composable () -> Unit
 ) {
+    val activeSliderId by IslandStateManager.activeSliderId.collectAsState()
+    val isDraggingAnySlider = activeSliderId != null
     Surface(
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 1.dp,
+        color = if (isDraggingAnySlider) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerLow,
+        tonalElevation = if (isDraggingAnySlider) 0.dp else 1.dp,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable(onClick = onToggle)
+                    .graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f }
+                    .clickable(enabled = !isDraggingAnySlider, onClick = onToggle)
                     .padding(horizontal = 18.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -709,7 +718,20 @@ fun LiquidSliderRow(
     accentColor: Color = MaterialTheme.colorScheme.primary,
     onValueChange: (Float) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    val activeSliderId by IslandStateManager.activeSliderId.collectAsState()
+    var isDraggingThis by remember { mutableStateOf(false) }
+    var localValue by remember(value, isDraggingThis) {
+        mutableFloatStateOf(value.coerceIn(valueRange.start, valueRange.endInclusive))
+    }
+    val hideThisRow = activeSliderId != null && activeSliderId != label && !isDraggingThis
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer {
+                alpha = if (hideThisRow) 0f else 1f
+            }
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -731,8 +753,23 @@ fun LiquidSliderRow(
             }
         }
         Slider(
-            value = value.coerceIn(valueRange.start, valueRange.endInclusive),
-            onValueChange = onValueChange,
+            value = localValue.coerceIn(valueRange.start, valueRange.endInclusive),
+            onValueChange = { newVal ->
+                isDraggingThis = true
+                localValue = newVal
+                if (IslandStateManager.activeSliderId.value != label) {
+                    val currentPreview = IslandStateManager.livePreviewSettings.value
+                    if (currentPreview != null) {
+                        IslandStateManager.beginSliderDrag(label, currentPreview)
+                    }
+                }
+                onValueChange(newVal)
+            },
+            onValueChangeFinished = {
+                isDraggingThis = false
+                IslandStateManager.endSliderDrag()
+                onValueChange(localValue)
+            },
             valueRange = valueRange,
             modifier = Modifier.height(28.dp)
         )

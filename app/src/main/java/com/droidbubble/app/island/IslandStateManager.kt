@@ -2,6 +2,7 @@ package com.droidbubble.app.island
 
 import com.droidbubble.app.model.ActiveCallState
 import com.droidbubble.app.model.IslandPriority
+import com.droidbubble.app.model.IslandSettings
 import com.droidbubble.app.model.MediaInfo
 import com.droidbubble.app.model.NotificationInfo
 import com.droidbubble.app.model.ScreenRecordingState
@@ -649,6 +650,106 @@ object IslandStateManager {
         _isExpanded.value = false
         _expandedPriority.value = null
         _isKeyboardFocused.value = false
+    }
+
+    // --- Zero-Lag Live Slider Preview & Focus Drag Mode ---
+    private val _livePreviewSettings = MutableStateFlow<IslandSettings?>(null)
+    val livePreviewSettings: StateFlow<IslandSettings?> = _livePreviewSettings.asStateFlow()
+
+    private val _activeSliderId = MutableStateFlow<String?>(null)
+    val activeSliderId: StateFlow<String?> = _activeSliderId.asStateFlow()
+
+    fun beginSliderDrag(sliderId: String, preview: IslandSettings) {
+        _activeSliderId.value = sliderId
+        _livePreviewSettings.value = preview
+    }
+
+    fun endSliderDrag() {
+        _activeSliderId.value = null
+        _livePreviewSettings.value = null
+    }
+
+    // --- Real-Time Island Horizontal Bounds (in Screen Px) for Status Bar Item Auto-Occlusion ---
+    private val _islandHorizontalBoundsPx = MutableStateFlow(IntRange.EMPTY)
+    val islandHorizontalBoundsPx: StateFlow<IntRange> = _islandHorizontalBoundsPx.asStateFlow()
+
+    fun updateIslandHorizontalBounds(leftPx: Int, rightPx: Int) {
+        val next = if (rightPx > leftPx) IntRange(leftPx, rightPx) else IntRange.EMPTY
+        if (_islandHorizontalBoundsPx.value != next) {
+            _islandHorizontalBoundsPx.value = next
+        }
+    }
+
+    // --- Live External Clock App Stopwatch / Timer Synchronization ---
+    private var externalClockTickerJob: Job? = null
+    private var externalClockAnchorElapsedMs: Long = 0L
+    private var externalClockBaseSeconds: Long = 0L
+    private var externalClockCountdown: Boolean = false
+    private var externalClockLabel: String = "Stopwatch"
+    private var externalClockShowIntent: android.app.PendingIntent? = null
+
+    fun syncExternalClockActivity(
+        seconds: Long,
+        isCountdown: Boolean = false,
+        isRunning: Boolean = true,
+        label: String = if (isCountdown) "Timer" else "Stopwatch",
+        showIntent: android.app.PendingIntent? = null
+    ) {
+        externalClockBaseSeconds = seconds.coerceAtLeast(0L)
+        externalClockAnchorElapsedMs = android.os.SystemClock.elapsedRealtime()
+        externalClockCountdown = isCountdown
+        externalClockLabel = label
+        if (showIntent != null) externalClockShowIntent = showIntent
+
+        externalClockTickerJob?.cancel()
+        if (!isRunning) {
+            val mins = (externalClockBaseSeconds / 60L).toInt()
+            val secs = (externalClockBaseSeconds % 60L).toInt()
+            val formatted = String.format(java.util.Locale.US, "%02d:%02d", mins, secs)
+            _alarmInfo.value = AlarmInfo(
+                triggerTimeMs = System.currentTimeMillis(),
+                formattedTime = formatted,
+                timeRemainingFormatted = "$label · Tạm dừng",
+                showIntent = externalClockShowIntent
+            )
+            return
+        }
+
+        _isStopwatchRunning.value = !isCountdown
+        externalClockTickerJob = scope.launch {
+            while (true) {
+                val deltaSec = ((android.os.SystemClock.elapsedRealtime() - externalClockAnchorElapsedMs) / 1000L).coerceAtLeast(0L)
+                val currentSec = if (externalClockCountdown) {
+                    (externalClockBaseSeconds - deltaSec).coerceAtLeast(0L)
+                } else {
+                    externalClockBaseSeconds + deltaSec
+                }
+                val hours = (currentSec / 3600L).toInt()
+                val mins = ((currentSec % 3600L) / 60L).toInt()
+                val secs = (currentSec % 60L).toInt()
+                val formatted = if (hours > 0) {
+                    String.format(java.util.Locale.US, "%d:%02d:%02d", hours, mins, secs)
+                } else {
+                    String.format(java.util.Locale.US, "%02d:%02d", mins, secs)
+                }
+                _stopwatchSeconds.value = currentSec.toInt()
+                _alarmInfo.value = AlarmInfo(
+                    triggerTimeMs = System.currentTimeMillis(),
+                    formattedTime = formatted,
+                    timeRemainingFormatted = externalClockLabel,
+                    showIntent = externalClockShowIntent
+                )
+                if (externalClockCountdown && currentSec <= 0L) break
+                delay(1000L)
+            }
+        }
+    }
+
+    fun clearExternalClockActivity() {
+        externalClockTickerJob?.cancel()
+        externalClockTickerJob = null
+        _isStopwatchRunning.value = false
+        _alarmInfo.value = null
     }
 
     fun toggleExpand(priority: IslandPriority? = null) {

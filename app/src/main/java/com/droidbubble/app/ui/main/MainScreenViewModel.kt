@@ -68,6 +68,9 @@ class MainScreenViewModel(private val repository: SettingsRepository) : ViewMode
     }
 
     fun checkForUpdates(context: Context) {
+        _updateState.value = UpdateState.UpToDate
+        _showUpdateSheet.value = false
+        if (true) return
         viewModelScope.launch {
             _updateState.value = UpdateState.Checking
             when (val result = com.droidbubble.app.util.UpdateManager.checkGithubUpdates(context)) {
@@ -117,8 +120,24 @@ class MainScreenViewModel(private val repository: SettingsRepository) : ViewMode
     }
 
     fun updateSettings(update: (IslandSettings) -> IslandSettings) {
+        val activeSlider = com.droidbubble.app.island.IslandStateManager.activeSliderId.value
+        if (activeSlider != null) {
+            val base = com.droidbubble.app.island.IslandStateManager.livePreviewSettings.value ?: settings.value
+            com.droidbubble.app.island.IslandStateManager.beginSliderDrag(activeSlider, update(base))
+            return
+        }
         viewModelScope.launch {
             repository.updateSettings(update)
+        }
+    }
+
+    fun commitLivePreviewSettings() {
+        val preview = com.droidbubble.app.island.IslandStateManager.livePreviewSettings.value
+        com.droidbubble.app.island.IslandStateManager.endSliderDrag()
+        if (preview != null) {
+            viewModelScope.launch {
+                repository.updateSettings { preview }
+            }
         }
     }
 

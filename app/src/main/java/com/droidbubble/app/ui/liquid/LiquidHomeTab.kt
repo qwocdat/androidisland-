@@ -110,6 +110,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -431,61 +432,226 @@ fun LiquidHomeTab(
             }
         }
 
-        // Công tắc Ẩn thanh trạng thái (Hide Status Bar)
+        // Công tắc Ẩn thanh trạng thái ngoài màn hình & Tùy biến sâu Thanh trạng thái mới
         item {
+            val activeSliderId by IslandStateManager.activeSliderId.collectAsState()
+            val isDraggingAnySlider = activeSliderId != null
             Surface(
                 shape = RoundedCornerShape(24.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerLow,
-                tonalElevation = 1.dp,
+                color = if (isDraggingAnySlider) Color.Transparent else MaterialTheme.colorScheme.surfaceContainerLow,
+                tonalElevation = if (isDraggingAnySlider) 0.dp else 1.dp,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 18.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f },
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.CropFree,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CropFree,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Ẩn thanh trạng thái & Vẽ thanh mới",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.5.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Ẩn ngoài màn hình toàn hệ thống và tự ẩn biểu tượng khi Đảo động che lên",
+                                    fontSize = 11.5.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                        Column {
-                            Text(
-                                text = "Ẩn thanh trạng thái",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.5.sp,
-                                color = MaterialTheme.colorScheme.onSurface
+                        Switch(
+                            checked = settings.hideStatusBar,
+                            onCheckedChange = { hide ->
+                                onUpdateSettings { it.copy(hideStatusBar = hide) }
+                                NativeIslandSuppressor.applyStatusBarVisibility(context, hide)
+                            }
+                        )
+                    }
+
+                    AnimatedVisibility(visible = settings.hideStatusBar) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f },
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    text = "Nền thanh trạng thái ngoài màn hình",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.5.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    val bgModes = listOf("BLACK" to "Vẽ thanh mới", "HIDE_ALL" to "Ẩn trống", "TRANSPARENT" to "Trong suốt")
+                                    bgModes.forEach { (modeKey, modeLabel) ->
+                                        val selected = settings.statusBarBgMode == modeKey
+                                        Surface(
+                                            onClick = { onUpdateSettings { it.copy(statusBarBgMode = modeKey) } },
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainerLowest,
+                                            border = if (selected) BorderStroke(1.4.dp, MaterialTheme.colorScheme.primary) else null,
+                                            modifier = Modifier.weight(1f).height(36.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = modeLabel,
+                                                    fontSize = 12.sp,
+                                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Text(
+                                    text = "Kiểu biểu tượng Pin",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 13.5.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    val batModes = listOf("CAPSULE" to "Viên thuốc xanh", "IOS_OUTLINE" to "Viền iOS", "TEXT_ONLY" to "Chỉ số %")
+                                    batModes.forEach { (bKey, bLabel) ->
+                                        val selected = settings.statusBarBatteryStyle == bKey
+                                        Surface(
+                                            onClick = { onUpdateSettings { it.copy(statusBarBatteryStyle = bKey) } },
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.16f) else MaterialTheme.colorScheme.surfaceContainerLowest,
+                                            border = if (selected) BorderStroke(1.4.dp, MaterialTheme.colorScheme.primary) else null,
+                                            modifier = Modifier.weight(1f).height(36.dp)
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Text(
+                                                    text = bLabel,
+                                                    fontSize = 11.5.sp,
+                                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                                                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Hiện Đồng hồ (24h)", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Switch(
+                                        checked = settings.statusBarShowClock,
+                                        onCheckedChange = { v -> onUpdateSettings { it.copy(statusBarShowClock = v) } }
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Hiện Chuông / Rung bên cạnh giờ", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Switch(
+                                        checked = settings.statusBarShowRinger,
+                                        onCheckedChange = { v -> onUpdateSettings { it.copy(statusBarShowRinger = v) } }
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Hiện Sóng di động kép (SIM 1 & 2)", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Switch(
+                                        checked = settings.statusBarShowSignal,
+                                        onCheckedChange = { v -> onUpdateSettings { it.copy(statusBarShowSignal = v) } }
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Hiện Wi-Fi / 5G & Pin", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                    Switch(
+                                        checked = settings.statusBarShowWifi && settings.statusBarShowBattery,
+                                        onCheckedChange = { v -> onUpdateSettings { it.copy(statusBarShowWifi = v, statusBarShowBattery = v) } }
+                                    )
+                                }
+                            }
+
+                            LiquidSliderRow(
+                                label = "Cỡ chữ & Biểu tượng thanh trạng thái",
+                                value = settings.statusBarScale,
+                                valueRange = 0.80f..1.25f,
+                                valueText = String.format(java.util.Locale.US, "%.2fx", settings.statusBarScale),
+                                showValue = settings.showSliderValues,
+                                onValueChange = { v -> onUpdateSettings { it.copy(statusBarScale = v) } }
                             )
-                            Text(
-                                text = "Ẩn thanh trạng thái hệ thống để hiển thị Đảo động iOS sạch sẽ",
-                                fontSize = 11.5.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            LiquidSliderRow(
+                                label = "Căn lề ngang thanh trạng thái",
+                                value = settings.statusBarHorizontalPaddingDp.toFloat(),
+                                valueRange = 8f..36f,
+                                valueText = "${settings.statusBarHorizontalPaddingDp} dp",
+                                showValue = settings.showSliderValues,
+                                onValueChange = { v -> onUpdateSettings { it.copy(statusBarHorizontalPaddingDp = v.roundToInt()) } }
+                            )
+                            LiquidSliderRow(
+                                label = "Chiều cao thanh trạng thái",
+                                value = settings.statusBarHeightDp.toFloat(),
+                                valueRange = 28f..54f,
+                                valueText = "${settings.statusBarHeightDp} dp",
+                                showValue = settings.showSliderValues,
+                                onValueChange = { v -> onUpdateSettings { it.copy(statusBarHeightDp = v.roundToInt()) } }
+                            )
+                            LiquidSliderRow(
+                                label = "Khoảng cách tự ẩn vật thể khi Đảo chạm tới",
+                                value = settings.statusBarOcclusionMarginDp.toFloat(),
+                                valueRange = 0f..24f,
+                                valueText = "${settings.statusBarOcclusionMarginDp} dp",
+                                showValue = settings.showSliderValues,
+                                onValueChange = { v -> onUpdateSettings { it.copy(statusBarOcclusionMarginDp = v.roundToInt()) } }
                             )
                         }
                     }
-                    Switch(
-                        checked = settings.hideStatusBar,
-                        onCheckedChange = { hide ->
-                            onUpdateSettings { it.copy(hideStatusBar = hide) }
-                            NativeIslandSuppressor.applyStatusBarVisibility(context, hide)
-                        }
-                    )
                 }
             }
         }
@@ -939,20 +1105,31 @@ fun LiquidActivitiesTab(
     val context = LocalContext.current
     val isVi = settings.appLanguage.lowercase() == "vi"
 
-    val activities = remember(strings) {
-        listOf(
-            ActivityItemSpec("PLAYER", strings.actPlayer, Icons.Default.MusicNote, Color(0xFF0A84FF)),
-            ActivityItemSpec("CALL", strings.actCall, Icons.Default.Call, Color(0xFF30D158)),
-            ActivityItemSpec("VOICE_MEMO", strings.actVoiceMemo, Icons.Default.Mic, Color(0xFFFF453A)),
-            ActivityItemSpec("SCREEN_RECORDER", strings.actScreenRecorder, Icons.Default.FiberManualRecord, Color(0xFFFF453A)),
-            ActivityItemSpec("NOTIFICATIONS", strings.actNotifications, Icons.Default.Notifications, Color(0xFFBF5AF2)),
-            ActivityItemSpec("FLASHLIGHT", strings.actFlashlight, Icons.Default.FlashlightOn, Color(0xFFFF9F0A)),
-            ActivityItemSpec("CHARGING", strings.actCharging, Icons.Default.Bolt, Color(0xFF30D158)),
-            ActivityItemSpec("ALARM", strings.actAlarm, Icons.Default.Alarm, Color(0xFFFF9F0A)),
-            ActivityItemSpec("WEATHER", strings.actWeather, Icons.Default.WbSunny, Color(0xFF64D2FF)),
-            ActivityItemSpec("FPS", strings.actFps, Icons.Default.Speed, Color(0xFF30D158)),
-            ActivityItemSpec("NETWORK", strings.actNetwork, Icons.Default.Wifi, Color(0xFF64D2FF))
-        )
+    val activities = remember(strings, settings.isGlass) {
+        if (settings.isGlass) {
+            listOf(
+                ActivityItemSpec("PLAYER", strings.actPlayer, Icons.Default.MusicNote, Color(0xFF0A84FF)),
+                ActivityItemSpec("ALARM", strings.actAlarm, Icons.Default.Alarm, Color(0xFFFF9F0A)),
+                ActivityItemSpec("CALL", strings.actCall, Icons.Default.Call, Color(0xFF30D158)),
+                ActivityItemSpec("VOICE_MEMO", strings.actVoiceMemo, Icons.Default.Mic, Color(0xFFFF453A)),
+                ActivityItemSpec("SCREEN_RECORDER", strings.actScreenRecorder, Icons.Default.FiberManualRecord, Color(0xFFFF453A)),
+                ActivityItemSpec("CHARGING", strings.actCharging, Icons.Default.Bolt, Color(0xFF30D158)),
+                ActivityItemSpec("FLASHLIGHT", strings.actFlashlight, Icons.Default.FlashlightOn, Color(0xFFFF9F0A))
+            )
+        } else {
+            listOf(
+                ActivityItemSpec("PLAYER", strings.actPlayer, Icons.Default.MusicNote, Color(0xFF0A84FF)),
+                ActivityItemSpec("CALL", strings.actCall, Icons.Default.Call, Color(0xFF30D158)),
+                ActivityItemSpec("VOICE_MEMO", strings.actVoiceMemo, Icons.Default.Mic, Color(0xFFFF453A)),
+                ActivityItemSpec("SCREEN_RECORDER", strings.actScreenRecorder, Icons.Default.FiberManualRecord, Color(0xFFFF453A)),
+                ActivityItemSpec("FLASHLIGHT", strings.actFlashlight, Icons.Default.FlashlightOn, Color(0xFFFF9F0A)),
+                ActivityItemSpec("CHARGING", strings.actCharging, Icons.Default.Bolt, Color(0xFF30D158)),
+                ActivityItemSpec("ALARM", strings.actAlarm, Icons.Default.Alarm, Color(0xFFFF9F0A)),
+                ActivityItemSpec("WEATHER", strings.actWeather, Icons.Default.WbSunny, Color(0xFF64D2FF)),
+                ActivityItemSpec("FPS", strings.actFps, Icons.Default.Speed, Color(0xFF30D158)),
+                ActivityItemSpec("NETWORK", strings.actNetwork, Icons.Default.Wifi, Color(0xFF64D2FF))
+            )
+        }
     }
 
     var selectedActivityKey by remember { mutableStateOf("PLAYER") }
@@ -1000,13 +1177,15 @@ fun LiquidActivitiesTab(
     }
 
     val voiceMemoState by IslandStateManager.voiceMemoState.collectAsState()
+    val activeSliderId by IslandStateManager.activeSliderId.collectAsState()
+    val isDraggingAnySlider = activeSliderId != null
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 110.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 1. Dark Live Preview Container (matching 00:05 - 00:20)
+        // 1. Dark Live Preview Container
         item {
             Surface(
                 shape = RoundedCornerShape(26.dp),
@@ -1014,6 +1193,7 @@ fun LiquidActivitiesTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(196.dp)
+                    .graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f }
             ) {
                 Column(
                     modifier = Modifier
@@ -1073,7 +1253,7 @@ fun LiquidActivitiesTab(
             }
         }
 
-        // 2. Compact / Expanded Segmented Toggle Bar (matching 00:06 - 00:19)
+        // 2. Compact / Expanded Segmented Toggle Bar
         item {
             Surface(
                 shape = RoundedCornerShape(18.dp),
@@ -1081,6 +1261,7 @@ fun LiquidActivitiesTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp)
+                    .graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f }
             ) {
                 Row(
                     modifier = Modifier
@@ -1146,11 +1327,12 @@ fun LiquidActivitiesTab(
             }
         }
 
-        // 3. Horizontal Row of Activity Selector Cards (Player, Call, Voice Memo, Screen Recorder, etc.)
+        // 3. Horizontal Row of Activity Selector Cards
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f }
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
@@ -2330,14 +2512,17 @@ private fun LiquidIosDynamicMotionSettingsSection(
     batteryPct: Int,
     onUpdateSettings: ((IslandSettings) -> IslandSettings) -> Unit
 ) {
-    val isStopwatchRunning by IslandStateManager.isStopwatchRunning.collectAsState()
     var previewAuthTick by remember { mutableIntStateOf(0) }
+    val activeSliderId by IslandStateManager.activeSliderId.collectAsState()
+    val isDraggingAnySlider = activeSliderId != null
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f },
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 1. LOCK SCREEN AUTH (01:19 - 01:25 in 96942.mp4: Face ID | Fingerprint + Black Pill Preview)
+        // 1. LOCK SCREEN AUTH (Face ID | Fingerprint + Black Pill Preview)
         Text(
             text = "— LOCK SCREEN AUTH",
             fontSize = 11.5.sp,
@@ -2365,7 +2550,6 @@ private fun LiquidIosDynamicMotionSettingsSection(
                     fontSize = 17.sp
                 )
 
-                // Segmented Selector: Face ID | Fingerprint (matching 01:19 - 01:25)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2420,7 +2604,6 @@ private fun LiquidIosDynamicMotionSettingsSection(
                     }
                 }
 
-                // Live Interactive Black Dynamic Island Auth Pill (01:19 - 01:25)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2451,7 +2634,7 @@ private fun LiquidIosDynamicMotionSettingsSection(
             }
         }
 
-        // 2. MEDIA STYLE — Album Gradient (01:19 - 01:25 in 96942.mp4)
+        // 2. MEDIA STYLE — Album Gradient
         Text(
             text = "— MEDIA STYLE",
             fontSize = 11.5.sp,
@@ -2481,7 +2664,7 @@ private fun LiquidIosDynamicMotionSettingsSection(
                         fontSize = 16.5.sp
                     )
                     Text(
-                        text = "Đổ màu nền theo ảnh bìa bài nhạc khi mở rộng (01:07 - 01:17)",
+                        text = "Đổ màu nền theo ảnh bìa bài nhạc khi mở rộng thẻ phát nhạc",
                         color = Color(0xFF94A3B8),
                         fontSize = 12.sp
                     )
@@ -2495,9 +2678,9 @@ private fun LiquidIosDynamicMotionSettingsSection(
             }
         }
 
-        // 3. DYNAMIC MOTION 1.2 MODULES (Stopwatch/Timer 00:22 & 00:28, Navigation 00:39 & 00:44, Ringer 00:50, Charging 01:03)
+        // 3. REAL-TIME SYSTEM DETECTION MODULES (No video timestamps or fake demo triggers)
         Text(
-            text = "— CHỨC NĂNG DYNAMIC ISLAND iOS (DYNAMIC MOTION 1.2)",
+            text = "— ĐỒNG BỘ HOẠT ĐỘNG HỆ THỐNG THỜI GIAN THỰC",
             fontSize = 11.5.sp,
             fontWeight = FontWeight.ExtraBold,
             letterSpacing = 1.sp,
@@ -2516,154 +2699,59 @@ private fun LiquidIosDynamicMotionSettingsSection(
                     .padding(18.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                // Module A: iOS Stopwatch / Timer (00:22 & 00:28)
-                Text(
-                    text = "Bấm giờ & Hẹn giờ iOS (00:22 & 00:28 — Lap / X)",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            onUpdateSettings { it.copy(showAlarm = true) }
-                            IslandStateManager.startStopwatch()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFFF9F0A),
-                            contentColor = Color.Black
-                        ),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(if (isStopwatchRunning) "Đặt lại (00:01)" else "Bắt đầu Bấm giờ", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            if (!isStopwatchRunning) IslandStateManager.startStopwatch()
-                            IslandStateManager.expand(IslandPriority.ALARM)
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Mở thẻ (Lap / X)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                    if (isStopwatchRunning) {
-                        OutlinedButton(
-                            onClick = { IslandStateManager.stopStopwatch() },
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Tắt", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFFF453A))
-                        }
-                    }
-                }
-
-                // Module B: iOS Navigation (00:39 & 00:44)
-                Text(
-                    text = "Chỉ đường iOS (00:39 & 00:44 — 3.6 km / End Trip)",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            onUpdateSettings { it.copy(showLiveProgress = true) }
-                            IslandStateManager.triggerDemoNavigation()
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF30D158),
-                            contentColor = Color.Black
-                        ),
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Bật Chỉ đường", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            IslandStateManager.triggerDemoNavigation()
-                            IslandStateManager.expand(IslandPriority.PROGRESS)
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Mở thẻ End Trip", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                    OutlinedButton(
-                        onClick = {
-                            IslandStateManager.dismissProgress()
-                            IslandStateManager.collapse()
-                        },
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Text("Kết thúc", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFFF453A))
-                    }
-                }
-
-                // Module C: iOS Ringer / Vibrate / Silent (00:50 - 01:00) & Charging (01:03)
-                Text(
-                    text = "Chuông / Rung / Im lặng (00:50) & Sạc pin (01:03)",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { IslandStateManager.triggerRingerModeEvent(IslandStateManager.RingerMode.RING) },
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Ring", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                    Button(
-                        onClick = { IslandStateManager.triggerRingerModeEvent(IslandStateManager.RingerMode.VIBRATE) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9500), contentColor = Color.White),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Vibrate", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                    Button(
-                        onClick = { IslandStateManager.triggerRingerModeEvent(IslandStateManager.RingerMode.SILENT) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF3B30), contentColor = Color.White),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Silent", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                    Button(
-                        onClick = { IslandStateManager.triggerChargingEvent(batteryPct, 67.0) },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF30D158), contentColor = Color.Black),
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
-                        modifier = Modifier.weight(1.2f)
-                    ) {
-                        Text("Sạc $batteryPct%", fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    }
-                }
-
-                // Module D: Motion Blur & Split Dual Activity Toggles
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Làm mờ chuyển động (Motion Blur 00:05 & 00:12)", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Text("Hiệu ứng làm mờ khi thẻ Đảo động phóng to / thu nhỏ", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Tự động nhận diện Bấm giờ & Hẹn giờ", fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
+                        Text("Tự động hiển thị bộ đếm trực tiếp khi bật Bấm giờ hoặc Hẹn giờ trong ứng dụng Đồng hồ", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(
+                        checked = settings.showAlarm,
+                        onCheckedChange = { v -> onUpdateSettings { it.copy(showAlarm = v) } }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Tự động nhận diện Điều hướng & Tiến trình", fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
+                        Text("Hiển thị khoảng cách chỉ đường và tiến trình tải xuống trực tiếp trên Đảo động", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(
+                        checked = settings.showLiveProgress,
+                        onCheckedChange = { v -> onUpdateSettings { it.copy(showLiveProgress = v) } }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Tự động nhận diện Chuông / Rung / Im lặng & Sạc pin", fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
+                        Text("Phản hồi tức thì khi gạt phím âm lượng chế độ chuông hoặc cắm sạc nhanh", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(
+                        checked = settings.showRingerMode && settings.showCharging,
+                        onCheckedChange = { v -> onUpdateSettings { it.copy(showRingerMode = v, showCharging = v) } }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Làm mờ chuyển động quang học", fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
+                        Text("Hiệu ứng làm mờ theo vận tốc khi Đảo động phóng to lên thanh trạng thái hoặc thu gọn", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(
                         checked = settings.motionBlur,
@@ -2677,8 +2765,8 @@ private fun LiquidIosDynamicMotionSettingsSection(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Tách đôi viên thuốc (Split Pill 00:09 & 00:23)", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Text("Tách bong bóng tròn bên phải với hiệu ứng giọt nước metaball", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Tách đôi viên thuốc đa nhiệm", fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
+                        Text("Tách bong bóng tròn bên phải với lực hút chất lỏng khi có 2 hoạt động chạy song song", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Switch(
                         checked = settings.showDualActivityInCompact,

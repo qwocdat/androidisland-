@@ -126,7 +126,7 @@ class SettingsRepository(private val context: Context) {
             showCalls = preferences[PreferencesKeys.SHOW_CALLS] ?: true,
             showVoiceMemo = preferences[PreferencesKeys.SHOW_VOICE_MEMO] ?: true,
             showMedia = preferences[PreferencesKeys.SHOW_MEDIA] ?: true,
-            showNotifications = preferences[PreferencesKeys.SHOW_NOTIFICATIONS] ?: true,
+            showNotifications = preferences[PreferencesKeys.SHOW_NOTIFICATIONS] ?: false,
             showLiveProgress = preferences[PreferencesKeys.SHOW_LIVE_PROGRESS] ?: true,
             showScreenRecording = preferences[PreferencesKeys.SHOW_SCREEN_RECORDING] ?: true,
             showFlashlight = preferences[PreferencesKeys.SHOW_FLASHLIGHT] ?: true,
@@ -282,11 +282,25 @@ class SettingsRepository(private val context: Context) {
                 showFps = j.optBoolean("v2ShowFps", false),
                 showWeather = j.optBoolean("v2ShowWeather", false),
                 showNetworkSpeed = j.optBoolean("v2ShowNetworkSpeed", false),
-                showAlarm = j.optBoolean("v2ShowAlarm", false),
+                showAlarm = j.optBoolean("v3ShowAlarm", true),
                 hideNativeOsIsland = j.optBoolean("hideNativeOsIsland", true),
                 nativeIslandMaskBoost = j.optBoolean("nativeIslandMaskBoost", true),
                 hideStatusBar = j.optBoolean("hideStatusBar", false),
-                lockScreenAuthMode = j.optString("lockScreenAuthMode", "FACE_ID")
+                lockScreenAuthMode = j.optString("lockScreenAuthMode", "FACE_ID"),
+                statusBarBgMode = j.optString("statusBarBgMode", "BLACK"),
+                statusBarBatteryStyle = j.optString("statusBarBatteryStyle", "CAPSULE"),
+                statusBarClock24h = j.optBoolean("statusBarClock24h", true),
+                statusBarCustomLabel = j.optString("statusBarCustomLabel", ""),
+                statusBarShowClock = j.optBoolean("statusBarShowClock", true),
+                statusBarShowRinger = j.optBoolean("statusBarShowRinger", true),
+                statusBarShowSignal = j.optBoolean("statusBarShowSignal", true),
+                statusBarShowWifi = j.optBoolean("statusBarShowWifi", true),
+                statusBarShowBattery = j.optBoolean("statusBarShowBattery", true),
+                statusBarScale = j.optDouble("statusBarScale", 1.0).toFloat(),
+                statusBarHorizontalPaddingDp = j.optInt("statusBarHorizontalPaddingDp", 18),
+                statusBarTopOffsetDp = j.optInt("statusBarTopOffsetDp", 0),
+                statusBarHeightDp = j.optInt("statusBarHeightDp", 38),
+                statusBarOcclusionMarginDp = j.optInt("statusBarOcclusionMarginDp", 6)
             )
         }.getOrDefault(base)
     }
@@ -374,11 +388,25 @@ class SettingsRepository(private val context: Context) {
             put("v2ShowFps", s.showFps)
             put("v2ShowWeather", s.showWeather)
             put("v2ShowNetworkSpeed", s.showNetworkSpeed)
-            put("v2ShowAlarm", s.showAlarm)
+            put("v3ShowAlarm", s.showAlarm)
             put("hideNativeOsIsland", s.hideNativeOsIsland)
             put("nativeIslandMaskBoost", s.nativeIslandMaskBoost)
             put("hideStatusBar", s.hideStatusBar)
             put("lockScreenAuthMode", s.lockScreenAuthMode)
+            put("statusBarBgMode", s.statusBarBgMode)
+            put("statusBarBatteryStyle", s.statusBarBatteryStyle)
+            put("statusBarClock24h", s.statusBarClock24h)
+            put("statusBarCustomLabel", s.statusBarCustomLabel)
+            put("statusBarShowClock", s.statusBarShowClock)
+            put("statusBarShowRinger", s.statusBarShowRinger)
+            put("statusBarShowSignal", s.statusBarShowSignal)
+            put("statusBarShowWifi", s.statusBarShowWifi)
+            put("statusBarShowBattery", s.statusBarShowBattery)
+            put("statusBarScale", s.statusBarScale.toDouble())
+            put("statusBarHorizontalPaddingDp", s.statusBarHorizontalPaddingDp)
+            put("statusBarTopOffsetDp", s.statusBarTopOffsetDp)
+            put("statusBarHeightDp", s.statusBarHeightDp)
+            put("statusBarOcclusionMarginDp", s.statusBarOcclusionMarginDp)
         }.toString()
     }
 

@@ -184,7 +184,7 @@ fun IosLiquidGlassNavigationBar(
     val accentColor = accentColorOverride ?: MaterialTheme.colorScheme.primary
     val tabContentColor = MaterialTheme.colorScheme.onSurface
     val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
-    val containerColor = if (isBlurActive) surfaceContainer.copy(alpha = if (isDark) 0.42f else 0.50f) else surfaceContainer
+    val containerColor = if (isBlurActive) surfaceContainer.copy(alpha = if (isDark) 0.48f else 0.82f) else surfaceContainer
 
     val tabsBackdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
@@ -285,21 +285,20 @@ fun IosLiquidGlassNavigationBar(
         InteractiveHighlight(
             animationScope = animationScope,
             position = { layerSize, touchOffset ->
-                if (touchOffset != Offset.Zero) {
-                    Offset(
-                        x = touchOffset.x.coerceIn(0f, layerSize.width),
-                        y = touchOffset.y.coerceIn(0f, layerSize.height),
-                    )
+                val pillCenterX = if (isLtr) {
+                    (dampedDrag.value + 0.5f) * tabWidthPx + panelOffset
                 } else {
-                    Offset(
-                        x = if (isLtr) {
-                            (dampedDrag.value + 0.5f) * tabWidthPx + panelOffset
-                        } else {
-                            layerSize.width - (dampedDrag.value + 0.5f) * tabWidthPx + panelOffset
-                        },
-                        y = layerSize.height / 2f,
-                    )
+                    layerSize.width - (dampedDrag.value + 0.5f) * tabWidthPx + panelOffset
                 }
+                val targetX = if (touchOffset != Offset.Zero) {
+                    lerp(pillCenterX, touchOffset.x.coerceIn(0f, layerSize.width), 0.35f)
+                } else {
+                    pillCenterX
+                }
+                Offset(
+                    x = targetX.coerceIn(0f, layerSize.width),
+                    y = layerSize.height * 0.5f,
+                )
             },
         )
     }
@@ -446,16 +445,16 @@ fun IosLiquidGlassNavigationBar(
                                     .background(containerColor, pillShape)
                             },
                         )
+                        .then(dampedDrag.modifier)
+                        .height(64.dp)
+                        .padding(4.dp)
                         .then(
                             if (isBlurActive) {
                                 interactiveHighlight.modifier.then(interactiveHighlight.gestureModifier)
                             } else {
                                 Modifier
                             },
-                        )
-                        .then(dampedDrag.modifier)
-                        .height(64.dp)
-                        .padding(4.dp),
+                        ),
                     verticalAlignment = Alignment.CenterVertically,
                     content = tabsContent,
                 )
@@ -463,7 +462,7 @@ fun IosLiquidGlassNavigationBar(
 
             if (isBlurActive && backdrop != null) {
                 CompositionLocalProvider(
-                    LocalIosTabScale provides { 1f },
+                    LocalIosTabScale provides { lerp(1f, 1.14f, dampedDrag.pressProgress) },
                     LocalContentColor provides accentColor,
                 ) {
                     Row(
@@ -536,11 +535,26 @@ fun IosLiquidGlassNavigationBar(
                                 },
                                 onDrawSurface = {
                                     val progress = dampedDrag.pressProgress
+                                    // Read dampedDrag.value and panelOffset here so DrawBackdropNode re-records on every frame of the drag!
+                                    val dragTrack = dampedDrag.value + panelOffset
+                                    if (dragTrack.isNaN()) return@drawBackdrop
                                     drawRect(
-                                        color = if (!isDark) Color.Black.copy(alpha = 0.1f) else Color.White.copy(alpha = 0.1f),
+                                        color = if (!isDark) Color.Black.copy(alpha = 0.08f) else Color.White.copy(alpha = 0.12f),
                                         alpha = 1f - progress,
                                     )
-                                    drawRect(Color.Black.copy(alpha = 0.03f * progress))
+                                    if (progress > 0.005f) {
+                                        // Pure white translucent inner glow UNDERNEATH the sliding glass lens (both Light & Dark modes, regardless of accentColor)
+                                        val glowAlpha = (if (isDark) 0.22f else 0.32f) * progress
+                                        drawRect(
+                                            brush = androidx.compose.ui.graphics.Brush.radialGradient(
+                                                0.00f to Color.White.copy(alpha = glowAlpha),
+                                                0.55f to Color.White.copy(alpha = glowAlpha * 0.45f),
+                                                1.00f to Color.White.copy(alpha = glowAlpha * 0.10f),
+                                                center = Offset(size.width * 0.5f, size.height * 0.5f),
+                                                radius = maxOf(size.width, size.height) * 0.72f,
+                                            )
+                                        )
+                                    }
                                 },
                             )
                             .innerShadow(shape = pillShape) {

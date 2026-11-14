@@ -4,12 +4,11 @@ val DEFAULT_FEATURE_PRIORITIES = listOf(
     "CALL",
     "VOICE_MEMO",
     "MEDIA",
+    "ALARM",
     "PROGRESS",
     "RECORDING",
-    "NOTIFICATION",
     "FLASHLIGHT",
     "PERSISTENT_CHARGING",
-    "ALARM",
     "FPS",
     "WEATHER",
     "NETWORK_SPEED"
@@ -46,7 +45,7 @@ data class IslandSettings(
     val showCalls: Boolean = true,
     val showVoiceMemo: Boolean = true,
     val showMedia: Boolean = true,
-    val showNotifications: Boolean = true,
+    val showNotifications: Boolean = false,
     val showLiveProgress: Boolean = true,
     val showScreenRecording: Boolean = true,
     val showFlashlight: Boolean = true,
@@ -65,7 +64,7 @@ data class IslandSettings(
     val showFps: Boolean = false,
     val showWeather: Boolean = false,
     val showNetworkSpeed: Boolean = false,
-    val showAlarm: Boolean = false,
+    val showAlarm: Boolean = true,
     val autoDismissNotifications: Boolean = false,
     val notificationAutoDismissSeconds: Int = 3,
     val persistentCharging: Boolean = false,
@@ -74,8 +73,8 @@ data class IslandSettings(
     val fontKey: String = "DEFAULT",
     val swapActivitiesOnSwipe: Boolean = true,
     val blurredAlbumArtBackground: Boolean = false,
-    val designLanguage: DesignLanguage = DesignLanguage.MATERIAL3,
-    val glassEnabled: Boolean = false,
+    val designLanguage: DesignLanguage = DesignLanguage.GLASS,
+    val glassEnabled: Boolean = true,
     val glassOpacity: Int = 25,
     val mediaWaveAnimation: Boolean = true,
     val spinningAlbumArt: Boolean = false,
@@ -185,7 +184,22 @@ data class IslandSettings(
     val hideNativeOsIsland: Boolean = true,
     val nativeIslandMaskBoost: Boolean = true,
     val hideStatusBar: Boolean = false,
-    val lockScreenAuthMode: String = "FACE_ID"
+    val lockScreenAuthMode: String = "FACE_ID",
+    // Custom Status Bar Overlay (Ngoài màn hình toàn hệ thống + Tự động ẩn vật thể bị Island đè lên)
+    val statusBarBgMode: String = "BLACK", // BLACK, GLASS, TRANSPARENT
+    val statusBarBatteryStyle: String = "CAPSULE", // CAPSULE, IOS_OUTLINE, TEXT_ONLY
+    val statusBarClock24h: Boolean = true,
+    val statusBarCustomLabel: String = "",
+    val statusBarShowClock: Boolean = true,
+    val statusBarShowRinger: Boolean = true,
+    val statusBarShowSignal: Boolean = true,
+    val statusBarShowWifi: Boolean = true,
+    val statusBarShowBattery: Boolean = true,
+    val statusBarScale: Float = 1.0f,
+    val statusBarHorizontalPaddingDp: Int = 18,
+    val statusBarTopOffsetDp: Int = 0,
+    val statusBarHeightDp: Int = 38,
+    val statusBarOcclusionMarginDp: Int = 6
 ) {
     val isGlass: Boolean get() = designLanguage == DesignLanguage.GLASS || glassEnabled
     val isMaterial3: Boolean get() = designLanguage == DesignLanguage.MATERIAL3

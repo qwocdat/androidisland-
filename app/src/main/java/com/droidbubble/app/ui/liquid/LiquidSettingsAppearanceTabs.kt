@@ -78,10 +78,12 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -127,6 +129,8 @@ fun LiquidSettingsTab(
 ) {
     val context = LocalContext.current
     val isVi = settings.appLanguage.lowercase() == "vi"
+    val activeSliderId by IslandStateManager.activeSliderId.collectAsState()
+    val isDraggingAnySlider = activeSliderId != null
 
     var expandLiquidMaterial by remember { mutableStateOf(false) }
     var expandGeometry by remember { mutableStateOf(false) }
@@ -159,14 +163,16 @@ fun LiquidSettingsTab(
         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 110.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // 1. Live Preview Header & Card (matching 00:37 - 00:43)
+        // 1. Live Preview Header & Card
         item {
             Text(
                 text = strings.livePreview,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp,
                 color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                modifier = Modifier
+                    .padding(start = 4.dp, bottom = 4.dp)
+                    .graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f }
             )
             Surface(
                 shape = RoundedCornerShape(26.dp),
@@ -175,6 +181,7 @@ fun LiquidSettingsTab(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(124.dp)
+                    .graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f }
             ) {
                 Box(
                     modifier = Modifier
@@ -226,7 +233,9 @@ fun LiquidSettingsTab(
                 shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
                 tonalElevation = 1.dp,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f }
             ) {
                 Column(
                     modifier = Modifier
@@ -346,25 +355,41 @@ fun LiquidSettingsTab(
             }
         }
 
-        // 3. Liquid Material Accordion (Refraction & Surface Tension)
+        // 3. Liquidisland iOS Engine Settings (replaces fake glass material when Liquidisland mode is active)
         item {
             ExpandableLiquidCard(
-                title = strings.liquidMaterial,
-                subtitle = "Refraction: ${String.format(Locale.US, "%.2f", settings.liquidRefraction)} · Tension: ${String.format(Locale.US, "%.2f", settings.liquidSurfaceTension)}",
+                title = if (settings.isGlass) "Cấu hình Dynamic Island iOS (Liquidisland)" else strings.liquidMaterial,
+                subtitle = if (settings.isGlass) {
+                    "Auth: ${settings.lockScreenAuthMode} · Album Gradient: ${if (settings.blurredAlbumArtBackground) "Bật" else "Tắt"}"
+                } else {
+                    "Tension: ${String.format(Locale.US, "%.2f", settings.liquidSurfaceTension)}"
+                },
                 icon = Icons.Default.Settings,
                 expanded = expandLiquidMaterial,
                 onToggle = { expandLiquidMaterial = !expandLiquidMaterial }
             ) {
+                if (settings.isGlass) {
+                    LiquidToggleRow(
+                        title = "Mở khóa Face ID (Tắt = Vân tay Fingerprint)",
+                        checked = settings.lockScreenAuthMode != "FINGERPRINT",
+                        onCheckedChange = { isFace ->
+                            onUpdateSettings { it.copy(lockScreenAuthMode = if (isFace) "FACE_ID" else "FINGERPRINT") }
+                            IslandStateManager.triggerUnlockEvent()
+                        }
+                    )
+                    LiquidToggleRow(
+                        title = "Album Gradient (Đổ màu nền theo ảnh bìa nhạc)",
+                        checked = settings.blurredAlbumArtBackground,
+                        onCheckedChange = { v -> onUpdateSettings { it.copy(blurredAlbumArtBackground = v) } }
+                    )
+                    LiquidToggleRow(
+                        title = "Tách đôi viên thuốc đa nhiệm (Split Pill)",
+                        checked = settings.showDualActivityInCompact,
+                        onCheckedChange = { v -> onUpdateSettings { it.copy(showDualActivityInCompact = v) } }
+                    )
+                }
                 LiquidSliderRow(
-                    label = strings.refraction,
-                    value = settings.liquidRefraction,
-                    valueRange = 0.50f..2.00f,
-                    valueText = String.format(Locale.US, "%.2f", settings.liquidRefraction),
-                    showValue = settings.showSliderValues,
-                    onValueChange = { v -> onUpdateSettings { it.copy(liquidRefraction = v) } }
-                )
-                LiquidSliderRow(
-                    label = strings.surfaceTension,
+                    label = "Độ căng lực hút giọt nước khi tách/hợp",
                     value = settings.liquidSurfaceTension,
                     valueRange = 1.00f..8.00f,
                     valueText = String.format(Locale.US, "%.2f", settings.liquidSurfaceTension),
@@ -388,18 +413,20 @@ fun LiquidSettingsTab(
                     settings.isLeftCutout -> CutoutModeOption.LEFT
                     else -> CutoutModeOption.CENTER
                 }
-                CutoutPositionSelectorCard(
-                    selectedMode = currentCutoutMode,
-                    onSelectMode = { mode ->
-                        onUpdateSettings { s ->
-                            when (mode) {
-                                CutoutModeOption.CENTER -> s.copy(isLeftCutout = false, isTeardropCutout = false)
-                                CutoutModeOption.LEFT -> s.copy(isLeftCutout = true, isTeardropCutout = false)
-                                CutoutModeOption.TEARDROP -> s.copy(isLeftCutout = false, isTeardropCutout = true)
+                Box(modifier = Modifier.graphicsLayer { alpha = if (isDraggingAnySlider) 0f else 1f }) {
+                    CutoutPositionSelectorCard(
+                        selectedMode = currentCutoutMode,
+                        onSelectMode = { mode ->
+                            onUpdateSettings { s ->
+                                when (mode) {
+                                    CutoutModeOption.CENTER -> s.copy(isLeftCutout = false, isTeardropCutout = false)
+                                    CutoutModeOption.LEFT -> s.copy(isLeftCutout = true, isTeardropCutout = false)
+                                    CutoutModeOption.TEARDROP -> s.copy(isLeftCutout = false, isTeardropCutout = true)
+                                }
                             }
                         }
-                    }
-                )
+                    )
+                }
 
                 LiquidSliderRow(
                     label = strings.verticalOffset,
@@ -514,26 +541,28 @@ fun LiquidSettingsTab(
         item {
             ExpandableLiquidCard(
                 title = strings.customization,
-                subtitle = "Opacity: ${(settings.islandOpacity * 100).roundToInt()}% · Borders & Colors",
+                subtitle = if (settings.isGlass) "Đảo đen chuẩn iOS (#000000) · Hiển thị & Tự ẩn" else "Opacity: ${(settings.islandOpacity * 100).roundToInt()}% · Borders & Colors",
                 icon = Icons.Default.Edit,
                 expanded = expandCustomization,
                 onToggle = { expandCustomization = !expandCustomization }
             ) {
-                LiquidSliderRow(
-                    label = strings.opacity,
-                    value = settings.islandOpacity,
-                    valueRange = 0.2f..1.0f,
-                    valueText = String.format(Locale.US, "%.1f", settings.islandOpacity),
-                    showValue = settings.showSliderValues,
-                    onValueChange = { v ->
-                        onUpdateSettings {
-                            it.copy(
-                                islandOpacity = v,
-                                glassOpacity = (v * 100).roundToInt().coerceIn(15, 100)
-                            )
+                if (!settings.isGlass) {
+                    LiquidSliderRow(
+                        label = strings.opacity,
+                        value = settings.islandOpacity,
+                        valueRange = 0.2f..1.0f,
+                        valueText = String.format(Locale.US, "%.1f", settings.islandOpacity),
+                        showValue = settings.showSliderValues,
+                        onValueChange = { v ->
+                            onUpdateSettings {
+                                it.copy(
+                                    islandOpacity = v,
+                                    glassOpacity = (v * 100).roundToInt().coerceIn(15, 100)
+                                )
+                            }
                         }
-                    }
-                )
+                    )
+                }
                 LiquidToggleRow(
                     title = strings.dynamicLight,
                     subtitle = strings.dynamicLightSub,
@@ -1046,7 +1075,12 @@ private fun LiquidToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
+    val activeSliderId by IslandStateManager.activeSliderId.collectAsState()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .graphicsLayer { alpha = if (activeSliderId != null) 0f else 1f }
+    ) {
         Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
         Spacer(modifier = Modifier.height(4.dp))
         Switch(checked = checked, onCheckedChange = onCheckedChange)

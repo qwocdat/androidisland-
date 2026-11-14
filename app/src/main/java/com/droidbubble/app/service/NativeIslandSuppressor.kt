@@ -111,31 +111,20 @@ object NativeIslandSuppressor {
 
 
     /**
-     * Hides or restores the system status bar & status bar icons globally via Settings & Shizuku.
+     * Hides or restores the system status bar & status bar icons globally outside the app via ShizukuHelper & Settings.
      */
     fun applyStatusBarVisibility(context: Context, hide: Boolean): Boolean {
-        val policyVal = if (hide) "immersive.status=*" else "null"
-        val blacklistVal = if (hide) "clock,battery,wifi,mobile,alarm_clock,bluetooth,volume,zen,headset,location" else ""
-        var ok = false
-        val cr = context.contentResolver
         runCatching {
-            if (Settings.Global.putString(cr, "policy_control", policyVal)) ok = true
-        }
-        runCatching {
-            if (Settings.Secure.putString(cr, "icon_blacklist", blacklistVal)) ok = true
-        }
-        runCatching {
-            if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
-                execShizukuCommand("settings put global policy_control $policyVal")
-                if (hide) {
-                    execShizukuCommand("settings put secure icon_blacklist $blacklistVal")
-                } else {
-                    execShizukuCommand("settings delete secure icon_blacklist")
+            if (hide && com.droidbubble.app.util.ShizukuHelper.isShizukuAvailable() && !com.droidbubble.app.util.ShizukuHelper.hasShizukuPermission()) {
+                com.droidbubble.app.util.ShizukuHelper.requestShizukuPermission()
+            } else if (com.droidbubble.app.util.ShizukuHelper.isShizukuAvailable() && com.droidbubble.app.util.ShizukuHelper.hasShizukuPermission() && !com.droidbubble.app.util.ShizukuHelper.hasWriteSecureSettings(context)) {
+                com.droidbubble.app.util.ShizukuHelper.grantWriteSecureSettings(context.packageName) {
+                    com.droidbubble.app.util.ShizukuHelper.setSystemStatusBarIconsHidden(context, hide)
                 }
-                ok = true
             }
+            com.droidbubble.app.util.ShizukuHelper.setSystemStatusBarIconsHidden(context, hide)
         }
-        return ok
+        return true
     }
 
     private fun execShizukuCommand(cmd: String) {

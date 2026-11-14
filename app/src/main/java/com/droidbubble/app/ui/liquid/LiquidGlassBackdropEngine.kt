@@ -43,6 +43,7 @@ import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
@@ -230,7 +231,24 @@ class LayerBackdrop : Backdrop {
             dx = srcPos.x - dstPos.x
             dy = srcPos.y - dstPos.y
         }
+        var invScaleX = 1f
+        var invScaleY = 1f
+        if (layerBlock != null) {
+            val tmp = SimpleGraphicsLayerScope().apply {
+                reset(size, density.density, density.fontScale)
+                layerBlock(this)
+            }
+            if (tmp.scaleX > 0.05f) invScaleX = 1f / tmp.scaleX
+            if (tmp.scaleY > 0.05f) invScaleY = 1f / tmp.scaleY
+        }
         drawContext.canvas.save()
+        if (invScaleX != 1f || invScaleY != 1f) {
+            val px = size.width * 0.5f
+            val py = size.height * 0.5f
+            drawContext.canvas.translate(px, py)
+            drawContext.canvas.scale(invScaleX, invScaleY)
+            drawContext.canvas.translate(-px, -py)
+        }
         drawContext.canvas.translate(dx, dy)
         drawLayer(layer)
         drawContext.canvas.restore()
@@ -599,29 +617,26 @@ private class DrawBackdropNode(
             // Stage 1: Record backdrop and apply vibrancy + Gaussian blur
             pLayer.renderEffect = preEffect
             pLayer.record(size = recordSize) {
-                drawContext.canvas.save()
-                drawContext.canvas.translate(pad, pad)
-                with(backdrop) {
-                    drawBackdrop(
-                        density = this@draw,
-                        coordinates = nodeCoordinates,
-                        layerBlock = layerBlock,
-                        downscaleFactor = 1,
-                    )
+                inset(left = pad, top = pad, right = pad, bottom = pad) {
+                    with(backdrop) {
+                        drawBackdrop(
+                            density = this@draw,
+                            coordinates = nodeCoordinates,
+                            layerBlock = layerBlock,
+                            downscaleFactor = 1,
+                        )
+                    }
                 }
-                drawContext.canvas.restore()
             }
 
-            // Stage 2: Record blurred preLayer + subsurface glass surface/light, then apply AGSL lens() refraction over all of it!
-            // Placing onDrawSurface (and subsurface InteractiveHighlight light) inside sLayer before agslEffect runs
-            // ensures the glow is physically UNDERNEATH the glass lens and refracted by the curved glass rim!
+            // Stage 2: Record blurred preLayer + subsurface glass surface/light in exact node bounds via inset(pad),
+            // then apply AGSL lens() refraction over all of it!
             sLayer.renderEffect = agslEffect
             sLayer.record(size = recordSize) {
                 drawLayer(pLayer)
-                drawContext.canvas.save()
-                drawContext.canvas.translate(pad, pad)
-                onDrawSurface?.invoke(this)
-                drawContext.canvas.restore()
+                inset(left = pad, top = pad, right = pad, bottom = pad) {
+                    onDrawSurface?.invoke(this)
+                }
             }
         }
 
@@ -721,20 +736,12 @@ half4 main(float2 fragCoord) {
     float energy = clamp((invSq * 0.55 + gauss * 0.45) * intensity, 0.0, 1.0);
     float rimRing = exp(-pow(dist - 0.50, 2.0) * 16.0) * intensity * 0.48;
 
-    if (isDark > 0.5) {
-        float3 coreCol = float3(1.0, 1.0, 1.0);
-        float3 midCol = mix(accentRgb, float3(0.56, 0.88, 1.0), 0.52);
-        float3 col = mix(midCol, coreCol, clamp(core * 1.3 + rimRing * 0.55, 0.0, 1.0));
-        float a = clamp(energy * 0.64 + core * intensity * 0.30 + rimRing * 0.24, 0.0, 0.90);
-        return half4(col * a, a);
-    } else {
-        // Light mode: vibrant optical subsurface light pool + bright core so it glows vividly under clear glass
-        float3 outerBloom = mix(accentRgb, float3(0.06, 0.56, 0.96), 0.45);
-        float3 innerCore = mix(float3(1.0, 1.0, 1.0), accentRgb, 0.22);
-        float3 col = mix(outerBloom, innerCore, clamp(core * 1.35, 0.0, 1.0));
-        float a = clamp(energy * 0.76 + core * intensity * 0.34 + rimRing * 0.30, 0.0, 0.94);
-        return half4(col * a, a);
-    }
+    // Pure white translucent inward glass glow regardless of selected accent color (both Light & Dark modes)
+    float3 col = float3(1.0, 1.0, 1.0);
+    float edgeInward = clamp(1.0 - abs(fragCoord.y / max(resolution.y, 1.0) - 0.5) * 1.4, 0.25, 1.0);
+    float maxAlpha = (isDark > 0.5) ? 0.28 : 0.34;
+    float a = clamp((energy * 0.22 + core * intensity * 0.14 + rimRing * 0.12) * edgeInward, 0.0, maxAlpha);
+    return half4(col * a, a);
 }
 """
 
@@ -782,21 +789,13 @@ class InteractiveHighlight(
             shaderPaint.shader = agslShader
             drawContext.canvas.nativeCanvas.drawRect(0f, 0f, size.width, size.height, shaderPaint)
         } else {
-            val midTone = if (isDark) {
-                androidx.compose.ui.graphics.lerp(accentColor, Color(0xFF80D8FF), 0.5f).copy(alpha = 0.42f * a)
-            } else {
-                androidx.compose.ui.graphics.lerp(accentColor, Color(0xFF0EA5E9), 0.45f).copy(alpha = 0.56f * a)
-            }
-            val coreTone = if (isDark) {
-                Color.White.copy(alpha = 0.65f * a)
-            } else {
-                androidx.compose.ui.graphics.lerp(Color.White, accentColor, 0.25f).copy(alpha = 0.72f * a)
-            }
+            val coreTone = Color.White.copy(alpha = (if (isDark) 0.26f else 0.32f) * a)
+            val midTone = Color.White.copy(alpha = (if (isDark) 0.12f else 0.16f) * a)
             drawCircle(
                 brush = Brush.radialGradient(
                     0.00f to coreTone,
-                    0.35f to midTone,
-                    0.72f to accentColor.copy(alpha = (if (isDark) 0.16f else 0.26f) * a),
+                    0.42f to midTone,
+                    0.78f to Color.White.copy(alpha = 0.04f * a),
                     1.00f to Color.Transparent,
                     center = center,
                     radius = radius,

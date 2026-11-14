@@ -42,6 +42,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FlashlightOn
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Lock
@@ -81,6 +82,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
@@ -186,40 +188,8 @@ fun Modifier.liquidVelocityMotionBlur(
     enabled: Boolean,
     expandProgress: Float = 0f
 ): Modifier {
-    // In Dynamic Motion 1.2 (96942.mp4 at 00:05, 00:12, 00:45), cards blur smoothly mid-transition
-    val midTransitionBlur = if (expandProgress in 0.04f..0.88f) {
-        sin(((expandProgress - 0.04f) / 0.84f) * PI.toFloat()).coerceIn(0f, 1f) * 14f
-    } else 0f
-
-    val speed = hypot(velocityPx.x, velocityPx.y)
-    if (!enabled && midTransitionBlur < 0.5f) return this
-    if (speed < 0.5f && midTransitionBlur < 0.5f) return this
-
-    val shaderHolder = remember {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            runCatching { RuntimeShader(AGSL_DIRECTIONAL_VELOCITY_BLUR_SHADER) }.getOrNull()
-        } else null
-    }
-
-    return this.graphicsLayer {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && midTransitionBlur >= 1.0f) {
-            runCatching {
-                renderEffect = AndroidRenderEffect.createBlurEffect(
-                    midTransitionBlur,
-                    midTransitionBlur * 1.15f,
-                    Shader.TileMode.CLAMP
-                ).asComposeRenderEffect()
-            }
-        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && shaderHolder != null && size.width > 1f && size.height > 1f && speed >= 0.5f) {
-            runCatching {
-                shaderHolder.setFloatUniform("resolution", size.width, size.height)
-                shaderHolder.setFloatUniform("velocityPx", velocityPx.x, velocityPx.y)
-                renderEffect = AndroidRenderEffect
-                    .createRuntimeShaderEffect(shaderHolder, "content")
-                    .asComposeRenderEffect()
-            }
-        }
-    }
+    // Keep outer black Dynamic Island container 100% razor-sharp pitch-black (#000000) without halo blur
+    return this
 }
 
 // =========================================================================================
@@ -245,16 +215,20 @@ fun LiquidIslandOpticalBox(
         !albumArtBitmap.isRecycled
 
     val borderColor = when {
-        isExpandedCard && priority == IslandPriority.ALARM -> Color(0x44FF9F0A)
-        showAlbumGradient -> Color.White.copy(alpha = 0.18f)
-        else -> Color.White.copy(alpha = 0.13f)
+        isExpandedCard && priority == IslandPriority.ALARM -> Color(0x38FF9F0A)
+        showAlbumGradient -> Color.White.copy(alpha = 0.12f)
+        else -> Color.Transparent
     }
 
     Box(
         modifier = modifier
             .clip(shape)
             .background(Color.Black)
-            .border(width = 0.85.dp, color = borderColor, shape = shape),
+            .then(
+                if (borderColor != Color.Transparent) {
+                    Modifier.border(width = 0.7.dp, color = borderColor, shape = shape)
+                } else Modifier
+            ),
         contentAlignment = contentAlignment
     ) {
         if (showAlbumGradient && albumArtBitmap != null) {
@@ -296,6 +270,44 @@ fun LiquidIslandOpticalBox(
 // 3. PURE BLACK SMOOTH-MINIMUM (smin) METABALL BRIDGE (96942.mp4 00:09, 00:23-00:27)
 // =========================================================================================
 
+private const val AGSL_METABALL_SUCTION_SHADER = """
+    uniform float2 uResolution;
+    uniform float2 uMainCenter;
+    uniform float2 uMainHalfSize;
+    uniform float2 uBubbleCenter;
+    uniform float uBubbleRadius;
+    uniform float uSmoothK;
+    uniform float uAlpha;
+
+    float sdRoundBox(float2 p, float2 b, float r) {
+        float2 q = abs(p) - b + float2(r);
+        return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+    }
+
+    float sdCircle(float2 p, float r) {
+        return length(p) - r;
+    }
+
+    float sminPoly(float a, float b, float k) {
+        float h = clamp(0.5 + 0.5 * (b - a) / max(k, 0.0001), 0.0, 1.0);
+        return mix(b, a, h) - k * h * (1.0 - h);
+    }
+
+    half4 main(float2 fragCoord) {
+        float rMain = min(uMainHalfSize.x, uMainHalfSize.y);
+        float dMain = sdRoundBox(fragCoord - uMainCenter, uMainHalfSize, rMain);
+        float dBub = sdCircle(fragCoord - uBubbleCenter, uBubbleRadius);
+        float dUnion = sminPoly(dMain, dBub, uSmoothK);
+
+        // Anti-aliased pure black liquid drop silhouette
+        float fillMask = 1.0 - smoothstep(-0.85, 0.85, dUnion);
+        if (fillMask <= 0.002) {
+            return half4(0.0);
+        }
+        return half4(0.0, 0.0, 0.0, half(fillMask * uAlpha));
+    }
+"""
+
 @Composable
 fun LiquidMetaballBridgeCanvas(
     mainPillWidth: Dp,
@@ -307,6 +319,7 @@ fun LiquidMetaballBridgeCanvas(
     isLiquidGlass: Boolean,
     accentColor: Color,
     alpha: Float,
+    restingGapDp: Dp = 6.dp,
     modifier: Modifier = Modifier
 ) {
     if (alpha <= 0.01f || mainPillWidth <= 4.dp) return
@@ -321,10 +334,13 @@ fun LiquidMetaballBridgeCanvas(
         mainLeftEdge - bubbleRightEdge
     }
 
-    val maxReachDp = (9f + surfaceTension * 2.2f).dp
-    if (gapDp > maxReachDp || gapDp < (-bubbleSize * 0.65f)) return
+    // Crucial iOS / System Dynamic Island physics (96995.mp4 00:07 & 00:14):
+    // The liquid suction tendon ONLY stretches while splitting out or merging back in,
+    // and pinches off completely BEFORE reaching restingGapDp so there is clean empty space when at rest!
+    val snapOffGapDp = (restingGapDp - 0.9.dp).coerceAtLeast(1.8.dp)
+    if (gapDp >= snapOffGapDp || gapDp < (-bubbleSize * 0.85f)) return
 
-    val bridgeStretch = (1f - (gapDp.value / maxReachDp.value)).coerceIn(0f, 1f)
+    val bridgeStretch = (1f - (gapDp.value / snapOffGapDp.value)).coerceIn(0f, 1f)
     if (bridgeStretch <= 0.01f) return
 
     val canvasWidthDp = mainPillWidth + bubbleSize * 2f + 48.dp
@@ -374,11 +390,123 @@ fun LiquidMetaballBridgeCanvas(
             close()
         }
 
-        // Pure #000000 black iOS metaball bridge
-        drawPath(
-            path = neckPath,
-            color = Color.Black.copy(alpha = bridgeStretch)
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val shader = RuntimeShader(AGSL_METABALL_SUCTION_SHADER)
+            shader.setFloatUniform("uResolution", size.width, size.height)
+            shader.setFloatUniform("uMainCenter", mainCenterPx.x, mainCenterPx.y)
+            shader.setFloatUniform("uMainHalfSize", mainHalfW, mainHalfH)
+            shader.setFloatUniform("uBubbleCenter", bubbleCenterPx.x, bubbleCenterPx.y)
+            shader.setFloatUniform("uBubbleRadius", bubbleR)
+            val smoothK = (minOf(mainHalfH, bubbleR) * (0.95f * bridgeStretch * bridgeStretch)).coerceAtLeast(0.5f)
+            shader.setFloatUniform("uSmoothK", smoothK)
+            shader.setFloatUniform("uAlpha", alpha.coerceIn(0f, 1f))
+            drawRect(brush = ShaderBrush(shader))
+        } else {
+            drawPath(
+                path = neckPath,
+                color = Color.Black
+            )
+        }
+    }
+}
+
+@Composable
+fun LiquidExpandedFlashlightView(
+    level: Int,
+    maxLevel: Int,
+    onSetLevel: (Int) -> Unit,
+    onTurnOff: () -> Unit,
+    onCollapse: () -> Unit
+) {
+    val pct = ((level.toFloat() / maxLevel.coerceAtLeast(1).toFloat()) * 100f).roundToInt().coerceIn(25, 100)
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(horizontal = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFFF9F0A).copy(alpha = 0.22f))
+                    .clickable {
+                        onTurnOff()
+                        onCollapse()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.FlashlightOn,
+                    contentDescription = "Flashlight",
+                    tint = Color(0xFFFF9F0A),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = "Flashlight",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+                Text(
+                    text = "Intensity $pct%",
+                    color = Color(0xFFFF9F0A),
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            val steps = maxLevel.coerceIn(2, 4)
+            for (step in 1..steps) {
+                val active = step <= level
+                Box(
+                    modifier = Modifier
+                        .width(26.dp)
+                        .height(28.dp)
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(if (active) Color(0xFFFF9F0A) else Color(0xFF1F2430))
+                        .clickable { onSetLevel(step) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "$step",
+                        color = if (active) Color.Black else Color.White.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF262936))
+                    .clickable {
+                        onTurnOff()
+                        onCollapse()
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Turn off",
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 }
 
@@ -396,7 +524,7 @@ fun LiquidStatusBarAbsorptionOverlay(
     isLiquidGlass: Boolean,
     modifier: Modifier = Modifier
 ) {
-    if (!isLiquidGlass || compactWidth <= restingWidth + 6.dp) return
+    if (true) return
     val expansionDelta = (compactWidth - restingWidth).value.coerceAtLeast(0f)
     val phaseProgress = (expansionDelta / 68f).coerceIn(0f, 1f)
     if (phaseProgress <= 0.02f || phaseProgress >= 0.98f) return
@@ -905,9 +1033,8 @@ fun LiquidExpandedTimerView(
                     .clickable {
                         if (IslandStateManager.isStopwatchRunning.value) {
                             IslandStateManager.stopStopwatch()
-                        } else {
-                            IslandStateManager.updateAlarm(null)
                         }
+                        IslandStateManager.clearExternalClockActivity()
                         onCollapse()
                     },
                 contentAlignment = Alignment.Center
