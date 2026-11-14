@@ -3421,6 +3421,11 @@ fun AuxiliaryBubbleContent(
     charging: IslandStateManager.ChargingInfo? = null,
     designLanguage: DesignLanguage = DesignLanguage.DROIDBUBBLE
 ) {
+    if (com.xiao.androidisland.liquidisland.LiquidIslandDroidBubbleBridge.shouldRenderLiquidIsland(androidx.compose.ui.platform.LocalContext.current, priority, media, notification, recording, voiceMemo, fpsInfo, weatherInfo, networkSpeedInfo, alarmInfo, spinningAlbumArt, charging, designLanguage)) {
+        com.xiao.androidisland.liquidisland.LiquidIslandDroidBubbleBridge.RenderLiquidIslandOverlay(priority, media, notification, recording, voiceMemo, fpsInfo, weatherInfo, networkSpeedInfo, alarmInfo, spinningAlbumArt, charging, designLanguage)
+        return
+    }
+
     val isM3 = designLanguage == DesignLanguage.MATERIAL3
     val m3Primary = MaterialTheme.colorScheme.primary
     val m3SurfVariant = MaterialTheme.colorScheme.surfaceVariant
