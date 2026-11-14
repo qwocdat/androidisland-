@@ -37,6 +37,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.platform.ComposeView
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.Lifecycle
@@ -1097,7 +1098,7 @@ class IslandOverlayService : Service() {
                     super.onRecordingConfigChanged(configs)
                     if (!currentSettings.showVoiceMemo) return
                     val hasExternalMic = !configs.isNullOrEmpty()
-                    if (hasExternalMic && !VoiceMemoManager.isRecordingActive()) {
+                    if (hasExternalMic && !VoiceMemoManager.isRecording()) {
                         IslandStateManager.updateVoiceMemoState(
                             com.droidbubble.app.model.VoiceMemoState(
                                 isRecording = true,
@@ -1105,7 +1106,7 @@ class IslandOverlayService : Service() {
                                 amplitude = 0.65f
                             )
                         )
-                    } else if (!hasExternalMic && !VoiceMemoManager.isRecordingActive()) {
+                    } else if (!hasExternalMic && !VoiceMemoManager.isRecording()) {
                         IslandStateManager.updateVoiceMemoState(
                             com.droidbubble.app.model.VoiceMemoState(isRecording = false)
                         )

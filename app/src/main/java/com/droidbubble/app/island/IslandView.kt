@@ -612,6 +612,7 @@ fun IslandOverlayRoot(
     val speedSq = speed * speed
 
     val primaryPriority: IslandPriority = orderedActivePriorities.firstOrNull() ?: IslandPriority.IDLE
+    val expandedPriority by IslandStateManager.expandedPriority.collectAsState()
     val card1Priority: IslandPriority = if (isExpanded && expandedPriority != null && orderedActivePriorities.contains(expandedPriority)) {
         expandedPriority!!
     } else {
@@ -1402,21 +1403,22 @@ fun IslandOverlayRoot(
 
     // Report real-time horizontal screen bounds (in Px) of the Dynamic Island so CustomStatusBarOverlay
     // automatically hides any status bar item overlapped by the Dynamic Island (96995.mp4 00:00 vs 00:07).
-    val screenWidthPx = with(density) { screenWidth.roundToPx() }
+    val currentDensity = LocalDensity.current
+    val screenWidthPx = with(currentDensity) { screenWidth.roundToPx() }
     val screenCenterX = screenWidthPx / 2
     val currentActiveVisualWidthDp = if (isExpanded || expandProgress > 0.15f) {
         animatedCard1Width
     } else {
         animatedCompactWidth
     }
-    val leftEdgePx = with(density) {
+    val leftEdgePx = with(currentDensity) {
         if (settings.isLeftCutout && !isExpanded) {
             (28.dp + settings.horizontalOffsetDp.dp - (currentActiveVisualWidthDp / 2f)).roundToPx()
         } else {
             screenCenterX + (animatedHorizontalOffset + animatedDualMainShiftX - (currentActiveVisualWidthDp / 2f)).roundToPx()
         }
     }
-    val rightEdgePx = with(density) {
+    val rightEdgePx = with(currentDensity) {
         val baseRight = if (settings.isLeftCutout && !isExpanded) {
             (28.dp + settings.horizontalOffsetDp.dp + (currentActiveVisualWidthDp / 2f)).roundToPx()
         } else {

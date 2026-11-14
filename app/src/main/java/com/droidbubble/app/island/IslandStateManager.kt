@@ -732,7 +732,7 @@ object IslandStateManager {
                 } else {
                     String.format(java.util.Locale.US, "%02d:%02d", mins, secs)
                 }
-                _stopwatchSeconds.value = currentSec.toInt()
+                stopwatchSeconds = currentSec
                 _alarmInfo.value = AlarmInfo(
                     triggerTimeMs = System.currentTimeMillis(),
                     formattedTime = formatted,
