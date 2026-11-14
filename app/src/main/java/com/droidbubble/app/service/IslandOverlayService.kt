@@ -651,7 +651,7 @@ class IslandOverlayService : Service() {
         val mainHalf = (currentSettings.widthDp * 0.90f).coerceAtLeast(80f) / 2f
         val dualRightEdge = mainHalf + 8f + currentSettings.heightDp + 44f
         val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(156f) + 80f) / 2f
-        val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(215f)
+        val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(310f)
 
         val initialWidth = if (shouldShowCompact) {
             if (currentSettings.isLeftCutout) {
@@ -811,6 +811,7 @@ class IslandOverlayService : Service() {
                 persistentTelemetryManager?.updateSettings(settings)
                 HardwareEqualizerManager.applyFromSettings(settings)
                 NativeIslandSuppressor.applyNativeIslandSuppression(this@IslandOverlayService, settings.hideNativeOsIsland)
+                NativeIslandSuppressor.applyStatusBarVisibility(this@IslandOverlayService, settings.hideStatusBar)
                 IslandStateManager.dismissMediaOnPause = settings.dismissMediaOnPause
                 IslandStateManager.autoDismissNotifications = settings.autoDismissNotifications
                 IslandStateManager.autoDismissNotificationSeconds = settings.notificationAutoDismissSeconds
@@ -958,7 +959,7 @@ class IslandOverlayService : Service() {
             val mainHalf = (currentSettings.widthDp * 0.90f).coerceAtLeast(80f) / 2f
             val dualRightEdge = mainHalf + 8f + currentSettings.heightDp + 44f
             val chargingEdge = ((currentSettings.widthDp + 20f).coerceAtLeast(156f) + 80f) / 2f
-            val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(215f)
+            val totalWidthDp = (maxOf(dualRightEdge, chargingEdge) * 2f).coerceAtLeast(310f)
 
             fun applyCompactBounds() {
                 collapseJob?.cancel()
@@ -1208,23 +1209,8 @@ override fun onDestroy() {
 
 
     private fun startAutoUpdateChecker() {
-        com.droidbubble.app.util.DynamicFeatureEngine.start(applicationContext)
-        serviceScope.launch(Dispatchers.IO) {
-            delay(15_000L)
-            while (isActive) {
-                try {
-                    val result = com.droidbubble.app.util.UpdateManager.checkGithubUpdates(applicationContext)
-                    if (result is com.droidbubble.app.util.UpdateCheckResult.UpdateAvailable) {
-                        showUpdateNotification(result.release.version)
-                    } else if (result is com.droidbubble.app.util.UpdateCheckResult.UpToDate) {
-                        cancelUpdateNotification()
-                    }
-                } catch (e: Exception) {
-                    Log.w("IslandOverlayService", "Auto-update check encountered error", e)
-                }
-                delay(2 * 60 * 60 * 1000L)
-            }
-        }
+        // Update checking and update notifications disabled per user request
+        cancelUpdateNotification()
     }
 
     private fun showUpdateNotification(version: String) {

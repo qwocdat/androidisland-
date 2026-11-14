@@ -969,6 +969,25 @@ class NotificationReceiverService : NotificationListenerService() {
             return
         }
 
+        // 2B. Detect active Stopwatch / Timer notifications from Clock apps (00:22 & 00:28 in Dynamic Motion 1.2)
+        val isClockPkg = packageName.contains("deskclock") || packageName.contains("clock") || packageName.contains("alarm")
+        val isTimerOrStopwatchCat = notification.category == Notification.CATEGORY_STOPWATCH || notification.category == Notification.CATEGORY_ALARM
+        if ((isClockPkg || isTimerOrStopwatchCat) && ((notification.flags and Notification.FLAG_ONGOING_EVENT) != 0 || sbn.isOngoing)) {
+            val rawTitle = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
+            val rawText = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
+            val timeRegex = Regex("\b\d{1,2}:\d{2}(?::\d{2})?\b")
+            val matchedTime = timeRegex.find(rawTitle)?.value ?: timeRegex.find(rawText)?.value ?: rawText.takeIf { it.length <= 10 } ?: "00:01"
+            IslandStateManager.updateAlarm(
+                IslandStateManager.AlarmInfo(
+                    triggerTimeMs = System.currentTimeMillis(),
+                    formattedTime = matchedTime,
+                    timeRemainingFormatted = rawTitle.ifBlank { "Timer" },
+                    showIntent = notification.contentIntent
+                )
+            )
+            return
+        }
+
         // 3. Extract live progress tracking (e.g. Google Play Store, downloads, transfers, navigation)
         val progress = extras.getInt(Notification.EXTRA_PROGRESS, -1)
         val maxProgress = extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0)

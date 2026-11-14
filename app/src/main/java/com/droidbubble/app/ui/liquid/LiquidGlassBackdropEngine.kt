@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.layer.CompositingStrategy
 import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -611,10 +612,16 @@ private class DrawBackdropNode(
                 drawContext.canvas.restore()
             }
 
-            // Stage 2: Apply AGSL lens refraction shader over the blurred preLayer
+            // Stage 2: Record blurred preLayer + subsurface glass surface/light, then apply AGSL lens() refraction over all of it!
+            // Placing onDrawSurface (and subsurface InteractiveHighlight light) inside sLayer before agslEffect runs
+            // ensures the glow is physically UNDERNEATH the glass lens and refracted by the curved glass rim!
             sLayer.renderEffect = agslEffect
             sLayer.record(size = recordSize) {
                 drawLayer(pLayer)
+                drawContext.canvas.save()
+                drawContext.canvas.translate(pad, pad)
+                onDrawSurface?.invoke(this)
+                drawContext.canvas.restore()
             }
         }
 
@@ -644,8 +651,6 @@ private class DrawBackdropNode(
             drawContext.canvas.clipPath(clipPath)
             drawContext.canvas.translate(-pad, -pad)
             drawLayer(sLayer)
-            drawContext.canvas.translate(pad, pad)
-            onDrawSurface?.invoke(this)
             drawContext.canvas.restore()
         } else {
             drawContext.canvas.save()
@@ -695,8 +700,48 @@ private class DrawBackdropNode(
     }
 }
 
+private const val AGSL_SUBSURFACE_GLASS_LIGHT_SHADER = """
+uniform float2 resolution;
+uniform float2 lightCenter;
+uniform float lightRadius;
+uniform float intensity;
+uniform float isDark;
+uniform float3 accentRgb;
+
+half4 main(float2 fragCoord) {
+    if (intensity <= 0.002) return half4(0.0);
+    float2 delta = fragCoord - lightCenter;
+    delta.x *= 0.72;
+    float dist = length(delta) / max(lightRadius, 1.0);
+
+    // Physical inverse-square subsurface scattering + Gaussian caustic envelope
+    float invSq = 1.0 / (1.0 + dist * dist * 3.0);
+    float gauss = exp(-dist * dist * 2.0);
+    float core = exp(-dist * dist * 7.2);
+    float energy = clamp((invSq * 0.55 + gauss * 0.45) * intensity, 0.0, 1.0);
+    float rimRing = exp(-pow(dist - 0.50, 2.0) * 16.0) * intensity * 0.48;
+
+    if (isDark > 0.5) {
+        float3 coreCol = float3(1.0, 1.0, 1.0);
+        float3 midCol = mix(accentRgb, float3(0.56, 0.88, 1.0), 0.52);
+        float3 col = mix(midCol, coreCol, clamp(core * 1.3 + rimRing * 0.55, 0.0, 1.0));
+        float a = clamp(energy * 0.64 + core * intensity * 0.30 + rimRing * 0.24, 0.0, 0.90);
+        return half4(col * a, a);
+    } else {
+        // Light mode: vibrant optical subsurface light pool + bright core so it glows vividly under clear glass
+        float3 outerBloom = mix(accentRgb, float3(0.06, 0.56, 0.96), 0.45);
+        float3 innerCore = mix(float3(1.0, 1.0, 1.0), accentRgb, 0.22);
+        float3 col = mix(outerBloom, innerCore, clamp(core * 1.35, 0.0, 1.0));
+        float a = clamp(energy * 0.76 + core * intensity * 0.34 + rimRing * 0.30, 0.0, 0.94);
+        return half4(col * a, a);
+    }
+}
+"""
+
 /**
- * Interactive radial press highlight modifier from liquid.zip (`InteractiveHighlight`).
+ * Optical subsurface press highlight from liquid.zip (`InteractiveHighlight`).
+ * Renders a real AGSL subsurface light field UNDERNEATH the glass lens (`onDrawSurface` inside `sLayer`
+ * before the AGSL `lens()` refraction shader executes) in both Light and Dark themes.
  */
 @Stable
 class InteractiveHighlight(
@@ -705,36 +750,72 @@ class InteractiveHighlight(
 ) {
     private val pressAlphaAnim = Animatable(0f)
     private var lastTouchOffset by mutableStateOf(Offset.Zero)
+    private val agslShader: Any? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        runCatching { RuntimeShader(AGSL_SUBSURFACE_GLASS_LIGHT_SHADER) }.getOrNull()
+    } else null
+    private val shaderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
 
-    val modifier: Modifier = Modifier.drawWithContent {
-        drawContent()
-        val a = pressAlphaAnim.value
-        if (a > 0.005f) {
-            val center = position(size, lastTouchOffset)
-            val radius = size.maxDimension * 0.55f
-            if (radius > 1f) {
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        0.00f to Color.White.copy(alpha = 0.35f * a),
-                        0.30f to Color.White.copy(alpha = 0.18f * a),
-                        0.65f to Color.White.copy(alpha = 0.06f * a),
-                        1.00f to Color.Transparent,
-                        center = center,
-                        radius = radius,
-                    ),
-                    radius = radius,
-                    center = center,
-                )
+    val pressAlpha: Float
+        get() = pressAlphaAnim.value
+
+    /**
+     * Draws the subsurface light pool directly inside `onDrawSurface` (underneath the AGSL `lens()` shader
+     * and underneath the tab icons/labels), working in both Light and Dark themes.
+     */
+    fun DrawScope.drawSubsurfaceLight(
+        isDark: Boolean,
+        accentColor: Color,
+        extraBoost: Float = 0f,
+    ) {
+        val a = maxOf(pressAlphaAnim.value, extraBoost).coerceIn(0f, 1f)
+        if (a <= 0.004f) return
+        val center = position(size, lastTouchOffset)
+        val radius = (size.height * 1.45f).coerceAtLeast(48f)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && agslShader is RuntimeShader) {
+            agslShader.setFloatUniform("resolution", size.width, size.height)
+            agslShader.setFloatUniform("lightCenter", center.x, center.y)
+            agslShader.setFloatUniform("lightRadius", radius)
+            agslShader.setFloatUniform("intensity", a)
+            agslShader.setFloatUniform("isDark", if (isDark) 1f else 0f)
+            agslShader.setFloatUniform("accentRgb", accentColor.red, accentColor.green, accentColor.blue)
+            shaderPaint.shader = agslShader
+            drawContext.canvas.nativeCanvas.drawRect(0f, 0f, size.width, size.height, shaderPaint)
+        } else {
+            val midTone = if (isDark) {
+                androidx.compose.ui.graphics.lerp(accentColor, Color(0xFF80D8FF), 0.5f).copy(alpha = 0.42f * a)
+            } else {
+                androidx.compose.ui.graphics.lerp(accentColor, Color(0xFF0EA5E9), 0.45f).copy(alpha = 0.56f * a)
             }
+            val coreTone = if (isDark) {
+                Color.White.copy(alpha = 0.65f * a)
+            } else {
+                androidx.compose.ui.graphics.lerp(Color.White, accentColor, 0.25f).copy(alpha = 0.72f * a)
+            }
+            drawCircle(
+                brush = Brush.radialGradient(
+                    0.00f to coreTone,
+                    0.35f to midTone,
+                    0.72f to accentColor.copy(alpha = (if (isDark) 0.16f else 0.26f) * a),
+                    1.00f to Color.Transparent,
+                    center = center,
+                    radius = radius,
+                ),
+                radius = radius,
+                center = center,
+            )
         }
     }
+
+    // Kept as a no-op pass-through so no flat plastic overlay is ever painted on top of the icons!
+    val modifier: Modifier = Modifier
 
     val gestureModifier: Modifier = Modifier.pointerInput(Unit) {
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
             lastTouchOffset = down.position
             animationScope.launch {
-                pressAlphaAnim.animateTo(1f, spring(dampingRatio = 0.8f, stiffness = 400f))
+                pressAlphaAnim.animateTo(1f, spring(dampingRatio = 0.75f, stiffness = 420f))
             }
             do {
                 val event = awaitPointerEvent()
@@ -744,7 +825,7 @@ class InteractiveHighlight(
                 }
             } while (event.changes.any { it.pressed })
             animationScope.launch {
-                pressAlphaAnim.animateTo(0f, spring(dampingRatio = 0.85f, stiffness = 300f))
+                pressAlphaAnim.animateTo(0f, spring(dampingRatio = 0.82f, stiffness = 300f))
             }
         }
     }

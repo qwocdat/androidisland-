@@ -540,7 +540,7 @@ fun IslandOverlayRoot(
     val isVoiceMemo = allowInOrientation && voiceMemo.isRecording && settings.showVoiceMemo
     val isRecording = allowInOrientation && recording.isRecording && settings.showScreenRecording
     val isProgress = allowInOrientation && currentProgress != null && settings.showLiveProgress
-    val isNotification = allowInOrientation && currentNotif != null && settings.showNotifications
+    val isNotification = false // Notifications on Dynamic Island removed per user request
     val isMedia = allowInOrientation && currentMedia != null && (!settings.dismissMediaOnPause || currentMedia.isPlaying) && (currentMedia.isPlaying || currentMedia.title.isNotBlank()) && settings.showMedia
     val isFlashlight = allowInOrientation && settings.showFlashlight && isFlashlightOn
     val isPersistentCharging = allowInOrientation && isPersistentChargingActive
@@ -558,11 +558,11 @@ fun IslandOverlayRoot(
         }
     }
     val displayTaskConfirmation = activeTaskConfirmation ?: lastTaskConfirmation
-    val isTaskConfirmation = allowInOrientation && activeTaskConfirmation != null && !isCharging && !isUnlock
+    val isTaskConfirmation = false
 
     val alarmInfo by IslandStateManager.alarmInfo.collectAsState()
 
-    val isAlarm = allowInOrientation && settings.showAlarm && IslandStateManager.isAlarmActive
+    val isAlarm = allowInOrientation && (settings.showAlarm || settings.isGlass) && IslandStateManager.isAlarmActive
 
     val isFps = allowInOrientation && settings.showFps
     val isWeather = allowInOrientation && settings.showWeather
@@ -1069,9 +1069,9 @@ fun IslandOverlayRoot(
 
     val callIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(116.dp, 190.dp) + (teardropEarRadius * 2f)
     val recordingIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(116.dp, 190.dp) + (teardropEarRadius * 2f)
-    val chargingIslandWidth = (115.dp + (settings.widthDp * 0.35f).dp).coerceIn(156.dp, 215.dp) + (teardropEarRadius * 2f)
-    val unlockIslandWidth = (settings.widthDp * 0.82f).dp.coerceAtLeast(96.dp) + (teardropEarRadius * 2f)
-    val ringerIslandWidth = (110.dp + (settings.widthDp * 0.35f).dp).coerceIn(150.dp, 205.dp) + (teardropEarRadius * 2f)
+    val chargingIslandWidth = if (settings.isGlass) 275.dp else ((115.dp + (settings.widthDp * 0.35f).dp).coerceIn(156.dp, 215.dp) + (teardropEarRadius * 2f))
+    val unlockIslandWidth = if (settings.isGlass) 188.dp else ((settings.widthDp * 0.82f).dp.coerceAtLeast(96.dp) + (teardropEarRadius * 2f))
+    val ringerIslandWidth = if (settings.isGlass) 275.dp else ((110.dp + (settings.widthDp * 0.35f).dp).coerceIn(150.dp, 205.dp) + (teardropEarRadius * 2f))
     val airplaneIslandWidth = (105.dp + (settings.widthDp * 0.35f).dp).coerceIn(148.dp, 200.dp) + (teardropEarRadius * 2f)
     val taskConfirmationIslandWidth = (115.dp + (settings.widthDp * 0.35f).dp).coerceIn(150.dp, 205.dp) + (teardropEarRadius * 2f)
     val fpsIslandWidth = (75.dp + (settings.widthDp * 0.35f).dp).coerceIn(120.dp, 195.dp) + (teardropEarRadius * 2f)
@@ -1150,6 +1150,8 @@ fun IslandOverlayRoot(
     }
 
     val targetCard1Height = when {
+        isExpanded && settings.isGlass && primaryPriority == IslandPriority.ALARM -> (91.dp * settings.expandedScale).coerceAtLeast(84.dp)
+        isExpanded && settings.isGlass && primaryPriority == IslandPriority.PROGRESS -> (136.dp * settings.expandedScale).coerceAtLeast(126.dp)
         isExpanded && (primaryPriority == IslandPriority.VOICE_MEMO || primaryPriority == IslandPriority.SCREEN_RECORDING || primaryPriority == IslandPriority.CALL || primaryPriority == IslandPriority.FPS || primaryPriority == IslandPriority.WEATHER || primaryPriority == IslandPriority.NETWORK_SPEED || primaryPriority == IslandPriority.CHARGING || primaryPriority == IslandPriority.ALARM) -> (78.dp * settings.expandedScale).coerceAtLeast(68.dp)
         isExpanded && primaryPriority == IslandPriority.PROGRESS -> (84.dp * settings.expandedScale).coerceAtLeast(74.dp)
         isExpanded && primaryPriority == IslandPriority.POP_NOTIFICATION -> (notifBaseHeight * settings.expandedScale).coerceAtLeast(136.dp)
@@ -1528,7 +1530,8 @@ fun IslandOverlayRoot(
                                 }
                                 .liquidVelocityMotionBlur(
                                     velocityPx = card1VelocityPx,
-                                    enabled = settings.isGlass && settings.motionBlur
+                                    enabled = settings.isGlass && settings.motionBlur,
+                                    expandProgress = if (settings.isGlass) expandProgress else 0f
                                 )
                                 .clip(RoundedCornerShape(animatedCornerRadius))
                                 .then(
@@ -1624,11 +1627,12 @@ fun IslandOverlayRoot(
                                     accentColor = resolveLiquidPriorityAccentColor(primaryPriority, mediaAccentColor),
                                     isExpandedCard = true,
                                     albumArtBitmap = if (primaryPriority == IslandPriority.MEDIA) (blurredMediaArt ?: mediaArt) else null,
+                                    priority = primaryPriority,
                                     modifier = Modifier.matchParentSize()
                                 ) {}
                             }
                             // Subtle ambient gradient background or blurred album art for media player or flashlight
-                            if (isExpanded) {
+                            if (isExpanded && !settings.isGlass) {
                                 if (primaryPriority == IslandPriority.MEDIA && settings.blurredAlbumArtBackground && mediaArt != null) {
                                     Box(
                                         modifier = Modifier
@@ -1918,11 +1922,12 @@ fun IslandOverlayRoot(
                                     accentColor = resolveLiquidPriorityAccentColor(secondaryPriority, mediaAccentColor),
                                     isExpandedCard = true,
                                     albumArtBitmap = if (secondaryPriority == IslandPriority.MEDIA) (blurredMediaArt ?: mediaArt) else null,
+                                    priority = secondaryPriority,
                                     modifier = Modifier.matchParentSize()
                                 ) {}
                             }
                             // Subtle ambient gradient background or blurred album art for secondary card if it's the media player or flashlight
-                            if (isExpanded) {
+                            if (isExpanded && !settings.isGlass) {
                                 if (secondaryPriority == IslandPriority.MEDIA && settings.blurredAlbumArtBackground && mediaArt != null) {
                                     Box(
                                         modifier = Modifier
@@ -2200,10 +2205,11 @@ fun IslandOverlayRoot(
                                     accentColor = resolveLiquidPriorityAccentColor(tertiaryPriority, mediaAccentColor),
                                     isExpandedCard = true,
                                     albumArtBitmap = if (tertiaryPriority == IslandPriority.MEDIA) (blurredMediaArt ?: mediaArt) else null,
+                                    priority = tertiaryPriority,
                                     modifier = Modifier.matchParentSize()
                                 ) {}
                             }
-                            if (isExpanded) {
+                            if (isExpanded && !settings.isGlass) {
                                 if (tertiaryPriority == IslandPriority.MEDIA && settings.blurredAlbumArtBackground && mediaArt != null) {
                                     Box(
                                         modifier = Modifier
@@ -2803,7 +2809,12 @@ fun IslandOverlayRoot(
                     }
 
                     // 1. Compact Content or Charging Content: strictly clear 36dp center over punch-hole
-                    if (isCharging || chargingContentAlpha > 0.01f) {
+                    if ((isCharging || chargingContentAlpha > 0.01f) && settings.isGlass) {
+                        LiquidIosChargingPill(
+                            percentage = charging?.percentage ?: 80,
+                            contentAlpha = chargingContentAlpha
+                        )
+                    } else if (isCharging || chargingContentAlpha > 0.01f) {
                         val wattage = charging?.wattage
                         val chargingLabel = if (wattage != null && wattage >= 0.5) {
                             "${wattage.roundToInt().coerceAtLeast(1)}W"
@@ -2943,6 +2954,11 @@ fun IslandOverlayRoot(
                                 }
                             }
                         }
+                    } else if ((isUnlock || unlockContentAlpha > 0.01f) && settings.isGlass) {
+                        LiquidIosLockAuthPill(
+                            authMode = settings.lockScreenAuthMode,
+                            contentAlpha = unlockContentAlpha
+                        )
                     } else if (isUnlock || unlockContentAlpha > 0.01f) {
                         if (settings.isLeftCutout) {
                             Row(
@@ -3027,6 +3043,13 @@ fun IslandOverlayRoot(
                             bluetoothCheckmarkAlpha = bluetoothCheckmarkAlpha,
                             bluetoothCheckmarkScale = bluetoothCheckmarkScale,
                             teardropEarRadius = teardropEarRadius
+                        )
+                    } else if ((isRingerMode || ringerContentAlpha > 0.01f) && settings.isGlass) {
+                        LiquidIosRingerPill(
+                            mode = displayRingerMode,
+                            contentAlpha = ringerContentAlpha,
+                            bellShakeRotation = bellShakeRotation.value,
+                            vibrateShakeOffset = vibrateShakeOffset.value.dp
                         )
                     } else if (isRingerMode || ringerContentAlpha > 0.01f) {
                         RingerModePill(
@@ -3115,7 +3138,7 @@ fun IslandOverlayRoot(
             val parenthesisEmergenceAlpha = (animatedCompactWidth / 14.dp).coerceIn(0f, 1f)
             val effectiveParenthesisAlpha = parenthesisAlphaAnim * parenthesisEmergenceAlpha
 
-            if (settings.bubbleEffectEnabled && effectiveParenthesisAlpha > 0.01f && animatedCompactWidth > 3.dp) {
+            if (!settings.isGlass && settings.bubbleEffectEnabled && effectiveParenthesisAlpha > 0.01f && animatedCompactWidth > 3.dp) {
                 val parenthesisHeight = (settings.heightDp.dp * 0.52f).coerceIn(16.dp, 21.dp)
                 val extraShootDp = parenthesisExtraShoot.value.coerceAtLeast(0f).dp
                 val parenthesisWidth = 5.0.dp + (extraShootDp * 0.20f)
@@ -3783,7 +3806,14 @@ fun CompactContent(
             }
 
             IslandPriority.PROGRESS -> {
-                if (notification?.iconBitmap != null) {
+                if (designLanguage == DesignLanguage.GLASS) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowUpward,
+                        contentDescription = "Navigation",
+                        tint = Color.White,
+                        modifier = Modifier.size(17.dp)
+                    )
+                } else if (notification?.iconBitmap != null) {
                     Image(
                         bitmap = notification.iconBitmap.asImageBitmap(),
                         contentDescription = "Biểu tượng tải xuống",
@@ -3932,24 +3962,47 @@ fun CompactContent(
             }
 
             IslandPriority.PROGRESS -> {
-                val pct = notification?.progressFraction ?: 0f
-                val isIndet = notification?.isIndeterminate == true
-                if (isIndet) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(14.dp),
-                        strokeWidth = 2.dp,
-                        color = if (isM3) m3Primary else Color(0xFFE5E5EA),
-                        trackColor = if (isM3) m3SurfVariant else Color(0xFF2C2C2E)
-                    )
+                if (designLanguage == DesignLanguage.GLASS) {
+                    val navTitle = notification?.title ?: ""
+                    if (navTitle.contains("km", ignoreCase = true) || navTitle.contains("m", ignoreCase = true)) {
+                        Text(
+                            text = navTitle,
+                            color = Color.White,
+                            fontSize = 11.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    } else {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.ArrowUpward,
+                            contentDescription = null,
+                            tint = Color(0xFF30D158),
+                            modifier = Modifier
+                                .size(16.dp)
+                                .graphicsLayer { rotationZ = 45f }
+                        )
+                    }
                 } else {
-                    Text(
-                        text = "${(pct * 100).roundToInt()}%",
-                        color = if (isM3) m3Primary else Color(0xFFE5E5EA),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        softWrap = false
-                    )
+                    val pct = notification?.progressFraction ?: 0f
+                    val isIndet = notification?.isIndeterminate == true
+                    if (isIndet) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(14.dp),
+                            strokeWidth = 2.dp,
+                            color = if (isM3) m3Primary else Color(0xFFE5E5EA),
+                            trackColor = if (isM3) m3SurfVariant else Color(0xFF2C2C2E)
+                        )
+                    } else {
+                        Text(
+                            text = "${(pct * 100).roundToInt()}%",
+                            color = if (isM3) m3Primary else Color(0xFFE5E5EA),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
                 }
             }
 
@@ -4186,7 +4239,11 @@ fun ExpandedCardContent(
             ExpandedChargingView(charging, onCollapse, scale, designLanguage = designLanguage)
         }
         IslandPriority.PROGRESS -> {
-            ExpandedProgressView(notification, onCollapse, scale, designLanguage = designLanguage)
+            if (designLanguage == DesignLanguage.GLASS || settings.isGlass) {
+                LiquidExpandedNavigationView(notification = notification, onCollapse = onCollapse, scale = scale)
+            } else {
+                ExpandedProgressView(notification, onCollapse, scale, designLanguage = designLanguage)
+            }
         }
         IslandPriority.MEDIA -> {
             if (designLanguage == DesignLanguage.GLASS || settings.isGlass) {
@@ -4232,7 +4289,11 @@ fun ExpandedCardContent(
             ExpandedNetworkSpeedView(networkSpeedInfo = networkSpeedInfo, onCollapse = onCollapse, scale = scale, designLanguage = designLanguage)
         }
         IslandPriority.ALARM -> {
-            ExpandedAlarmView(alarmInfo = alarmInfo, onCollapse = onCollapse, scale = scale, designLanguage = designLanguage)
+            if (designLanguage == DesignLanguage.GLASS || settings.isGlass) {
+                LiquidExpandedTimerView(alarmInfo = alarmInfo, onCollapse = onCollapse, scale = scale)
+            } else {
+                ExpandedAlarmView(alarmInfo = alarmInfo, onCollapse = onCollapse, scale = scale, designLanguage = designLanguage)
+            }
         }
         IslandPriority.IDLE -> {
             ExpandedIdleView(onCollapse)

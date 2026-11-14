@@ -184,7 +184,7 @@ fun IosLiquidGlassNavigationBar(
     val accentColor = accentColorOverride ?: MaterialTheme.colorScheme.primary
     val tabContentColor = MaterialTheme.colorScheme.onSurface
     val surfaceContainer = MaterialTheme.colorScheme.surfaceContainer
-    val containerColor = if (isBlurActive) surfaceContainer.copy(alpha = 0.72f) else surfaceContainer
+    val containerColor = if (isBlurActive) surfaceContainer.copy(alpha = if (isDark) 0.42f else 0.50f) else surfaceContainer
 
     val tabsBackdrop = rememberLayerBackdrop()
     val density = LocalDensity.current
@@ -419,14 +419,27 @@ fun IosLiquidGlassNavigationBar(
                                         lens(
                                             refractionHeight = 24.dp.toPx(),
                                             refractionAmount = 24.dp.toPx(),
+                                            depthEffect = true,
+                                            chromaticAberration = 0.18f,
                                         )
                                     },
                                     highlight = { baseHighlight.value.copy(alpha = 0.75f) },
                                     layerBlock = {
-                                        scaleX = 1f
-                                        scaleY = 1f
+                                        val width = size.width.coerceAtLeast(1f)
+                                        val s = lerp(1f, 1f + 16.dp.toPx() / width, dampedDrag.pressProgress)
+                                        scaleX = s
+                                        scaleY = s
                                     },
-                                    onDrawSurface = { drawRect(containerColor) },
+                                    onDrawSurface = {
+                                        drawRect(containerColor)
+                                        with(interactiveHighlight) {
+                                            drawSubsurfaceLight(
+                                                isDark = isDark,
+                                                accentColor = accentColor,
+                                                extraBoost = dampedDrag.pressProgress
+                                            )
+                                        }
+                                    },
                                 )
                             } else {
                                 Modifier
@@ -470,7 +483,16 @@ fun IosLiquidGlassNavigationBar(
                                         refractionAmount = 24.dp.toPx(),
                                     )
                                 },
-                                onDrawSurface = { drawRect(surfaceContainer.copy(alpha = 0.92f)) },
+                                onDrawSurface = {
+                                    drawRect(containerColor)
+                                    with(interactiveHighlight) {
+                                        drawSubsurfaceLight(
+                                            isDark = isDark,
+                                            accentColor = accentColor,
+                                            extraBoost = dampedDrag.pressProgress
+                                        )
+                                    }
+                                },
                             )
                             .then(interactiveHighlight.modifier)
                             .height(56.dp)

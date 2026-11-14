@@ -284,7 +284,9 @@ class SettingsRepository(private val context: Context) {
                 showNetworkSpeed = j.optBoolean("v2ShowNetworkSpeed", false),
                 showAlarm = j.optBoolean("v2ShowAlarm", false),
                 hideNativeOsIsland = j.optBoolean("hideNativeOsIsland", true),
-                nativeIslandMaskBoost = j.optBoolean("nativeIslandMaskBoost", true)
+                nativeIslandMaskBoost = j.optBoolean("nativeIslandMaskBoost", true),
+                hideStatusBar = j.optBoolean("hideStatusBar", false),
+                lockScreenAuthMode = j.optString("lockScreenAuthMode", "FACE_ID")
             )
         }.getOrDefault(base)
     }
@@ -375,6 +377,8 @@ class SettingsRepository(private val context: Context) {
             put("v2ShowAlarm", s.showAlarm)
             put("hideNativeOsIsland", s.hideNativeOsIsland)
             put("nativeIslandMaskBoost", s.nativeIslandMaskBoost)
+            put("hideStatusBar", s.hideStatusBar)
+            put("lockScreenAuthMode", s.lockScreenAuthMode)
         }.toString()
     }
 

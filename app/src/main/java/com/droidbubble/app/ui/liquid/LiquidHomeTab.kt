@@ -119,6 +119,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.droidbubble.app.island.IslandStateManager
+import com.droidbubble.app.island.LiquidIosLockAuthPill
+import com.droidbubble.app.model.IslandPriority
 import com.droidbubble.app.model.ActiveCallState
 import com.droidbubble.app.model.IslandSettings
 import com.droidbubble.app.model.MediaInfo
@@ -376,7 +378,7 @@ fun LiquidHomeTab(
                             }
                         }
 
-                        // Chế độ 2: LiquidIsland
+                        // Chế độ 2: LiquidIsland (Dynamic Island iOS - Dynamic Motion 1.2)
                         val isLiquid = settings.designLanguage == com.droidbubble.app.model.DesignLanguage.GLASS || settings.glassEnabled
                         Surface(
                             onClick = {
@@ -384,7 +386,7 @@ fun LiquidHomeTab(
                                     it.copy(
                                         designLanguage = com.droidbubble.app.model.DesignLanguage.GLASS,
                                         glassEnabled = true,
-                                        glassOpacity = 35
+                                        showNotifications = false
                                     )
                                 }
                             },
@@ -407,12 +409,8 @@ fun LiquidHomeTab(
                                         .width(36.dp)
                                         .height(14.dp)
                                         .clip(RoundedCornerShape(7.dp))
-                                        .background(
-                                            Brush.verticalGradient(
-                                                listOf(Color(0xFF0F172A), Color(0xFF1E293B).copy(alpha = 0.8f))
-                                            )
-                                        )
-                                        .border(1.dp, if (isLiquid) MaterialTheme.colorScheme.primary else Color(0x4438BDF8), RoundedCornerShape(7.dp))
+                                        .background(Color.Black)
+                                        .border(1.dp, if (isLiquid) MaterialTheme.colorScheme.primary else Color(0x33FFFFFF), RoundedCornerShape(7.dp))
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
@@ -422,7 +420,7 @@ fun LiquidHomeTab(
                                     color = if (isLiquid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Thấu kính quang học",
+                                    text = "Dynamic Island iOS",
                                     fontSize = 10.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -430,6 +428,76 @@ fun LiquidHomeTab(
                         }
                     }
                 }
+            }
+        }
+
+        // Công tắc Ẩn thanh trạng thái (Hide Status Bar)
+        item {
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                tonalElevation = 1.dp,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CropFree,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Ẩn thanh trạng thái",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.5.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Ẩn thanh trạng thái hệ thống để hiển thị Đảo động iOS sạch sẽ",
+                                fontSize = 11.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    Switch(
+                        checked = settings.hideStatusBar,
+                        onCheckedChange = { hide ->
+                            onUpdateSettings { it.copy(hideStatusBar = hide) }
+                            NativeIslandSuppressor.applyStatusBarVisibility(context, hide)
+                        }
+                    )
+                }
+            }
+        }
+
+        // Cài đặt riêng của chế độ Liquidisland (Dynamic Motion 1.2 For Android - giống y hệt video 96942.mp4)
+        if (settings.designLanguage == com.droidbubble.app.model.DesignLanguage.GLASS || settings.glassEnabled) {
+            item {
+                LiquidIosDynamicMotionSettingsSection(
+                    settings = settings,
+                    batteryPct = batteryPct,
+                    onUpdateSettings = onUpdateSettings
+                )
             }
         }
 
@@ -626,13 +694,7 @@ fun LiquidHomeTab(
             )
         }
 
-        item {
-            UpdateCardItem(
-                updateState = updateState,
-                onCheck = { viewModel.checkForUpdates(context) },
-                onOpenSheet = { viewModel.openUpdateSheet() }
-            )
-        }
+
 
         item {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2255,6 +2317,374 @@ private fun GestureActionRow(
                     modifier = Modifier.size(13.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
+            }
+        }
+    }
+}
+
+
+
+@Composable
+private fun LiquidIosDynamicMotionSettingsSection(
+    settings: IslandSettings,
+    batteryPct: Int,
+    onUpdateSettings: ((IslandSettings) -> IslandSettings) -> Unit
+) {
+    val isStopwatchRunning by IslandStateManager.isStopwatchRunning.collectAsState()
+    var previewAuthTick by remember { mutableIntStateOf(0) }
+
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // 1. LOCK SCREEN AUTH (01:19 - 01:25 in 96942.mp4: Face ID | Fingerprint + Black Pill Preview)
+        Text(
+            text = "— LOCK SCREEN AUTH",
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 1.sp,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 6.dp, top = 4.dp)
+        )
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFF0B1120),
+            border = BorderStroke(1.dp, Color(0xFF1E293B)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Lock Screen Auth",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                )
+
+                // Segmented Selector: Face ID | Fingerprint (matching 01:19 - 01:25)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(Color(0xFF060913))
+                        .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(24.dp))
+                        .padding(4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val isFaceId = settings.lockScreenAuthMode.uppercase() != "FINGERPRINT"
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (isFaceId) Color(0xFF2563EB) else Color.Transparent)
+                            .clickable {
+                                onUpdateSettings { it.copy(lockScreenAuthMode = "FACE_ID") }
+                                previewAuthTick++
+                                IslandStateManager.triggerUnlockEvent()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Face ID",
+                            color = if (isFaceId) Color.White else Color(0xFF94A3B8),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (!isFaceId) Color(0xFF2563EB) else Color.Transparent)
+                            .clickable {
+                                onUpdateSettings { it.copy(lockScreenAuthMode = "FINGERPRINT") }
+                                previewAuthTick++
+                                IslandStateManager.triggerUnlockEvent()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Fingerprint",
+                            color = if (!isFaceId) Color.White else Color(0xFF94A3B8),
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+
+                // Live Interactive Black Dynamic Island Auth Pill (01:19 - 01:25)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.runtime.key(settings.lockScreenAuthMode, previewAuthTick) {
+                        Box(
+                            modifier = Modifier
+                                .width(188.dp)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(19.dp))
+                                .background(Color.Black)
+                                .border(0.8.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(19.dp))
+                                .clickable {
+                                    previewAuthTick++
+                                    IslandStateManager.triggerUnlockEvent()
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            LiquidIosLockAuthPill(
+                                authMode = settings.lockScreenAuthMode,
+                                contentAlpha = 1f
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. MEDIA STYLE — Album Gradient (01:19 - 01:25 in 96942.mp4)
+        Text(
+            text = "— MEDIA STYLE",
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 1.sp,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 6.dp, top = 4.dp)
+        )
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFF0B1120),
+            border = BorderStroke(1.dp, Color(0xFF1E293B)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Album Gradient",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.5.sp
+                    )
+                    Text(
+                        text = "Đổ màu nền theo ảnh bìa bài nhạc khi mở rộng (01:07 - 01:17)",
+                        color = Color(0xFF94A3B8),
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = settings.blurredAlbumArtBackground,
+                    onCheckedChange = { enabled ->
+                        onUpdateSettings { it.copy(blurredAlbumArtBackground = enabled) }
+                    }
+                )
+            }
+        }
+
+        // 3. DYNAMIC MOTION 1.2 MODULES (Stopwatch/Timer 00:22 & 00:28, Navigation 00:39 & 00:44, Ringer 00:50, Charging 01:03)
+        Text(
+            text = "— CHỨC NĂNG DYNAMIC ISLAND iOS (DYNAMIC MOTION 1.2)",
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 1.sp,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 6.dp, top = 4.dp)
+        )
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            tonalElevation = 1.dp,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                // Module A: iOS Stopwatch / Timer (00:22 & 00:28)
+                Text(
+                    text = "Bấm giờ & Hẹn giờ iOS (00:22 & 00:28 — Lap / X)",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            onUpdateSettings { it.copy(showAlarm = true) }
+                            IslandStateManager.startStopwatch()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFF9F0A),
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(if (isStopwatchRunning) "Đặt lại (00:01)" else "Bắt đầu Bấm giờ", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            if (!isStopwatchRunning) IslandStateManager.startStopwatch()
+                            IslandStateManager.expand(IslandPriority.ALARM)
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Mở thẻ (Lap / X)", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    if (isStopwatchRunning) {
+                        OutlinedButton(
+                            onClick = { IslandStateManager.stopStopwatch() },
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Tắt", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFFF453A))
+                        }
+                    }
+                }
+
+                // Module B: iOS Navigation (00:39 & 00:44)
+                Text(
+                    text = "Chỉ đường iOS (00:39 & 00:44 — 3.6 km / End Trip)",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            onUpdateSettings { it.copy(showLiveProgress = true) }
+                            IslandStateManager.triggerDemoNavigation()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF30D158),
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Bật Chỉ đường", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            IslandStateManager.triggerDemoNavigation()
+                            IslandStateManager.expand(IslandPriority.PROGRESS)
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Mở thẻ End Trip", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            IslandStateManager.dismissProgress()
+                            IslandStateManager.collapse()
+                        },
+                        shape = RoundedCornerShape(14.dp)
+                    ) {
+                        Text("Kết thúc", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = Color(0xFFFF453A))
+                    }
+                }
+
+                // Module C: iOS Ringer / Vibrate / Silent (00:50 - 01:00) & Charging (01:03)
+                Text(
+                    text = "Chuông / Rung / Im lặng (00:50) & Sạc pin (01:03)",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = { IslandStateManager.triggerRingerModeEvent(IslandStateManager.RingerMode.RING) },
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Ring", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    Button(
+                        onClick = { IslandStateManager.triggerRingerModeEvent(IslandStateManager.RingerMode.VIBRATE) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF9500), contentColor = Color.White),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Vibrate", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    Button(
+                        onClick = { IslandStateManager.triggerRingerModeEvent(IslandStateManager.RingerMode.SILENT) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF3B30), contentColor = Color.White),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Silent", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                    Button(
+                        onClick = { IslandStateManager.triggerChargingEvent(batteryPct, 67.0) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF30D158), contentColor = Color.Black),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.weight(1.2f)
+                    ) {
+                        Text("Sạc $batteryPct%", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+
+                // Module D: Motion Blur & Split Dual Activity Toggles
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Làm mờ chuyển động (Motion Blur 00:05 & 00:12)", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Text("Hiệu ứng làm mờ khi thẻ Đảo động phóng to / thu nhỏ", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(
+                        checked = settings.motionBlur,
+                        onCheckedChange = { v -> onUpdateSettings { it.copy(motionBlur = v) } }
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Tách đôi viên thuốc (Split Pill 00:09 & 00:23)", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                        Text("Tách bong bóng tròn bên phải với hiệu ứng giọt nước metaball", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Switch(
+                        checked = settings.showDualActivityInCompact,
+                        onCheckedChange = { v -> onUpdateSettings { it.copy(showDualActivityInCompact = v) } }
+                    )
+                }
             }
         }
     }

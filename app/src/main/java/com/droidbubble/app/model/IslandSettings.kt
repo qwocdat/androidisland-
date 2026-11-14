@@ -183,7 +183,9 @@ data class IslandSettings(
     val activityCompactHeightDp: Int = 38,
     // Hide Native OS Island (HyperIsland / Fluid Cloud / Atomic Island / Magic Capsule)
     val hideNativeOsIsland: Boolean = true,
-    val nativeIslandMaskBoost: Boolean = true
+    val nativeIslandMaskBoost: Boolean = true,
+    val hideStatusBar: Boolean = false,
+    val lockScreenAuthMode: String = "FACE_ID"
 ) {
     val isGlass: Boolean get() = designLanguage == DesignLanguage.GLASS || glassEnabled
     val isMaterial3: Boolean get() = designLanguage == DesignLanguage.MATERIAL3

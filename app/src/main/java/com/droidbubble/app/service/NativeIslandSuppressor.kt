@@ -109,6 +109,35 @@ object NativeIslandSuppressor {
         return appliedCount > 0
     }
 
+
+    /**
+     * Hides or restores the system status bar & status bar icons globally via Settings & Shizuku.
+     */
+    fun applyStatusBarVisibility(context: Context, hide: Boolean): Boolean {
+        val policyVal = if (hide) "immersive.status=*" else "null"
+        val blacklistVal = if (hide) "clock,battery,wifi,mobile,alarm_clock,bluetooth,volume,zen,headset,location" else ""
+        var ok = false
+        val cr = context.contentResolver
+        runCatching {
+            if (Settings.Global.putString(cr, "policy_control", policyVal)) ok = true
+        }
+        runCatching {
+            if (Settings.Secure.putString(cr, "icon_blacklist", blacklistVal)) ok = true
+        }
+        runCatching {
+            if (Shizuku.pingBinder() && Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+                execShizukuCommand("settings put global policy_control $policyVal")
+                if (hide) {
+                    execShizukuCommand("settings put secure icon_blacklist $blacklistVal")
+                } else {
+                    execShizukuCommand("settings delete secure icon_blacklist")
+                }
+                ok = true
+            }
+        }
+        return ok
+    }
+
     private fun execShizukuCommand(cmd: String) {
         runCatching {
             val method = Shizuku::class.java.getDeclaredMethod(

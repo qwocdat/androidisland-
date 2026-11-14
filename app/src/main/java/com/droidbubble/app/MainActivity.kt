@@ -53,12 +53,21 @@ class MainActivity : ComponentActivity() {
         if (LicenseManager.isActivated(this) && PermissionHelper.isOverlayGranted(this)) {
             IslandOverlayService.start(this)
         }
-        if (intent.getBooleanExtra("EXTRA_SHOW_UPDATE", false)) {
-            viewModel.checkForUpdates(this)
-        }
+        // Update check disabled per user request
 
         setContent {
             val settings by viewModel.settings.collectAsState()
+            androidx.compose.runtime.LaunchedEffect(settings.hideStatusBar) {
+                val windowInsetsController = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                if (settings.hideStatusBar) {
+                    windowInsetsController.systemBarsBehavior =
+                        androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                    windowInsetsController.hide(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                } else {
+                    windowInsetsController.show(androidx.core.view.WindowInsetsCompat.Type.statusBars())
+                }
+                com.droidbubble.app.service.NativeIslandSuppressor.applyStatusBarVisibility(this@MainActivity, settings.hideStatusBar)
+            }
             DroidbubbleTheme(
                 themeMode = settings.appThemeMode,
                 accentColorKey = settings.accentColorKey
@@ -102,9 +111,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.getBooleanExtra("EXTRA_SHOW_UPDATE", false)) {
-            viewModel.checkForUpdates(this)
-        }
+        // Update check disabled per user request
     }
 
     override fun onResume() {

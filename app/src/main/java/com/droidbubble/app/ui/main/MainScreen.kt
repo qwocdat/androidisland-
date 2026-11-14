@@ -406,13 +406,7 @@ fun MainScreen(
     var showDroidbarAppsPage by remember { mutableStateOf(false) }
     var showTasksPage by remember { mutableStateOf(false) }
 
-    var showVideoAnnouncementDialog by remember { mutableStateOf(AnnouncementManager.shouldShow(context)) }
-    LaunchedEffect(Unit) {
-        com.droidbubble.app.util.OnlineConfigManager.fetchOnlineConfig(context)
-        if (AnnouncementManager.shouldShow(context)) {
-            showVideoAnnouncementDialog = true
-        }
-    }
+    var showVideoAnnouncementDialog by remember { mutableStateOf(false) }
     var showFeedbackSheet by remember { mutableStateOf(false) }
     var showConfigManagerDialog by remember { mutableStateOf(false) }
     var configJsonText by remember { mutableStateOf("") }
@@ -438,7 +432,6 @@ fun MainScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.checkPermissions(context)
-                viewModel.refreshUpdateStateOnResume(context)
                 if ((settings.isEnabled || settings.droidbarEnabled) && PermissionHelper.isOverlayGranted(context)) {
                     IslandOverlayService.start(context)
                 }
@@ -622,23 +615,7 @@ fun MainScreen(
                                     )
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Surface(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(CircleShape)
-                                            .clickable { showVideoAnnouncementDialog = true },
-                                        shape = CircleShape,
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Icon(
-                                                imageVector = Icons.Default.PlayCircleOutline,
-                                                contentDescription = "TikTok Video",
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-                                    }
+
                                     Surface(
                                         modifier = Modifier
                                             .size(40.dp)
@@ -1049,7 +1026,7 @@ fun MainScreen(
     }
 
     // Update Available Pop-up Shelf / Dialog
-    if (showUpdateSheet) {
+    if (false && showUpdateSheet) {
         val currentUpdate = (updateState as? MainScreenViewModel.UpdateState.Available)?.release
             ?: (updateState as? MainScreenViewModel.UpdateState.Downloading)?.release
         val downloadingProgress = (updateState as? MainScreenViewModel.UpdateState.Downloading)?.progress
@@ -1194,7 +1171,7 @@ fun MainScreen(
     }
 
     // Video & Changelog Announcement Dialog
-    if (showVideoAnnouncementDialog) {
+    if (false && showVideoAnnouncementDialog) {
         VideoAnnouncementDialog(
             onDismiss = {
                 AnnouncementManager.markDismissed(context)

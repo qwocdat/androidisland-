@@ -145,6 +145,81 @@ object IslandStateManager {
     private val _alarmInfo = MutableStateFlow<AlarmInfo?>(null)
     val alarmInfo: StateFlow<AlarmInfo?> = _alarmInfo.asStateFlow()
 
+
+    private var stopwatchJob: Job? = null
+    private var stopwatchSeconds: Long = 0L
+    private var stopwatchLapCount: Int = 0
+    private val _isStopwatchRunning = MutableStateFlow(false)
+    val isStopwatchRunning: StateFlow<Boolean> = _isStopwatchRunning.asStateFlow()
+
+    fun startStopwatch() {
+        stopwatchJob?.cancel()
+        stopwatchSeconds = 1L
+        stopwatchLapCount = 0
+        _isStopwatchRunning.value = true
+        _alarmInfo.value = AlarmInfo(
+            triggerTimeMs = System.currentTimeMillis(),
+            formattedTime = "00:01",
+            timeRemainingFormatted = "Stopwatch"
+        )
+        stopwatchJob = scope.launch {
+            while (true) {
+                delay(1000L)
+                stopwatchSeconds++
+                val mins = stopwatchSeconds / 60
+                val secs = stopwatchSeconds % 60
+                val formatted = String.format(java.util.Locale.US, "%02d:%02d", mins, secs)
+                _alarmInfo.value = AlarmInfo(
+                    triggerTimeMs = System.currentTimeMillis(),
+                    formattedTime = formatted,
+                    timeRemainingFormatted = if (stopwatchLapCount > 0) "Lap $stopwatchLapCount" else "Stopwatch"
+                )
+            }
+        }
+    }
+
+    fun lapStopwatch() {
+        if (_isStopwatchRunning.value) {
+            stopwatchLapCount++
+            val mins = stopwatchSeconds / 60
+            val secs = stopwatchSeconds % 60
+            val formatted = String.format(java.util.Locale.US, "%02d:%02d", mins, secs)
+            _alarmInfo.value = AlarmInfo(
+                triggerTimeMs = System.currentTimeMillis(),
+                formattedTime = formatted,
+                timeRemainingFormatted = "Lap $stopwatchLapCount"
+            )
+        }
+    }
+
+    fun stopStopwatch() {
+        stopwatchJob?.cancel()
+        stopwatchJob = null
+        stopwatchSeconds = 0L
+        stopwatchLapCount = 0
+        _isStopwatchRunning.value = false
+        _alarmInfo.value = null
+        if (_isExpanded.value && (_expandedPriority.value == IslandPriority.ALARM || !isOccupied)) {
+            collapse()
+        }
+    }
+
+    fun triggerDemoNavigation() {
+        updateProgress(
+            NotificationInfo(
+                key = "ios_nav_live",
+                packageName = "com.google.android.apps.maps",
+                appName = "Maps",
+                title = "3.6 km",
+                text = "Arrive 7:21 PM",
+                progress = 64,
+                maxProgress = 100,
+                isIndeterminate = false,
+                isOngoing = true
+            )
+        )
+    }
+
     fun updateAlarm(info: AlarmInfo?) {
         if (_alarmInfo.value != info) {
             _alarmInfo.value = info

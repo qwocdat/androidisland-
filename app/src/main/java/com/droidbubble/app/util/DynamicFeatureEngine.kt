@@ -152,13 +152,6 @@ object DynamicFeatureEngine {
             prefs.edit().putString(KEY_LAST_PATCH_SIGNATURE, patchSignature).apply()
         }
 
-        if (config.remoteToastMessage.isNotBlank()) {
-            val toastKey = "${config.patchVersion}_${config.remoteToastMessage}"
-            val lastToast = prefs.getString(KEY_LAST_TOAST, "")
-            if (lastToast != toastKey) {
-                prefs.edit().putString(KEY_LAST_TOAST, toastKey).apply()
-                IslandStateManager.triggerTaskConfirmation("sparkle", config.remoteToastMessage)
-            }
-        }
+// Remote toast on Dynamic Island disabled per user request
     }
 }

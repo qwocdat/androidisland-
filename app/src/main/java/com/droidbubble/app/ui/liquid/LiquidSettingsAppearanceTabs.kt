@@ -267,6 +267,32 @@ fun LiquidSettingsTab(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (isVi) "Ẩn thanh trạng thái (Hide Status Bar)" else "Hide Status Bar",
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                text = if (isVi) "Ẩn các biểu tượng thanh trạng thái hệ thống" else "Hide system status bar icons",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = settings.hideStatusBar,
+                            onCheckedChange = { v ->
+                                onUpdateSettings { it.copy(hideStatusBar = v) }
+                                NativeIslandSuppressor.applyStatusBarVisibility(context, v)
+                            }
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Text(strings.blackIdleIsland, fontWeight = FontWeight.Medium, fontSize = 14.sp, modifier = Modifier.weight(1f))
                         Switch(
                             checked = settings.alwaysShowPill,
@@ -972,7 +998,7 @@ fun LiquidSettingsTab(
             }
         }
 
-        item {
+        if (false) item {
             Surface(
                 onClick = { showOnlineAdminDialog = true },
                 shape = RoundedCornerShape(24.dp),
