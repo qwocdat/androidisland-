@@ -186,8 +186,8 @@ data class IslandSettings(
     val hideStatusBar: Boolean = false,
     val lockScreenAuthMode: String = "FACE_ID",
     // Custom Status Bar Overlay (Ngoài màn hình toàn hệ thống + Tự động ẩn vật thể bị Island đè lên)
-    val statusBarBgMode: String = "BLACK", // BLACK, GLASS, TRANSPARENT
-    val statusBarBatteryStyle: String = "CAPSULE", // CAPSULE, IOS_OUTLINE, TEXT_ONLY
+    val statusBarBgMode: String = "TRANSPARENT", // BLACK, GLASS, TRANSPARENT
+    val statusBarBatteryStyle: String = "IOS_OUTLINE", // CAPSULE, IOS_OUTLINE, TEXT_ONLY
     val statusBarClock24h: Boolean = true,
     val statusBarCustomLabel: String = "",
     val statusBarShowClock: Boolean = true,

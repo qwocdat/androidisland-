@@ -265,7 +265,7 @@ fun LiquidSettingsTab(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(strings.islandEnabled, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.isEnabled,
                             onCheckedChange = { onToggleEnabled(it) }
                         )
@@ -288,7 +288,7 @@ fun LiquidSettingsTab(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.hideStatusBar,
                             onCheckedChange = { v ->
                                 onUpdateSettings { it.copy(hideStatusBar = v) }
@@ -303,7 +303,7 @@ fun LiquidSettingsTab(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(strings.blackIdleIsland, fontWeight = FontWeight.Medium, fontSize = 14.sp, modifier = Modifier.weight(1f))
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.alwaysShowPill,
                             onCheckedChange = { v -> onUpdateSettings { it.copy(alwaysShowPill = v) } }
                         )
@@ -326,7 +326,7 @@ fun LiquidSettingsTab(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.hideNativeOsIsland,
                             onCheckedChange = { v ->
                                 onUpdateSettings { it.copy(hideNativeOsIsland = v) }
@@ -346,7 +346,7 @@ fun LiquidSettingsTab(
                             fontSize = 14.sp,
                             modifier = Modifier.weight(1f)
                         )
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.nativeIslandMaskBoost,
                             onCheckedChange = { v -> onUpdateSettings { it.copy(nativeIslandMaskBoost = v) } }
                         )
@@ -1083,7 +1083,7 @@ private fun LiquidToggleRow(
     ) {
         Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
         Spacer(modifier = Modifier.height(4.dp))
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+        LiquidGlassSwitch(checked = checked, onCheckedChange = onCheckedChange)
         if (!subtitle.isNullOrBlank()) {
             Text(
                 text = subtitle,

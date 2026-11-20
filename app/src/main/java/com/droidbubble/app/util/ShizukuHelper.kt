@@ -121,7 +121,10 @@ object ShizukuHelper {
                     "settings put secure notification_badging 0",
                     "settings put secure status_bar_show_badges 0",
                     "settings put system status_bar_show_notification_icon 0",
-                    "settings put system show_notification_icon 0"
+                    "settings put system show_notification_icon 0",
+                    "settings put system status_bar_show_network_speed 0",
+                    "settings put system status_bar_show_carrier_under_keyguard 0",
+                    "settings put secure clock_seconds 0"
                 )
             } else {
                 listOf(
@@ -140,7 +143,9 @@ object ShizukuHelper {
                     "settings delete system status_bar_show_notification_icon",
                     "settings put system status_bar_show_notification_icon 1",
                     "settings delete system show_notification_icon",
-                    "settings put system show_notification_icon 1"
+                    "settings put system show_notification_icon 1",
+                    "settings delete system status_bar_show_network_speed",
+                    "settings delete system status_bar_show_carrier_under_keyguard"
                 )
             }
 

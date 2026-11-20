@@ -424,10 +424,9 @@ fun IosLiquidGlassNavigationBar(
                                     },
                                     highlight = { baseHighlight.value.copy(alpha = 0.75f) },
                                     layerBlock = {
-                                        val width = size.width.coerceAtLeast(1f)
-                                        val s = lerp(1f, 1f + 16.dp.toPx() / width, dampedDrag.pressProgress)
-                                        scaleX = s
-                                        scaleY = s
+                                        // Zero horizontal zoom of background; gently compress top & bottom edges inward when glass pill expands
+                                        scaleX = 1f
+                                        scaleY = lerp(1f, 0.90f, dampedDrag.pressProgress)
                                     },
                                     onDrawSurface = {
                                         drawRect(containerColor)
@@ -462,7 +461,7 @@ fun IosLiquidGlassNavigationBar(
 
             if (isBlurActive && backdrop != null) {
                 CompositionLocalProvider(
-                    LocalIosTabScale provides { lerp(1f, 1.14f, dampedDrag.pressProgress) },
+                    LocalIosTabScale provides { 1f },
                     LocalContentColor provides accentColor,
                 ) {
                     Row(
@@ -471,28 +470,7 @@ fun IosLiquidGlassNavigationBar(
                             .alpha(0f)
                             .layerBackdrop(tabsBackdrop)
                             .graphicsLayer { translationX = panelOffset }
-                            .drawBackdrop(
-                                backdrop = backdrop,
-                                shape = { pillShape },
-                                effects = {
-                                    vibrancy()
-                                    blur(4.dp.toPx(), 4.dp.toPx())
-                                    lens(
-                                        refractionHeight = 24.dp.toPx(),
-                                        refractionAmount = 24.dp.toPx(),
-                                    )
-                                },
-                                onDrawSurface = {
-                                    drawRect(containerColor)
-                                    with(interactiveHighlight) {
-                                        drawSubsurfaceLight(
-                                            isDark = isDark,
-                                            accentColor = accentColor,
-                                            extraBoost = dampedDrag.pressProgress
-                                        )
-                                    }
-                                },
-                            )
+                            .background(containerColor.copy(alpha = 0.28f), pillShape)
                             .then(interactiveHighlight.modifier)
                             .height(56.dp)
                             .padding(horizontal = 4.dp),
@@ -543,15 +521,17 @@ fun IosLiquidGlassNavigationBar(
                                         alpha = 1f - progress,
                                     )
                                     if (progress > 0.005f) {
-                                        // Pure white translucent inner glow UNDERNEATH the sliding glass lens (both Light & Dark modes, regardless of accentColor)
-                                        val glowAlpha = (if (isDark) 0.22f else 0.32f) * progress
+                                        // Adaptive optical inner glow optimized for all themes & accent colors (pure specular white core + subtle harmonic halo)
+                                        val coreAlpha = (if (isDark) 0.28f else 0.38f) * progress
+                                        val haloColor = androidx.compose.ui.graphics.lerp(Color.White, accentColor, 0.20f)
                                         drawRect(
                                             brush = androidx.compose.ui.graphics.Brush.radialGradient(
-                                                0.00f to Color.White.copy(alpha = glowAlpha),
-                                                0.55f to Color.White.copy(alpha = glowAlpha * 0.45f),
-                                                1.00f to Color.White.copy(alpha = glowAlpha * 0.10f),
+                                                0.00f to Color.White.copy(alpha = coreAlpha),
+                                                0.45f to haloColor.copy(alpha = coreAlpha * 0.52f),
+                                                0.82f to haloColor.copy(alpha = coreAlpha * 0.16f),
+                                                1.00f to Color.Transparent,
                                                 center = Offset(size.width * 0.5f, size.height * 0.5f),
-                                                radius = maxOf(size.width, size.height) * 0.72f,
+                                                radius = maxOf(size.width, size.height) * 0.78f,
                                             )
                                         )
                                     }

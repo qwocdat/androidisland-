@@ -249,7 +249,7 @@ fun LiquidAnimationSettingsScreen(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 15.sp
                         )
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.customAnimationsEnabled,
                             onCheckedChange = { enabled ->
                                 onUpdateSettings { it.copy(customAnimationsEnabled = enabled) }
@@ -566,7 +566,7 @@ fun LiquidAnimationSettingsScreen(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 15.sp
                         )
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.showSliderValues,
                             onCheckedChange = { show ->
                                 onUpdateSettings { it.copy(showSliderValues = show) }
@@ -752,7 +752,7 @@ fun LiquidSliderRow(
                 )
             }
         }
-        Slider(
+        LiquidGlassSlider(
             value = localValue.coerceIn(valueRange.start, valueRange.endInclusive),
             onValueChange = { newVal ->
                 isDraggingThis = true

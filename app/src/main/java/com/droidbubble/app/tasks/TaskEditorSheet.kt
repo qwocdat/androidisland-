@@ -166,7 +166,7 @@ fun TaskEditorScreen(
                             )
                         },
                         trailingContent = {
-                            Switch(
+                            LiquidGlassSwitch(
                                 checked = showInBubble,
                                 onCheckedChange = { showInBubble = it }
                             )

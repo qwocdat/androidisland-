@@ -1333,19 +1333,20 @@ fun LiquidIosLockAuthPill(
     authMode: String,
     contentAlpha: Float
 ) {
-    // Stage 0 (0..550ms): Face ID / Fingerprint icon
-    // Stage 1 (550..900ms): Spinning ring (for Fingerprint) or morphing
-    // Stage 2 (900ms+): Green Checkmark
+    // Authentic iOS Dynamic Island Face ID Unlock Animation (112201.mp4 00:07-00:09, 00:36-00:38)
+    // Stage 0 (0..420ms): Scanning — closed padlock on left, crisp white Face ID icon pulsing/scanning on right
+    // Stage 1 (420..820ms): Unlocking — padlock shackle smoothly springs open & tilts up, Face ID morphs into animated checkmark
+    // Stage 2 (820ms+): Verified — unlocked padlock + glowing checkmark hold briefly before collapse
     var stage by remember { mutableIntStateOf(0) }
     LaunchedEffect(authMode) {
         stage = 0
-        delay(520)
+        delay(420)
         stage = 1
-        delay(340)
+        delay(380)
         stage = 2
     }
 
-    val spinTransition = rememberInfiniteTransition(label = "fp_spin")
+    val spinTransition = rememberInfiniteTransition(label = "faceid_scan")
     val spinAngle by spinTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
@@ -1355,10 +1356,29 @@ fun LiquidIosLockAuthPill(
         ),
         label = "spinAngle"
     )
+    val scanPulse by spinTransition.animateFloat(
+        initialValue = 0.90f,
+        targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(360, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "faceIdScanPulse"
+    )
 
+    val shackleOpenProgress by animateFloatAsState(
+        targetValue = if (stage >= 1) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.56f, stiffness = 360f),
+        label = "shackleOpenProgress"
+    )
+    val checkDrawProgress by animateFloatAsState(
+        targetValue = if (stage >= 1) 1f else 0f,
+        animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+        label = "checkDrawProgress"
+    )
     val checkScale by animateFloatAsState(
-        targetValue = if (stage == 2) 1f else 0.4f,
-        animationSpec = spring(dampingRatio = 0.55f, stiffness = 380f),
+        targetValue = if (stage >= 1) 1f else 0.5f,
+        animationSpec = spring(dampingRatio = 0.52f, stiffness = 420f),
         label = "authCheckScale"
     )
 
@@ -1372,15 +1392,62 @@ fun LiquidIosLockAuthPill(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Icon(
-            imageVector = if (stage >= 2) Icons.Default.LockOpen else Icons.Default.Lock,
-            contentDescription = "Lock Auth",
-            tint = Color.White,
-            modifier = Modifier.size(18.dp)
-        )
+        // LEFT: Animated iOS Padlock whose shackle smoothly lifts & swings open
+        Canvas(modifier = Modifier.size(19.dp)) {
+            val w = size.width
+            val h = size.height
+            val sw = 1.9.dp.toPx()
+            val bodyTop = h * 0.44f
+            val bodyH = h * 0.46f
+            val bodyW = w * 0.68f
+            val bodyLeft = (w - bodyW) * 0.5f
+
+            // Animated shackle (lifts up and rotates open smoothly)
+            val liftY = -h * 0.08f * shackleOpenProgress
+            val openSweep = shackleOpenProgress
+            val shackleLeft = w * 0.30f
+            val shackleRight = w * 0.70f
+            val shackleArchTop = h * 0.14f + liftY
+            val shacklePath = Path().apply {
+                // Anchor on right side, swing left leg upward when open (iOS padlock physics)
+                moveTo(shackleRight, bodyTop + 1.dp.toPx())
+                lineTo(shackleRight, h * 0.30f + liftY)
+                cubicTo(
+                    shackleRight, shackleArchTop,
+                    shackleLeft, shackleArchTop,
+                    shackleLeft - w * 0.08f * openSweep, h * 0.30f + liftY - h * 0.06f * openSweep
+                )
+                if (openSweep < 0.85f) {
+                    lineTo(
+                        shackleLeft - w * 0.06f * openSweep,
+                        bodyTop - h * 0.14f * openSweep + 1.dp.toPx() * (1f - openSweep)
+                    )
+                }
+            }
+            drawPath(
+                path = shacklePath,
+                color = Color.White,
+                style = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            )
+
+            // Solid rounded padlock body
+            drawRoundRect(
+                color = Color.White,
+                topLeft = Offset(bodyLeft, bodyTop),
+                size = Size(bodyW, bodyH),
+                cornerRadius = CornerRadius(3.dp.toPx(), 3.dp.toPx())
+            )
+            // Subtle keyhole cutout
+            drawCircle(
+                color = Color.Black,
+                radius = 1.4.dp.toPx(),
+                center = Offset(w * 0.5f, bodyTop + bodyH * 0.48f)
+            )
+        }
 
         Spacer(modifier = Modifier.width(36.dp))
 
+        // RIGHT: Authentic iOS Face ID Icon (or Fingerprint) morphing cleanly into animated checkmark
         Box(
             modifier = Modifier.size(22.dp),
             contentAlignment = Alignment.Center
@@ -1411,7 +1478,6 @@ fun LiquidIosLockAuthPill(
                         }
                     }
                     else -> {
-                        // Solid green circle with black checkmark (01:24-01:25 in 96942.mp4)
                         Canvas(
                             modifier = Modifier
                                 .size(20.dp)
@@ -1435,55 +1501,127 @@ fun LiquidIosLockAuthPill(
                     }
                 }
             } else {
-                // FACE_ID mode (01:19-01:20 in 96942.mp4)
-                if (stage < 2) {
-                    Canvas(modifier = Modifier.size(20.dp)) {
+                // FACE_ID mode matching 112201.mp4: crisp white iOS Face ID brackets + face -> smooth green/white checkmark
+                if (stage == 0) {
+                    Canvas(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .graphicsLayer {
+                                scaleX = scanPulse
+                                scaleY = scanPulse
+                            }
+                    ) {
                         val s = size.width
-                        val sw = 1.7.dp.toPx()
-                        val corner = s * 0.26f
-                        // 4 corner brackets + smiling face
-                        val path = Path().apply {
+                        val sw = 1.8.dp.toPx()
+                        val corner = s * 0.27f
+                        val r = s * 0.14f
+                        val bracketColor = Color.White
+                        // 4 iOS-style rounded corner brackets
+                        val brackets = Path().apply {
                             // Top-left
-                            moveTo(0f, corner); lineTo(0f, 0f); lineTo(corner, 0f)
+                            moveTo(0f, corner)
+                            lineTo(0f, r)
+                            quadraticTo(0f, 0f, r, 0f)
+                            lineTo(corner, 0f)
                             // Top-right
-                            moveTo(s - corner, 0f); lineTo(s, 0f); lineTo(s, corner)
+                            moveTo(s - corner, 0f)
+                            lineTo(s - r, 0f)
+                            quadraticTo(s, 0f, s, r)
+                            lineTo(s, corner)
                             // Bottom-left
-                            moveTo(0f, s - corner); lineTo(0f, s); lineTo(corner, s)
+                            moveTo(0f, s - corner)
+                            lineTo(0f, s - r)
+                            quadraticTo(0f, s, r, s)
+                            lineTo(corner, s)
                             // Bottom-right
-                            moveTo(s - corner, s); lineTo(s, s); lineTo(s, s - corner)
+                            moveTo(s - corner, s)
+                            lineTo(s - r, s)
+                            quadraticTo(s, s, s, s - r)
+                            lineTo(s, s - corner)
                         }
-                        drawPath(path = path, color = iosGreen, style = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round))
-                        // Eyes & smile
-                        drawCircle(color = iosGreen, radius = 1.2.dp.toPx(), center = Offset(s * 0.35f, s * 0.36f))
-                        drawCircle(color = iosGreen, radius = 1.2.dp.toPx(), center = Offset(s * 0.65f, s * 0.36f))
+                        drawPath(
+                            path = brackets,
+                            color = bracketColor,
+                            style = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                        )
+                        // Eyes (short vertical pills like iOS Face ID)
+                        drawLine(
+                            color = bracketColor,
+                            start = Offset(s * 0.34f, s * 0.31f),
+                            end = Offset(s * 0.34f, s * 0.43f),
+                            strokeWidth = sw,
+                            cap = StrokeCap.Round
+                        )
+                        drawLine(
+                            color = bracketColor,
+                            start = Offset(s * 0.66f, s * 0.31f),
+                            end = Offset(s * 0.66f, s * 0.43f),
+                            strokeWidth = sw,
+                            cap = StrokeCap.Round
+                        )
+                        // Center nose L-hook
+                        val nose = Path().apply {
+                            moveTo(s * 0.50f, s * 0.33f)
+                            lineTo(s * 0.50f, s * 0.54f)
+                            lineTo(s * 0.45f, s * 0.54f)
+                        }
+                        drawPath(
+                            path = nose,
+                            color = bracketColor,
+                            style = Stroke(width = sw * 0.85f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+                        )
+                        // Smile arc
                         drawArc(
-                            color = iosGreen,
+                            color = bracketColor,
                             startAngle = 25f,
                             sweepAngle = 130f,
                             useCenter = false,
-                            topLeft = Offset(s * 0.30f, s * 0.38f),
-                            size = Size(s * 0.40f, s * 0.34f),
+                            topLeft = Offset(s * 0.30f, s * 0.46f),
+                            size = Size(s * 0.40f, s * 0.28f),
                             style = Stroke(width = sw, cap = StrokeCap.Round)
                         )
                     }
                 } else {
+                    // Authenticated: subtle circular halo + smoothly drawn green checkmark
                     Canvas(
                         modifier = Modifier
-                            .size(20.dp)
+                            .size(21.dp)
                             .graphicsLayer {
                                 scaleX = checkScale
                                 scaleY = checkScale
                             }
                     ) {
-                        val p = Path().apply {
-                            moveTo(size.width * 0.20f, size.height * 0.52f)
-                            lineTo(size.width * 0.42f, size.height * 0.74f)
-                            lineTo(size.width * 0.82f, size.height * 0.28f)
+                        val sw = 2.1.dp.toPx()
+                        // Soft green circular halo ring
+                        drawCircle(
+                            color = iosGreen.copy(alpha = 0.18f * checkDrawProgress),
+                            radius = size.minDimension * 0.50f
+                        )
+                        drawCircle(
+                            color = iosGreen.copy(alpha = 0.72f * checkDrawProgress),
+                            radius = size.minDimension * 0.46f,
+                            style = Stroke(width = 1.4.dp.toPx())
+                        )
+                        // Progressive 2-segment checkmark draw
+                        val p1 = Offset(size.width * 0.26f, size.height * 0.52f)
+                        val p2 = Offset(size.width * 0.43f, size.height * 0.69f)
+                        val p3 = Offset(size.width * 0.75f, size.height * 0.34f)
+                        val t = checkDrawProgress.coerceIn(0f, 1f)
+                        val checkPath = Path().apply {
+                            moveTo(p1.x, p1.y)
+                            if (t <= 0.42f) {
+                                val sub = t / 0.42f
+                                lineTo(p1.x + (p2.x - p1.x) * sub, p1.y + (p2.y - p1.y) * sub)
+                            } else {
+                                lineTo(p2.x, p2.y)
+                                val sub = (t - 0.42f) / 0.58f
+                                lineTo(p2.x + (p3.x - p2.x) * sub, p2.y + (p3.y - p2.y) * sub)
+                            }
                         }
                         drawPath(
-                            path = p,
+                            path = checkPath,
                             color = iosGreen,
-                            style = Stroke(width = 2.2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                            style = Stroke(width = sw, cap = StrokeCap.Round, join = StrokeJoin.Round)
                         )
                     }
                 }

@@ -488,7 +488,7 @@ fun LiquidHomeTab(
                                 )
                             }
                         }
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.hideStatusBar,
                             onCheckedChange = { hide ->
                                 onUpdateSettings { it.copy(hideStatusBar = hide) }
@@ -578,7 +578,7 @@ fun LiquidHomeTab(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text("Hiện Đồng hồ (24h)", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                                    Switch(
+                                    LiquidGlassSwitch(
                                         checked = settings.statusBarShowClock,
                                         onCheckedChange = { v -> onUpdateSettings { it.copy(statusBarShowClock = v) } }
                                     )
@@ -589,7 +589,7 @@ fun LiquidHomeTab(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text("Hiện Chuông / Rung bên cạnh giờ", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                                    Switch(
+                                    LiquidGlassSwitch(
                                         checked = settings.statusBarShowRinger,
                                         onCheckedChange = { v -> onUpdateSettings { it.copy(statusBarShowRinger = v) } }
                                     )
@@ -600,7 +600,7 @@ fun LiquidHomeTab(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text("Hiện Sóng di động kép (SIM 1 & 2)", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                                    Switch(
+                                    LiquidGlassSwitch(
                                         checked = settings.statusBarShowSignal,
                                         onCheckedChange = { v -> onUpdateSettings { it.copy(statusBarShowSignal = v) } }
                                     )
@@ -611,7 +611,7 @@ fun LiquidHomeTab(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text("Hiện Wi-Fi / 5G & Pin", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                                    Switch(
+                                    LiquidGlassSwitch(
                                         checked = settings.statusBarShowWifi && settings.statusBarShowBattery,
                                         onCheckedChange = { v -> onUpdateSettings { it.copy(statusBarShowWifi = v, statusBarShowBattery = v) } }
                                     )
@@ -956,7 +956,7 @@ fun LiquidHomeTab(
                                     Text(detectedOsIsland, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
-                            Switch(
+                            LiquidGlassSwitch(
                                 checked = settings.hideNativeOsIsland,
                                 onCheckedChange = { enabled ->
                                     viewModel.updateSettings { it.copy(hideNativeOsIsland = enabled) }
@@ -975,7 +975,7 @@ fun LiquidHomeTab(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.weight(1f)
                             )
-                            Switch(
+                            LiquidGlassSwitch(
                                 checked = settings.nativeIslandMaskBoost,
                                 onCheckedChange = { boost ->
                                     viewModel.updateSettings { it.copy(nativeIslandMaskBoost = boost) }
@@ -1408,7 +1408,7 @@ fun LiquidActivitiesTab(
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 15.sp
                     )
-                    Switch(
+                    LiquidGlassSwitch(
                         checked = isActivityEnabled,
                         onCheckedChange = { setActivityEnabled(it) }
                     )
@@ -1637,7 +1637,7 @@ fun LiquidActivitiesTab(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(if (isVi) "Sóng nhạc theo màu ảnh bìa" else "Ambient Album Wave", fontWeight = FontWeight.Medium)
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.mediaWaveAnimation,
                             onCheckedChange = { v -> onUpdateSettings { it.copy(mediaWaveAnimation = v) } }
                         )
@@ -1648,7 +1648,7 @@ fun LiquidActivitiesTab(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(if (isVi) "Làm mờ ảnh bìa làm nền" else "Blurred Album Art Background", fontWeight = FontWeight.Medium)
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.blurredAlbumArtBackground,
                             onCheckedChange = { v -> onUpdateSettings { it.copy(blurredAlbumArtBackground = v) } }
                         )
@@ -1659,7 +1659,7 @@ fun LiquidActivitiesTab(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(if (isVi) "Ẩn nhạc khi tạm dừng" else "Dismiss Media on Pause", fontWeight = FontWeight.Medium)
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.dismissMediaOnPause,
                             onCheckedChange = { v -> onUpdateSettings { it.copy(dismissMediaOnPause = v) } }
                         )
@@ -1681,7 +1681,7 @@ fun LiquidActivitiesTab(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(if (isVi) "Tự động ẩn thông báo" else "Auto-Dismiss Notifications", fontWeight = FontWeight.Medium)
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.autoDismissNotifications,
                             onCheckedChange = { v -> onUpdateSettings { it.copy(autoDismissNotifications = v) } }
                         )
@@ -2188,7 +2188,7 @@ fun LiquidShortcutsTab(
 
                     Column {
                         Text(strings.islandGestures, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.islandGesturesEnabled,
                             onCheckedChange = { v -> onUpdateSettings { it.copy(islandGesturesEnabled = v) } }
                         )
@@ -2196,7 +2196,7 @@ fun LiquidShortcutsTab(
 
                     Column {
                         Text(strings.onlyWhenEmpty, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
-                        Switch(
+                        LiquidGlassSwitch(
                             checked = settings.gesturesOnlyWhenEmpty,
                             onCheckedChange = { v -> onUpdateSettings { it.copy(gesturesOnlyWhenEmpty = v) } }
                         )
@@ -2209,7 +2209,7 @@ fun LiquidShortcutsTab(
                     ) {
                         Column {
                             Text(strings.adaptiveGestures, fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
-                            Switch(
+                            LiquidGlassSwitch(
                                 checked = settings.adaptiveGesturesEnabled,
                                 onCheckedChange = { v -> onUpdateSettings { it.copy(adaptiveGesturesEnabled = v) } }
                             )
@@ -2669,7 +2669,7 @@ private fun LiquidIosDynamicMotionSettingsSection(
                         fontSize = 12.sp
                     )
                 }
-                Switch(
+                LiquidGlassSwitch(
                     checked = settings.blurredAlbumArtBackground,
                     onCheckedChange = { enabled ->
                         onUpdateSettings { it.copy(blurredAlbumArtBackground = enabled) }
@@ -2708,7 +2708,7 @@ private fun LiquidIosDynamicMotionSettingsSection(
                         Text("Tự động nhận diện Bấm giờ & Hẹn giờ", fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
                         Text("Tự động hiển thị bộ đếm trực tiếp khi bật Bấm giờ hoặc Hẹn giờ trong ứng dụng Đồng hồ", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(
+                    LiquidGlassSwitch(
                         checked = settings.showAlarm,
                         onCheckedChange = { v -> onUpdateSettings { it.copy(showAlarm = v) } }
                     )
@@ -2723,7 +2723,7 @@ private fun LiquidIosDynamicMotionSettingsSection(
                         Text("Tự động nhận diện Điều hướng & Tiến trình", fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
                         Text("Hiển thị khoảng cách chỉ đường và tiến trình tải xuống trực tiếp trên Đảo động", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(
+                    LiquidGlassSwitch(
                         checked = settings.showLiveProgress,
                         onCheckedChange = { v -> onUpdateSettings { it.copy(showLiveProgress = v) } }
                     )
@@ -2738,7 +2738,7 @@ private fun LiquidIosDynamicMotionSettingsSection(
                         Text("Tự động nhận diện Chuông / Rung / Im lặng & Sạc pin", fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
                         Text("Phản hồi tức thì khi gạt phím âm lượng chế độ chuông hoặc cắm sạc nhanh", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(
+                    LiquidGlassSwitch(
                         checked = settings.showRingerMode && settings.showCharging,
                         onCheckedChange = { v -> onUpdateSettings { it.copy(showRingerMode = v, showCharging = v) } }
                     )
@@ -2753,7 +2753,7 @@ private fun LiquidIosDynamicMotionSettingsSection(
                         Text("Làm mờ chuyển động quang học", fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
                         Text("Hiệu ứng làm mờ theo vận tốc khi Đảo động phóng to lên thanh trạng thái hoặc thu gọn", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(
+                    LiquidGlassSwitch(
                         checked = settings.motionBlur,
                         onCheckedChange = { v -> onUpdateSettings { it.copy(motionBlur = v) } }
                     )
@@ -2768,7 +2768,7 @@ private fun LiquidIosDynamicMotionSettingsSection(
                         Text("Tách đôi viên thuốc đa nhiệm", fontWeight = FontWeight.SemiBold, fontSize = 14.5.sp)
                         Text("Tách bong bóng tròn bên phải với lực hút chất lỏng khi có 2 hoạt động chạy song song", fontSize = 11.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                    Switch(
+                    LiquidGlassSwitch(
                         checked = settings.showDualActivityInCompact,
                         onCheckedChange = { v -> onUpdateSettings { it.copy(showDualActivityInCompact = v) } }
                     )

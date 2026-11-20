@@ -1,5 +1,7 @@
 package com.droidbubble.app.ui.main
 
+import com.droidbubble.app.ui.liquid.LiquidGlassSwitch
+
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -603,7 +605,7 @@ fun OnlineAdminConfigDialog(
                                 Text("Cho phép mọi thiết bị vào thẳng", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp)
                                 Text("Bỏ qua bước chờ duyệt UID", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            Switch(checked = allowAllDevices, onCheckedChange = { allowAllDevices = it })
+                            LiquidGlassSwitch(checked = allowAllDevices, onCheckedChange = { allowAllDevices = it })
                         }
 
                         Row(
@@ -1002,7 +1004,7 @@ fun OnlineAdminConfigDialog(
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(label, fontSize = 13.sp, modifier = Modifier.weight(1f))
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = featureSwitches[key] ?: false,
                                     onCheckedChange = { featureSwitches[key] = it }
                                 )
@@ -1018,7 +1020,7 @@ fun OnlineAdminConfigDialog(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("Hiển thị bảng thông báo khi mở App", fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp)
-                            Switch(checked = showAnnouncement, onCheckedChange = { showAnnouncement = it })
+                            LiquidGlassSwitch(checked = showAnnouncement, onCheckedChange = { showAnnouncement = it })
                         }
 
                         OutlinedTextField(

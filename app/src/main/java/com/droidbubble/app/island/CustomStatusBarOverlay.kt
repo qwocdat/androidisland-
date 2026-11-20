@@ -50,11 +50,13 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -199,7 +201,14 @@ fun CustomStatusBarOverlay(
                             color = Color.White,
                             fontSize = (14.5f * scale).sp,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.2).sp
+                            letterSpacing = (-0.2).sp,
+                            style = TextStyle(
+                                shadow = Shadow(
+                                    color = Color.Black.copy(alpha = 0.45f),
+                                    offset = Offset(0f, 1.5f),
+                                    blurRadius = 4f
+                                )
+                            )
                         )
                     }
                 }

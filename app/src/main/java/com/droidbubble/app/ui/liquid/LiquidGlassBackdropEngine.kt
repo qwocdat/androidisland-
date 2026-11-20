@@ -575,6 +575,7 @@ private class DrawBackdropNode(
 
         val pLayer = preLayer
         val sLayer = shaderLayer
+        var cachedPad = 0f
 
         if (pLayer != null && sLayer != null) {
             val scope = BackdropEffectScope(
@@ -587,20 +588,20 @@ private class DrawBackdropNode(
                 shaderCache = shaderCache,
             )
             effects?.invoke(scope)
-            val pad = scope.padding
+            cachedPad = scope.padding
             val preEffect = scope.buildPreRenderEffect()
             val agslEffect = scope.buildShaderRenderEffect()
 
             val recordSize = IntSize(
-                (size.width + pad * 2f).toInt().coerceAtLeast(1),
-                (size.height + pad * 2f).toInt().coerceAtLeast(1),
+                (size.width + cachedPad * 2f).toInt().coerceAtLeast(1),
+                (size.height + cachedPad * 2f).toInt().coerceAtLeast(1),
             )
 
             // Stage 1: Record backdrop and apply vibrancy + Gaussian blur
             pLayer.renderEffect = preEffect
             pLayer.record(size = recordSize) {
                 drawContext.canvas.save()
-                drawContext.canvas.translate(pad, pad)
+                drawContext.canvas.translate(cachedPad, cachedPad)
                 with(backdrop) {
                     drawBackdrop(
                         density = this@draw,
@@ -617,7 +618,7 @@ private class DrawBackdropNode(
             sLayer.record(size = recordSize) {
                 drawLayer(pLayer)
                 drawContext.canvas.save()
-                drawContext.canvas.translate(pad, pad)
+                drawContext.canvas.translate(cachedPad, cachedPad)
                 onDrawSurface?.invoke(this)
                 drawContext.canvas.restore()
             }
@@ -633,21 +634,9 @@ private class DrawBackdropNode(
         }
 
         if (sLayer != null) {
-            val scope = BackdropEffectScope(
-                density = density,
-                fontScale = fontScale,
-                size = size,
-                shape = currentShape,
-                layoutDirection = layoutDirection,
-                downscaleFactor = 1,
-                shaderCache = shaderCache,
-            )
-            effects?.invoke(scope)
-            val pad = scope.padding
-
             drawContext.canvas.save()
             drawContext.canvas.clipPath(clipPath)
-            drawContext.canvas.translate(-pad, -pad)
+            drawContext.canvas.translate(-cachedPad, -cachedPad)
             drawLayer(sLayer)
             drawContext.canvas.restore()
         } else {
@@ -719,11 +708,13 @@ half4 main(float2 fragCoord) {
     float energy = clamp((invSq * 0.55 + gauss * 0.45) * intensity, 0.0, 1.0);
     float rimRing = exp(-pow(dist - 0.50, 2.0) * 16.0) * intensity * 0.48;
 
-    // Pure white translucent inward glass glow regardless of selected accent color (both Light & Dark modes)
-    float3 col = float3(1.0, 1.0, 1.0);
-    float edgeInward = clamp(1.0 - abs(fragCoord.y / max(resolution.y, 1.0) - 0.5) * 1.4, 0.25, 1.0);
-    float maxAlpha = (isDark > 0.5) ? 0.28 : 0.34;
-    float a = clamp((energy * 0.22 + core * intensity * 0.14 + rimRing * 0.12) * edgeInward, 0.0, maxAlpha);
+    // Adaptive multi-color optical glow: crisp pure-white specular core fading into a delicate luminous halo
+    // balanced for Light, Dark, OLED, and every accent color without looking plastic or muddy
+    float3 tintHarmonic = mix(float3(1.0, 1.0, 1.0), clamp(accentRgb * 0.65 + float3(0.35), 0.0, 1.0), 0.22);
+    float3 col = mix(float3(1.0, 1.0, 1.0), tintHarmonic, smoothstep(0.18, 0.88, dist));
+    float edgeInward = clamp(1.0 - abs(fragCoord.y / max(resolution.y, 1.0) - 0.5) * 1.35, 0.28, 1.0);
+    float maxAlpha = (isDark > 0.5) ? 0.32 : 0.38;
+    float a = clamp((energy * 0.24 + core * intensity * 0.18 + rimRing * 0.14) * edgeInward, 0.0, maxAlpha);
     return half4(col * a, a);
 }
 """

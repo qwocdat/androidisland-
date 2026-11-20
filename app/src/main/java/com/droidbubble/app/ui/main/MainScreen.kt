@@ -1,5 +1,8 @@
 package com.droidbubble.app.ui.main
 
+import com.droidbubble.app.ui.liquid.LiquidGlassSwitch
+import com.droidbubble.app.ui.liquid.LiquidGlassSlider
+
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.geometry.Offset
@@ -1021,7 +1024,7 @@ fun MainScreen(
                                 }
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = !app.isBlocked,
                                     onCheckedChange = {
                                         viewModel.toggleAppBlocked(app.packageName)
@@ -1570,7 +1573,7 @@ fun SliderSettingItem(
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Slider(
+        LiquidGlassSlider(
             value = value,
             onValueChange = onValueChange,
             valueRange = valueRange,
@@ -2240,7 +2243,7 @@ fun AppearancePage(
                                     )
                                 },
                                 trailingContent = {
-                                    Switch(
+                                    LiquidGlassSwitch(
                                         checked = settings.showOutline,
                                         onCheckedChange = { show ->
                                             onUpdateSettings { it.copy(showOutline = show) }
@@ -2278,7 +2281,7 @@ fun AppearancePage(
                                 Icon(Icons.Default.RoundedCorner, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.bubbleEffectEnabled,
                                     onCheckedChange = { enabled ->
                                         onUpdateSettings { it.copy(bubbleEffectEnabled = enabled) }
@@ -2297,7 +2300,7 @@ fun AppearancePage(
                                 Icon(Icons.Default.Widgets, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.showDualActivityInCompact,
                                     onCheckedChange = { showDual ->
                                         onUpdateSettings { it.copy(showDualActivityInCompact = showDual) }
@@ -2316,7 +2319,7 @@ fun AppearancePage(
                                 Icon(Icons.Default.FitScreen, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.alwaysShowPill,
                                     onCheckedChange = { alwaysShow ->
                                         onUpdateSettings { it.copy(alwaysShowPill = alwaysShow) }
@@ -2462,7 +2465,7 @@ fun GeneralPage(
                                 Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.hideOnLockScreen,
                                     onCheckedChange = { hide ->
                                         onUpdateSettings { it.copy(hideOnLockScreen = hide) }
@@ -2480,7 +2483,7 @@ fun GeneralPage(
                                 Icon(Icons.Default.ScreenRotation, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.showInLandscape,
                                     onCheckedChange = { inLandscape ->
                                         onUpdateSettings { it.copy(showInLandscape = inLandscape) }
@@ -2498,7 +2501,7 @@ fun GeneralPage(
                                 Icon(Icons.Default.TouchApp, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.swapActivitiesOnSwipe,
                                     onCheckedChange = { swapEnabled ->
                                         onUpdateSettings { it.copy(swapActivitiesOnSwipe = swapEnabled) }
@@ -2524,7 +2527,7 @@ fun GeneralPage(
                             Icon(Icons.Default.Vibration, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         },
                         trailingContent = {
-                            Switch(
+                            LiquidGlassSwitch(
                                 checked = settings.hapticsEnabled,
                                 onCheckedChange = { haptics ->
                                         onUpdateSettings { it.copy(hapticsEnabled = haptics) }
@@ -2553,7 +2556,7 @@ fun GeneralPage(
                                 Icon(Icons.Default.Timer, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.autoDismissNotifications,
                                     onCheckedChange = { autoDismiss ->
                                         onUpdateSettings { it.copy(autoDismissNotifications = autoDismiss) }
@@ -2611,7 +2614,7 @@ fun GeneralPage(
                                 Icon(Icons.Default.MusicNote, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.dismissMediaOnPause,
                                     onCheckedChange = { dismiss ->
                                         onUpdateSettings { it.copy(dismissMediaOnPause = dismiss) }
@@ -2847,7 +2850,7 @@ private fun SliderSettingItemPct(
                 Text(valueText, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
             }
         }
-        Slider(value = value, onValueChange = onValueChange, valueRange = valueRange, modifier = Modifier.height(28.dp))
+        LiquidGlassSlider(value = value, onValueChange = onValueChange, valueRange = valueRange, modifier = Modifier.height(28.dp))
     }
 }
 
@@ -3170,7 +3173,7 @@ fun MediaPlayerCustomizationPage(
                                 Icon(Icons.Default.GraphicEq, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.mediaWaveAnimation,
                                     onCheckedChange = { enabled ->
                                         onUpdateSettings { it.copy(mediaWaveAnimation = enabled) }
@@ -3188,7 +3191,7 @@ fun MediaPlayerCustomizationPage(
                                 Icon(Icons.Default.LinearScale, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.wavyProgressBar,
                                     onCheckedChange = { enabled ->
                                         onUpdateSettings { it.copy(wavyProgressBar = enabled) }
@@ -3206,7 +3209,7 @@ fun MediaPlayerCustomizationPage(
                                 Icon(Icons.Default.Album, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.spinningAlbumArt,
                                     onCheckedChange = { enabled ->
                                         onUpdateSettings { it.copy(spinningAlbumArt = enabled) }
@@ -3224,7 +3227,7 @@ fun MediaPlayerCustomizationPage(
                                 Icon(Icons.Default.MusicNote, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.blurredAlbumArtBackground,
                                     onCheckedChange = { blurred ->
                                         onUpdateSettings { it.copy(blurredAlbumArtBackground = blurred) }
@@ -3297,7 +3300,7 @@ fun DroidbarPage(
                             }
                         },
                         trailingContent = {
-                            Switch(
+                            LiquidGlassSwitch(
                                 checked = settings.droidbarEnabled,
                                 onCheckedChange = { enabled ->
                                     onUpdateSettings { it.copy(droidbarEnabled = enabled) }
@@ -3415,7 +3418,7 @@ fun DroidbarPage(
                                 }
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.droidbarShowFlashlight,
                                     onCheckedChange = { checked ->
                                         onUpdateSettings { it.copy(droidbarShowFlashlight = checked) }
@@ -3447,7 +3450,7 @@ fun DroidbarPage(
                                 }
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.droidbarShowRingMode,
                                     onCheckedChange = { checked ->
                                         onUpdateSettings { it.copy(droidbarShowRingMode = checked) }
@@ -3479,7 +3482,7 @@ fun DroidbarPage(
                                 }
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.droidbarShowScreenshot,
                                     onCheckedChange = { checked ->
                                         onUpdateSettings { it.copy(droidbarShowScreenshot = checked) }
@@ -3511,7 +3514,7 @@ fun DroidbarPage(
                                 }
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.droidbarShowWifi,
                                     onCheckedChange = { checked ->
                                         onUpdateSettings { it.copy(droidbarShowWifi = checked) }
@@ -3543,7 +3546,7 @@ fun DroidbarPage(
                                 }
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.droidbarShowMobileData,
                                     onCheckedChange = { checked ->
                                         onUpdateSettings { it.copy(droidbarShowMobileData = checked) }
@@ -3623,7 +3626,7 @@ fun DroidbarPage(
                                 }
                             },
                             trailingContent = {
-                                Switch(
+                                LiquidGlassSwitch(
                                     checked = settings.droidbarHapticsEnabled,
                                     onCheckedChange = { checked ->
                                         onUpdateSettings { it.copy(droidbarHapticsEnabled = checked) }
@@ -3692,7 +3695,7 @@ fun DroidbarAppsConfigPage(
                             )
                         },
                         trailingContent = {
-                            Switch(
+                            LiquidGlassSwitch(
                                 checked = settings.droidbarUseMostUsedApps,
                                 onCheckedChange = { checked ->
                                     onUpdateSettings { it.copy(droidbarUseMostUsedApps = checked) }
