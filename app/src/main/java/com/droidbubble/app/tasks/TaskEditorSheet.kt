@@ -26,6 +26,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.droidbubble.app.ui.liquid.LiquidGlassSwitch
 import com.droidbubble.app.ui.main.AppPickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
